@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Startup Valuation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F7F4EC;
+  --paper-raised: #FCFBF7;
+  --ink: #1C2430;
+  --ink-soft: #4B5563;
+  --navy: #24425F;
+  --navy-deep: #17293B;
+  --brass: #9C7A3C;
+  --brass-light: #E4D5B7;
+  --forest: #3F6B4C;
+  --rust: #A8402F;
+  --rule: rgba(28, 36, 48, 0.14);
+  --rule-soft: rgba(28, 36, 48, 0.08);
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* ---------- Masthead ---------- */
+.masthead {
+  background: var(--navy);
+  border-bottom: 3px solid var(--brass);
+}
+.masthead-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 24px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.wordmark {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 22px;
+  color: var(--paper-raised);
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.masthead-nav { display: flex; gap: 4px; }
+.nav-link {
+  background: none;
+  border: none;
+  color: rgba(247, 244, 236, 0.7);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.nav-link:hover { color: var(--paper-raised); }
+.nav-link.is-active {
+  color: var(--paper-raised);
+  background: rgba(247, 244, 236, 0.1);
+}
+
+/* ---------- Layout ---------- */
+.page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 40px 24px 96px;
+}
+.view[hidden] { display: none; }
+.section-heading {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 20px;
+}
+
+/* ---------- Step tracker ---------- */
+.step-tracker { margin-bottom: 28px; }
+.step-label {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.step-label #step-current, .step-label #step-total {
+  font-weight: 600;
+  color: var(--ink);
+}
+.step-rule {
+  height: 2px;
+  background: var(--rule);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.step-fill {
+  height: 100%;
+  width: 16.6%;
+  background: var(--brass);
+  transition: width 0.3s ease;
+}
+
+/* ---------- Form ---------- */
+.wizard-step { display: none; }
+.wizard-step.is-active { display: block; }
+.step-intro {
+  color: var(--ink-soft);
+  font-size: 14px;
+  margin: 0 0 24px;
+  max-width: 56ch;
+}
+.field { margin-bottom: 18px; }
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.field-row-3 { grid-template-columns: repeat(3, 1fr); }
+.field-row-5 { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 560px) {
+  .field-row, .field-row-3, .field-row-5 { grid-template-columns: 1fr 1fr; }
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 5px;
+}
+input, select {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 9px 10px;
+}
+input:focus, select:focus {
+  outline: 2px solid var(--brass);
+  outline-offset: 1px;
+  border-color: var(--brass);
+}
+input[type="number"] { font-variant-numeric: tabular-nums; }
+.field-hint {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 5px 0 0;
+}
+.field-group {
+  border: none;
+  border-top: 1px solid var(--rule-soft);
+  padding: 18px 0 4px;
+  margin: 0 0 8px;
+}
+.field-group legend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  padding: 0;
+  margin-bottom: 12px;
+}
+.loading-hint { color: var(--ink-soft); font-size: 14px; font-style: italic; }
+
+.form-error {
+  background: rgba(168, 64, 47, 0.08);
+  border: 1px solid rgba(168, 64, 47, 0.3);
+  color: var(--rust);
+  font-size: 13.5px;
+  padding: 10px 14px;
+  border-radius: 3px;
+  margin: 0 0 20px;
+}
+
+/* ---------- Buttons ---------- */
+.wizard-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--rule-soft);
+}
+.btn {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 22px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.btn-primary {
+  background: var(--navy);
+  color: var(--paper-raised);
+  margin-left: auto;
+}
+.btn-primary:hover { background: var(--navy-deep); }
+.btn-ghost {
+  background: none;
+  border-color: var(--rule);
+  color: var(--ink-soft);
+}
+.btn-ghost:hover { border-color: var(--ink-soft); color: var(--ink); }
+.btn-small {
+  font-size: 12.5px;
+  padding: 5px 12px;
+  background: none;
+  border: 1px solid var(--rule);
+  color: var(--ink-soft);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.btn-small:hover { border-color: var(--rust); color: var(--rust); }
+
+/* ---------- Results (ledger) ---------- */
+.results-loading { color: var(--ink-soft); font-style: italic; padding: 40px 0; text-align: center; }
+.results-panel { animation: reveal 0.4s ease; }
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ledger-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+.ledger-subtitle {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  margin: 0 0 24px;
+}
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+}
+.ledger-table th {
+  text-align: right;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-transform: none;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--rule);
+}
+.ledger-table th:first-child { text-align: left; }
+.ledger-table td {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule-soft);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-size: 14.5px;
+}
+.ledger-table td:first-child { text-align: left; color: var(--ink); font-weight: 500; }
+.ledger-total-row td {
+  border-top: 2px solid var(--brass);
+  border-bottom: none;
+  padding-top: 14px;
+  font-weight: 700;
+  font-size: 16px;
+}
+.ledger-total-row td:first-child { font-family: var(--font-serif); }
+.ledger-postmoney {
+  margin-top: 18px;
+  padding: 16px 18px;
+  background: var(--paper-raised);
+  border: 1px solid var(--brass-light);
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.ledger-postmoney-label { font-size: 13.5px; color: var(--ink-soft); }
+.ledger-postmoney-value {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+.results-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+/* ---------- History ---------- */
+.history-list { display: flex; flex-direction: column; gap: 1px; }
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.history-item-name {
+  font-weight: 500;
+  font-size: 14.5px;
+}
+.history-item-date {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+.history-item-actions { display: flex; gap: 8px; }
+.empty-state {
+  color: var(--ink-soft);
+  font-size: 14px;
+  padding: 32px 0;
+  text-align: center;
+  font-style: italic;
+}
+
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <h1 class="wordmark">Startup Valuation</h1>
+    <nav class="masthead-nav">
+      <button id="nav-new" class="nav-link is-active" type="button">New valuation</button>
+      <button id="nav-history" class="nav-link" type="button">Past valuations</button>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- ============ NEW VALUATION WIZARD ============ -->
+  <section id="view-wizard" class="view">
+
+    <div class="step-tracker">
+      <p class="step-label"><span id="step-current">1</span> of <span id="step-total">6</span> &mdash; <span id="step-name">Company profile</span></p>
+      <div class="step-rule"><div id="step-fill" class="step-fill"></div></div>
+    </div>
+
+    <p id="form-error" class="form-error" hidden></p>
+
+    <!-- Step 1: Company Profile -->
+    <form class="wizard-step is-active" data-step="1" id="step-1">
+      <p class="step-intro">General information about the company being valued.</p>
+
+      <div class="field">
+        <label for="company_name">Company name</label>
+        <input type="text" id="company_name" required>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="contact_name">Contact name</label>
+          <input type="text" id="contact_name">
+        </div>
+        <div class="field">
+          <label for="contact_email">Contact email</label>
+          <input type="email" id="contact_email">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="address">Company address</label>
+        <input type="text" id="address">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="country">Country</label>
+          <select id="country" required></select>
+        </div>
+        <div class="field">
+          <label for="business_territory_region">Business territory / region</label>
+          <select id="business_territory_region" required></select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="industry">Industry</label>
+          <select id="industry" required></select>
+        </div>
+        <div class="field">
+          <label for="company_stage">Company stage</label>
+          <select id="company_stage" required></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="business_activity">Business activity</label>
+        <input type="text" id="business_activity" placeholder="e.g. Selling software">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="business_model">Business model</label>
+          <input type="text" id="business_model" placeholder="e.g. SaaS">
+        </div>
+        <div class="field">
+          <label for="exit_strategy">Exit strategy</label>
+          <input type="text" id="exit_strategy" placeholder="e.g. B2B sale">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="num_founders">Number of founders</label>
+          <input type="number" id="num_founders" min="0" step="1">
+        </div>
+        <div class="field">
+          <label for="num_employees">Number of employees</label>
+          <input type="number" id="num_employees" min="0" step="1">
+        </div>
+        <div class="field">
+          <label for="year_of_incorporation">Year incorporated</label>
+          <input type="number" id="year_of_incorporation" min="1900" step="1">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="committed_capital">Committed capital</label>
+          <input type="number" id="committed_capital" min="0" step="1" value="0">
+        </div>
+        <div class="field">
+          <label for="planned_time_to_exit_years">Planned time to exit (years)</label>
+          <input type="number" id="planned_time_to_exit_years" min="1" max="5" step="1" value="3">
+        </div>
+        <div class="field">
+          <label for="dcf_tax_rate_override">Tax rate assumption for DCF</label>
+          <input type="number" id="dcf_tax_rate_override" min="0" max="1" step="0.01" value="0.10">
+          <p class="field-hint">As a fraction, e.g. 0.10 = 10%. Used for both the P&amp;L and the DCF Method &mdash; not necessarily the country's statutory rate.</p>
+        </div>
+      </div>
+    </form>
+
+    <!-- Step 2: Market & Team Assessment -->
+    <form class="wizard-step" data-step="2" id="step-2">
+      <p class="step-intro">These qualitative answers drive the Scorecard method. Each dropdown offers exactly the option set the calculation engine recognizes.</p>
+      <div id="scorecard-fields"><p class="loading-hint">Loading question set&hellip;</p></div>
+    </form>
+
+    <!-- Step 3: Operating Performance -->
+    <form class="wizard-step" data-step="3" id="step-3">
+      <p class="step-intro">The company's most recent actual (not projected) performance.</p>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="current_revenue_last_12_months">Revenue, last 12 months</label>
+          <input type="number" id="current_revenue_last_12_months" min="0" step="1" required>
+        </div>
+        <div class="field">
+          <label for="current_ebitda">Current EBITDA</label>
+          <input type="number" id="current_ebitda" step="1" required>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="cash_available">Cash currently available</label>
+          <input type="number" id="cash_available" min="0" step="1" required>
+        </div>
+        <div class="field">
+          <label for="current_ppe_value">Property, plant &amp; equipment (current value)</label>
+          <input type="number" id="current_ppe_value" min="0" step="1" value="0">
+        </div>
+      </div>
+    </form>
+
+    <!-- Step 4: Financial Assumptions -->
+    <form class="wizard-step" data-step="4" id="step-4">
+      <p class="step-intro">A 5-year revenue and capital-expenditure plan. Industry benchmarks fill in the cost lines automatically.</p>
+
+      <div class="field">
+        <label for="revenue_year1">Projected revenue, Year 1</label>
+        <input type="number" id="revenue_year1" min="0" step="1" required>
+      </div>
+
+      <fieldset class="field-group">
+        <legend>Revenue growth, year over year</legend>
+        <div class="field-row field-row-5">
+          <div class="field"><label for="growth_y2">Year 2</label><input type="number" id="growth_y2" step="0.01" value="0.10"></div>
+          <div class="field"><label for="growth_y3">Year 3</label><input type="number" id="growth_y3" step="0.01" value="0.10"></div>
+          <div class="field"><label for="growth_y4">Year 4</label><input type="number" id="growth_y4" step="0.01" value="0.10"></div>
+          <div class="field"><label for="growth_y5">Year 5</label><input type="number" id="growth_y5" step="0.01" value="0.10"></div>
+        </div>
+        <p class="field-hint">As fractions, e.g. 0.10 = 10% growth over the prior year.</p>
+      </fieldset>
+
+      <fieldset class="field-group">
+        <legend>Planned capital expenditure</legend>
+        <div class="field-row field-row-5">
+          <div class="field"><label for="capex_y1">Year 1</label><input type="number" id="capex_y1" min="0" step="1" value="0"></div>
+          <div class="field"><label for="capex_y2">Year 2</label><input type="number" id="capex_y2" min="0" step="1" value="30000"></div>
+          <div class="field"><label for="capex_y3">Year 3</label><input type="number" id="capex_y3" min="0" step="1" value="30000"></div>
+          <div class="field"><label for="capex_y4">Year 4</label><input type="number" id="capex_y4" min="0" step="1" value="30000"></div>
+          <div class="field"><label for="capex_y5">Year 5</label><input type="number" id="capex_y5" min="0" step="1" value="30000"></div>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="existing_debt_balance">Existing interest-bearing debt</label>
+        <input type="number" id="existing_debt_balance" min="0" step="1" value="0">
+      </div>
+    </form>
+
+    <!-- Step 5: Ownership & Funding -->
+    <form class="wizard-step" data-step="5" id="step-5">
+      <p class="step-intro">The capital being raised, and what it funds.</p>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="capital_needed">Capital needed</label>
+          <input type="number" id="capital_needed" min="0" step="1" required>
+        </div>
+        <div class="field">
+          <label for="number_of_existing_shares">Number of existing shares</label>
+          <input type="number" id="number_of_existing_shares" min="1" step="1" value="1000000">
+          <p class="field-hint">Used by the Venture Capital method to size the new investor's stake.</p>
+        </div>
+      </div>
+
+      <fieldset class="field-group">
+        <legend>Use of funds (optional)</legend>
+        <div class="field-row field-row-3">
+          <div class="field"><label for="use_rd">Product &amp; R&amp;D</label><input type="number" id="use_rd" min="0" step="1"></div>
+          <div class="field"><label for="use_sales">Sales &amp; marketing</label><input type="number" id="use_sales" min="0" step="1"></div>
+          <div class="field"><label for="use_inventory">Inventory</label><input type="number" id="use_inventory" min="0" step="1"></div>
+        </div>
+        <div class="field-row field-row-3">
+          <div class="field"><label for="use_ops">Operations</label><input type="number" id="use_ops" min="0" step="1"></div>
+          <div class="field"><label for="use_capex">Capital expenditures</label><input type="number" id="use_capex" min="0" step="1"></div>
+          <div class="field"><label for="use_other">Others</label><input type="number" id="use_other" min="0" step="1"></div>
+        </div>
+      </fieldset>
+    </form>
+
+    <div class="wizard-nav">
+      <button id="btn-back" class="btn btn-ghost" type="button" hidden>Back</button>
+      <button id="btn-next" class="btn btn-primary" type="button">Continue</button>
+      <button id="btn-calculate" class="btn btn-primary" type="button" hidden>Calculate valuation</button>
+    </div>
+
+    <!-- Step 6: Results -->
+    <section class="wizard-step" data-step="6" id="step-6">
+      <div id="results-loading" class="results-loading" hidden>
+        <p>Calculating&hellip;</p>
+      </div>
+      <div id="results-panel" hidden></div>
+    </section>
+
+  </section>
+
+  <!-- ============ PAST VALUATIONS ============ -->
+  <section id="view-history" class="view" hidden>
+    <h2 class="section-heading">Past valuations</h2>
+    <div id="history-list" class="history-list">
+      <p class="loading-hint">Loading&hellip;</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ============================================================
+// Configuration
+// ============================================================
+// Point this at wherever the FastAPI app from step 3 is running.
+const API_BASE = window.VALUATION_API_BASE || "http://localhost:8000";
+
+// Human-readable labels for the 13 Scorecard questionnaire fields.
+// Keys must match MarketAndTeamAssessment field names exactly (also the
+// scorecard_qualitative_lookup.json keys returned by /reference-data/scorecard-lookup).
+const SCORECARD_LABELS = {
+  management_team_experience: "Management team experience",
+  willingness_to_step_aside_for_ceo: "Willingness to step aside for an experienced CEO",
+  management_team_completeness: "How complete is the management team?",
+  product_development_stage: "Product development stage",
+  product_compelling_to_customers: "Is the product compelling to customers?",
+  product_can_be_duplicated: "Can this product be duplicated by others?",
+  strength_of_competitors_in_market: "Strength of competitors in the market",
+  strength_of_competitive_products: "Strength of competitive products",
+  target_market_size: "Target market size",
+  revenue_potential_in_5_years: "Revenue potential in 5 years",
+  sales_channels_partners: "Sales channels / sales partners",
+  marketing_partners: "Marketing partners",
+  need_for_additional_funding_rounds: "Need for additional funding rounds",
+};
+
+const METHOD_LABELS = {
+  scorecard: "Scorecard method",
+  venture_capital: "Venture Capital method",
+  dcf_multiples: "DCF Multiples method",
+  dcf: "DCF method",
+};
+
+// ============================================================
+// State
+// ============================================================
+let currentStep = 1;
+const TOTAL_STEPS = 6;
+let lastResult = null; // holds the last computed ValuationOutput
+
+// ============================================================
+// Utilities
+// ============================================================
+function money(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "\u2014";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency", currency: "EUR", maximumFractionDigits: 0,
+  }).format(n);
+}
+
+function pct(n) {
+  if (n === null || n === undefined) return "\u2014";
+  return (n * 100).toFixed(1) + "%";
+}
+
+async function apiFetch(path, options = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      detail = body.detail ? JSON.stringify(body.detail) : detail;
+    } catch (_) { /* ignore */ }
+    throw new Error(`${res.status}: ${detail}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+function showFormError(message) {
+  const el = document.getElementById("form-error");
+  el.textContent = message;
+  el.hidden = false;
+}
+function clearFormError() {
+  const el = document.getElementById("form-error");
+  el.hidden = true;
+  el.textContent = "";
+}
+
+// ============================================================
+// Reference data loading (populates selects)
+// ============================================================
+async function loadReferenceData() {
+  const [countries, industries, stages, options, scorecardLookup] = await Promise.all([
+    apiFetch("/reference-data/countries"),
+    apiFetch("/reference-data/industries"),
+    apiFetch("/reference-data/stages"),
+    apiFetch("/reference-data/options"),
+    apiFetch("/reference-data/scorecard-lookup"),
+  ]);
+
+  fillSelect("country", countries);
+  fillSelect("industry", industries);
+  fillSelect("company_stage", stages);
+  fillSelect("business_territory_region", options.business_territory_region);
+
+  buildScorecardFields(scorecardLookup);
+}
+
+function fillSelect(id, values) {
+  const select = document.getElementById(id);
+  select.innerHTML = "";
+  for (const value of values) {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = value;
+    select.appendChild(opt);
+  }
+}
+
+function buildScorecardFields(scorecardLookup) {
+  const container = document.getElementById("scorecard-fields");
+  container.innerHTML = "";
+  for (const [key, label] of Object.entries(SCORECARD_LABELS)) {
+    const options = scorecardLookup[key] ? Object.keys(scorecardLookup[key]) : [];
+    const field = document.createElement("div");
+    field.className = "field";
+    field.innerHTML = `
+      <label for="sc_${key}">${label}</label>
+      <select id="sc_${key}" required></select>
+    `;
+    container.appendChild(field);
+    fillSelect(`sc_${key}`, options);
+  }
+}
+
+// ============================================================
+// Wizard navigation
+// ============================================================
+function goToStep(step) {
+  currentStep = step;
+  document.querySelectorAll(".wizard-step").forEach((el) => {
+    el.classList.toggle("is-active", Number(el.dataset.step) === step);
+  });
+
+  const stepNames = {
+    1: "Company profile", 2: "Market & team assessment", 3: "Operating performance",
+    4: "Financial assumptions", 5: "Ownership & funding", 6: "Results",
+  };
+  document.getElementById("step-current").textContent = step;
+  document.getElementById("step-name").textContent = stepNames[step];
+  document.getElementById("step-fill").style.width = `${(step / TOTAL_STEPS) * 100}%`;
+
+  document.getElementById("btn-back").hidden = step === 1;
+  document.getElementById("btn-next").hidden = step === 5 || step === 6;
+  document.getElementById("btn-calculate").hidden = step !== 5;
+
+  clearFormError();
+}
+
+function validateStep(step) {
+  const form = document.getElementById(`step-${step}`);
+  if (!form || typeof form.reportValidity !== "function") return true;
+  if (!form.reportValidity()) {
+    showFormError("Please fill in the required fields (marked by your browser) before continuing.");
+    return false;
+  }
+  return true;
+}
+
+document.getElementById("btn-next").addEventListener("click", () => {
+  if (!validateStep(currentStep)) return;
+  goToStep(Math.min(currentStep + 1, 5));
+});
+document.getElementById("btn-back").addEventListener("click", () => {
+  goToStep(Math.max(currentStep - 1, 1));
+});
+
+// ============================================================
+// Building the ValuationInput payload
+// ============================================================
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : "";
+}
+function numOrUndefined(id) {
+  const v = val(id);
+  return v === "" ? undefined : Number(v);
+}
+
+function buildPayload() {
+  const marketAssessment = {};
+  for (const key of Object.keys(SCORECARD_LABELS)) {
+    marketAssessment[key] = val(`sc_${key}`);
+  }
+
+  const useOfFunds = {};
+  const useFields = {
+    use_rd: "Product and R&D", use_sales: "Sales and marketing", use_inventory: "Inventory",
+    use_ops: "Operations", use_capex: "Capital expenditures", use_other: "Others",
+  };
+  for (const [id, label] of Object.entries(useFields)) {
+    const v = val(id);
+    if (v !== "") useOfFunds[label] = Number(v);
+  }
+
+  return {
+    company_profile: {
+      company_name: val("company_name"),
+      contact_name: val("contact_name") || null,
+      contact_email: val("contact_email") || null,
+      address: val("address") || null,
+      country: val("country"),
+      num_founders: numOrUndefined("num_founders") ?? null,
+      num_employees: numOrUndefined("num_employees") ?? null,
+      year_of_incorporation: numOrUndefined("year_of_incorporation") ?? null,
+      company_stage: val("company_stage"),
+      committed_capital: Number(val("committed_capital") || 0),
+      business_activity: val("business_activity") || null,
+      industry: val("industry"),
+      business_territory_region: val("business_territory_region"),
+      business_model: val("business_model") || null,
+      exit_strategy: val("exit_strategy") || null,
+      planned_time_to_exit_years: Number(val("planned_time_to_exit_years") || 3),
+      dcf_tax_rate_override: Number(val("dcf_tax_rate_override") || 0.10),
+    },
+    market_and_team_assessment: marketAssessment,
+    operating_performance: {
+      current_revenue_last_12_months: Number(val("current_revenue_last_12_months") || 0),
+      current_ebitda: Number(val("current_ebitda") || 0),
+      cash_available: Number(val("cash_available") || 0),
+      current_ppe_value: Number(val("current_ppe_value") || 0),
+    },
+    financial_assumptions: {
+      revenue_year1: Number(val("revenue_year1") || 0),
+      revenue_growth_rates: [
+        Number(val("growth_y2") || 0), Number(val("growth_y3") || 0),
+        Number(val("growth_y4") || 0), Number(val("growth_y5") || 0),
+      ],
+      capex_by_year: [
+        Number(val("capex_y1") || 0), Number(val("capex_y2") || 0),
+        Number(val("capex_y3") || 0), Number(val("capex_y4") || 0), Number(val("capex_y5") || 0),
+      ],
+      existing_debt_balance: Number(val("existing_debt_balance") || 0),
+    },
+    ownership: [],
+    funding: {
+      capital_needed: Number(val("capital_needed") || 0),
+      use_of_funds: useOfFunds,
+    },
+    vc_assumptions: {
+      number_of_existing_shares: Number(val("number_of_existing_shares") || 1000000),
+    },
+  };
+}
+
+// ============================================================
+// Calculate & render results
+// ============================================================
+document.getElementById("btn-calculate").addEventListener("click", async () => {
+  if (!validateStep(5)) return;
+
+  goToStep(6);
+  document.getElementById("results-loading").hidden = false;
+  document.getElementById("results-panel").hidden = true;
+
+  try {
+    const payload = buildPayload();
+    const result = await apiFetch("/valuations/preview", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    lastResult = { payload, output: result };
+    renderResults(result);
+  } catch (err) {
+    document.getElementById("results-loading").hidden = true;
+    showResultsError(err.message);
+  }
+});
+
+function showResultsError(message) {
+  const panel = document.getElementById("results-panel");
+  panel.hidden = false;
+  panel.innerHTML = `<p class="form-error" style="margin-top:0">${message}</p>
+    <button class="btn btn-ghost" onclick="goToStep(1)">Back to the form</button>`;
+}
+
+function renderResults(result) {
+  document.getElementById("results-loading").hidden = true;
+  const panel = document.getElementById("results-panel");
+  panel.hidden = false;
+  panel.className = "results-panel";
+
+  const rows = Object.entries(result.method_values).map(([key, mv]) => `
+    <tr>
+      <td>${METHOD_LABELS[key] || key}</td>
+      <td>${pct(mv.weight)}</td>
+      <td>${money(mv.pre_money_value)}</td>
+      <td>${money(mv.weighted_value)}</td>
+    </tr>
+  `).join("");
+
+  panel.innerHTML = `
+    <h2 class="ledger-title">Valuation summary</h2>
+    <p class="ledger-subtitle">Blended across the Scorecard, Venture Capital, DCF Multiples and DCF methods, weighted by company stage.</p>
+    <table class="ledger-table">
+      <thead>
+        <tr><th>Method</th><th>Weight</th><th>Pre-money value</th><th>Weighted value</th></tr>
+      </thead>
+      <tbody>
+        ${rows}
+        <tr class="ledger-total-row">
+          <td colspan="3">Blended pre-money valuation</td>
+          <td>${money(result.blended_pre_money_valuation)}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="ledger-postmoney">
+      <span class="ledger-postmoney-label">Post-money (+ ${money(result.capital_needed)} raised)</span>
+      <span class="ledger-postmoney-value">${money(result.post_money_valuation)}</span>
+    </div>
+    <div class="results-actions">
+      <button class="btn btn-primary" id="btn-save">Save this valuation</button>
+      <button class="btn btn-ghost" id="btn-restart">Start a new valuation</button>
+    </div>
+  `;
+
+  document.getElementById("btn-save").addEventListener("click", saveCurrentValuation);
+  document.getElementById("btn-restart").addEventListener("click", () => {
+    lastResult = null;
+    goToStep(1);
+  });
+}
+
+async function saveCurrentValuation() {
+  if (!lastResult) return;
+  const btn = document.getElementById("btn-save");
+  btn.disabled = true;
+  btn.textContent = "Saving\u2026";
+  try {
+    await apiFetch("/valuations", { method: "POST", body: JSON.stringify(lastResult.payload) });
+    btn.textContent = "Saved";
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = "Save this valuation";
+    showFormError(`Could not save: ${err.message}`);
+  }
+}
+
+// ============================================================
+// History view
+// ============================================================
+document.getElementById("nav-new").addEventListener("click", () => switchView("wizard"));
+document.getElementById("nav-history").addEventListener("click", () => switchView("history"));
+
+function switchView(view) {
+  document.getElementById("view-wizard").hidden = view !== "wizard";
+  document.getElementById("view-history").hidden = view !== "history";
+  document.getElementById("nav-new").classList.toggle("is-active", view === "wizard");
+  document.getElementById("nav-history").classList.toggle("is-active", view === "history");
+  if (view === "history") loadHistory();
+}
+
+async function loadHistory() {
+  const list = document.getElementById("history-list");
+  list.innerHTML = `<p class="loading-hint">Loading&hellip;</p>`;
+  try {
+    const items = await apiFetch("/valuations?limit=50");
+    if (items.length === 0) {
+      list.innerHTML = `<p class="empty-state">No valuations saved yet. Run one from "New valuation" and save it to see it here.</p>`;
+      return;
+    }
+    list.innerHTML = items.map((item) => `
+      <div class="history-item" data-id="${item.id}">
+        <div>
+          <div class="history-item-name">${item.company_name || "(unnamed company)"}</div>
+          <div class="history-item-date">${new Date(item.created_at).toLocaleString()}</div>
+        </div>
+        <div class="history-item-actions">
+          <button class="btn-small" data-action="view" data-id="${item.id}">View</button>
+          <button class="btn-small" data-action="delete" data-id="${item.id}">Delete</button>
+        </div>
+      </div>
+    `).join("");
+
+    list.querySelectorAll("[data-action='delete']").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await apiFetch(`/valuations/${btn.dataset.id}`, { method: "DELETE" });
+        loadHistory();
+      });
+    });
+    list.querySelectorAll("[data-action='view']").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const detail = await apiFetch(`/valuations/${btn.dataset.id}`);
+        switchView("wizard");
+        goToStep(6);
+        document.getElementById("results-loading").hidden = true;
+        renderResults(detail.output);
+      });
+    });
+  } catch (err) {
+    list.innerHTML = `<p class="form-error">Could not load past valuations: ${err.message}</p>`;
+  }
+}
+
+// ============================================================
+// Init
+// ============================================================
+(async function init() {
+  goToStep(1);
+  try {
+    await loadReferenceData();
+  } catch (err) {
+    showFormError(
+      `Could not reach the valuation API at ${API_BASE}. Is it running? (${err.message})`
+    );
+  }
+})();
+
+</script>
+</body>
+</html>
