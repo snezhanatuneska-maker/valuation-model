@@ -330,6 +330,24 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
   font-style: italic;
 }
 
+/* ---------- Print (PDF export of the results step) ---------- */
+.print-report-header { display: none; }
+@media print {
+  .masthead, .step-tracker, .wizard-nav, .results-actions,
+  .view#view-history, .btn { display: none !important; }
+  body { background: #fff; color: #1a1a1a; }
+  main.page { max-width: 100%; padding: 0; margin: 0; }
+  .wizard-step[data-step="6"] { display: block !important; }
+  .print-report-header {
+    display: block;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #1a1a1a;
+  }
+  .print-report-header h1 { margin: 0 0 4px; font-size: 20px; }
+  .print-report-header p { margin: 0; color: #555; font-size: 12px; }
+  .ledger-table { page-break-inside: avoid; }
+}
 </style>
 </head>
 <body>
@@ -873,7 +891,14 @@ function renderResults(result) {
     </tr>
   `).join("");
 
+  const companyName = (lastResult && lastResult.payload.company_profile.company_name) || "Untitled company";
+  const todayStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+
   panel.innerHTML = `
+    <div class="print-report-header">
+      <h1>${companyName} — Valuation Summary</h1>
+      <p>Generated ${todayStr}. Informational estimate only — not a certified appraisal or investment advice.</p>
+    </div>
     <h2 class="ledger-title">Valuation summary</h2>
     <p class="ledger-subtitle">Blended across the Scorecard, Venture Capital, DCF Multiples and DCF methods, weighted by company stage.</p>
     <table class="ledger-table">
@@ -894,15 +919,25 @@ function renderResults(result) {
     </div>
     <div class="results-actions">
       <button class="btn btn-primary" id="btn-save">Save this valuation</button>
+      <button class="btn btn-ghost" id="btn-pdf">Download PDF</button>
       <button class="btn btn-ghost" id="btn-restart">Start a new valuation</button>
     </div>
   `;
 
   document.getElementById("btn-save").addEventListener("click", saveCurrentValuation);
+  document.getElementById("btn-pdf").addEventListener("click", () => downloadResultsPdf(companyName));
   document.getElementById("btn-restart").addEventListener("click", () => {
     lastResult = null;
     goToStep(1);
   });
+}
+
+function downloadResultsPdf(companyName) {
+  const originalTitle = document.title;
+  // Browsers use document.title as the suggested filename in the print dialog.
+  document.title = `Valuation - ${companyName}`;
+  window.print();
+  document.title = originalTitle;
 }
 
 async function saveCurrentValuation() {
@@ -965,6 +1000,7 @@ async function loadHistory() {
     list.querySelectorAll("[data-action='view']").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const detail = await apiFetch(`/valuations/${btn.dataset.id}`);
+        lastResult = { payload: detail.input, output: detail.output };
         switchView("wizard");
         goToStep(6);
         document.getElementById("results-loading").hidden = true;
