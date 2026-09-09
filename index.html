@@ -38,12 +38,14 @@ body {
 /* ---------- Masthead ---------- */
 .masthead {
   background: var(--navy);
+  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
   border-bottom: 3px solid var(--brass);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 }
 .masthead-inner {
   max-width: 760px;
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: 22px 24px;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -62,27 +64,38 @@ body {
 .nav-link {
   background: none;
   border: none;
-  color: rgba(247, 244, 236, 0.7);
+  color: rgba(247, 244, 236, 0.68);
   font-family: var(--font-sans);
   font-size: 13.5px;
   font-weight: 500;
-  padding: 6px 12px;
+  padding: 7px 14px;
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: 5px;
+  transition: color 0.12s ease, background 0.12s ease;
 }
-.nav-link:hover { color: var(--paper-raised); }
+.nav-link:hover { color: var(--paper-raised); background: rgba(247, 244, 236, 0.08); }
 .nav-link.is-active {
   color: var(--paper-raised);
-  background: rgba(247, 244, 236, 0.1);
+  background: rgba(247, 244, 236, 0.14);
 }
 
 /* ---------- Layout ---------- */
 .page {
-  max-width: 680px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 40px 24px 96px;
+  padding: 32px 20px 96px;
 }
 .view[hidden] { display: none; }
+.view {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-soft);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(28, 36, 48, 0.04), 0 10px 30px rgba(28, 36, 48, 0.06);
+  padding: 40px 44px 36px;
+}
+@media (max-width: 620px) {
+  .view { padding: 28px 20px 24px; border-radius: 8px; }
+}
 .section-heading {
   font-family: var(--font-serif);
   font-size: 22px;
@@ -91,28 +104,34 @@ body {
 }
 
 /* ---------- Step tracker ---------- */
-.step-tracker { margin-bottom: 28px; }
+.step-tracker { margin-bottom: 32px; }
 .step-label {
-  font-size: 13px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--ink-soft);
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-variant-numeric: tabular-nums;
 }
 .step-label #step-current, .step-label #step-total {
   font-weight: 600;
   color: var(--ink);
 }
+.step-label #step-name { color: var(--navy); font-weight: 700; text-transform: none; letter-spacing: 0; }
 .step-rule {
-  height: 2px;
-  background: var(--rule);
-  border-radius: 1px;
+  height: 4px;
+  background: var(--rule-soft);
+  border-radius: 2px;
   overflow: hidden;
 }
 .step-fill {
   height: 100%;
   width: 16.6%;
-  background: var(--brass);
-  transition: width 0.3s ease;
+  background: linear-gradient(90deg, var(--brass), var(--navy));
+  border-radius: 2px;
+  transition: width 0.35s ease;
 }
 
 /* ---------- Form ---------- */
@@ -148,17 +167,20 @@ input, select {
   font-family: var(--font-sans);
   font-size: 14.5px;
   color: var(--ink);
-  background: var(--paper-raised);
+  background: #fff;
   border: 1px solid var(--rule);
-  border-radius: 3px;
-  padding: 9px 10px;
+  border-radius: 6px;
+  padding: 10px 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+input:hover, select:hover { border-color: rgba(28, 36, 48, 0.28); }
 input:focus, select:focus {
-  outline: 2px solid var(--brass);
-  outline-offset: 1px;
+  outline: none;
   border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(156, 122, 60, 0.16);
 }
 input[type="number"] { font-variant-numeric: tabular-nums; }
+input::placeholder { color: rgba(75, 85, 99, 0.55); }
 .field-hint {
   font-size: 12px;
   color: var(--ink-soft);
@@ -167,15 +189,18 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
 .field-group {
   border: none;
   border-top: 1px solid var(--rule-soft);
-  padding: 18px 0 4px;
+  padding: 22px 0 4px;
   margin: 0 0 8px;
 }
 .field-group legend {
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--navy);
   padding: 0;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .loading-hint { color: var(--ink-soft); font-size: 14px; font-style: italic; }
 
@@ -185,7 +210,7 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
   color: var(--rust);
   font-size: 13.5px;
   padding: 10px 14px;
-  border-radius: 3px;
+  border-radius: 6px;
   margin: 0 0 20px;
 }
 
@@ -194,7 +219,7 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 32px;
+  margin-top: 36px;
   padding-top: 24px;
   border-top: 1px solid var(--rule-soft);
 }
@@ -202,31 +227,35 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
   font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 600;
-  padding: 10px 22px;
-  border-radius: 3px;
+  padding: 11px 24px;
+  border-radius: 6px;
   cursor: pointer;
   border: 1px solid transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 .btn-primary {
   background: var(--navy);
   color: var(--paper-raised);
   margin-left: auto;
+  box-shadow: 0 1px 2px rgba(23, 41, 59, 0.15), 0 4px 12px rgba(23, 41, 59, 0.12);
 }
-.btn-primary:hover { background: var(--navy-deep); }
+.btn-primary:hover { background: var(--navy-deep); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(23, 41, 59, 0.18), 0 8px 18px rgba(23, 41, 59, 0.16); }
+.btn-primary:active { transform: translateY(0); }
 .btn-ghost {
   background: none;
   border-color: var(--rule);
   color: var(--ink-soft);
 }
-.btn-ghost:hover { border-color: var(--ink-soft); color: var(--ink); }
+.btn-ghost:hover { border-color: var(--ink-soft); color: var(--ink); background: rgba(28, 36, 48, 0.03); }
 .btn-small {
   font-size: 12.5px;
   padding: 5px 12px;
   background: none;
   border: 1px solid var(--rule);
   color: var(--ink-soft);
-  border-radius: 3px;
+  border-radius: 5px;
   cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
 }
 .btn-small:hover { border-color: var(--rust); color: var(--rust); }
 
@@ -281,10 +310,10 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
 .ledger-total-row td:first-child { font-family: var(--font-serif); }
 .ledger-postmoney {
   margin-top: 18px;
-  padding: 16px 18px;
-  background: var(--paper-raised);
+  padding: 18px 20px;
+  background: linear-gradient(135deg, rgba(156, 122, 60, 0.08), rgba(36, 66, 95, 0.05));
   border: 1px solid var(--brass-light);
-  border-radius: 4px;
+  border-radius: 8px;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -309,9 +338,12 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 0;
+  padding: 16px 4px;
   border-bottom: 1px solid var(--rule-soft);
+  border-radius: 6px;
+  transition: background 0.12s ease;
 }
+.history-item:hover { background: rgba(28, 36, 48, 0.02); }
 .history-item-name {
   font-weight: 500;
   font-size: 14.5px;
@@ -331,16 +363,16 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
 }
 
 /* ---------- Suggested-data benchmark table (step 4) ---------- */
-.suggested-data-wrap { margin-top: 28px; }
-.suggested-data-wrap h3 { font-size: 15px; margin-bottom: 4px; }
-.suggested-data-hint { color: var(--ink-soft); font-size: 13px; margin: 0 0 12px; }
+.suggested-data-wrap { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--rule-soft); }
+.suggested-data-wrap h3 { font-family: var(--font-sans); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--navy); margin-bottom: 4px; }
+.suggested-data-hint { color: var(--ink-soft); font-size: 13px; margin: 0 0 14px; }
 .suggested-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .suggested-table th, .suggested-table td {
-  padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--rule);
+  padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--rule-soft); white-space: nowrap;
 }
-.suggested-table th:first-child, .suggested-table td:first-child { text-align: left; }
-.suggested-table thead th { font-weight: 600; color: var(--ink-soft); }
-.suggested-table tbody tr.subtotal-row td { font-weight: 700; border-top: 1px solid var(--ink); }
+.suggested-table th:first-child, .suggested-table td:first-child { text-align: left; white-space: normal; }
+.suggested-table thead th { font-weight: 600; color: var(--ink-soft); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.02em; border-bottom: 1.5px solid var(--rule); }
+.suggested-table tbody tr.subtotal-row td { font-weight: 700; border-top: 1.5px solid var(--navy); background: rgba(36, 66, 95, 0.04); }
 .suggested-table tbody tr.spacer-row td { border-bottom: none; padding: 2px 0; }
 
 /* ---------- Full PDF report (print-only) ---------- */
@@ -459,101 +491,110 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
     <form class="wizard-step is-active" data-step="1" id="step-1">
       <p class="step-intro">General information about the company being valued.</p>
 
-      <div class="field">
-        <label for="company_name">Company name</label>
-        <input type="text" id="company_name" required>
-      </div>
+      <fieldset class="field-group" style="border-top:none; padding-top:0;">
+        <legend>Company details</legend>
+        <div class="field">
+          <label for="company_name">Company name</label>
+          <input type="text" id="company_name" required>
+        </div>
 
-      <div class="field-row">
-        <div class="field">
-          <label for="contact_name">Contact name</label>
-          <input type="text" id="contact_name">
+        <div class="field-row">
+          <div class="field">
+            <label for="contact_name">Contact name</label>
+            <input type="text" id="contact_name">
+          </div>
+          <div class="field">
+            <label for="contact_email">Contact email</label>
+            <input type="email" id="contact_email">
+          </div>
         </div>
-        <div class="field">
-          <label for="contact_email">Contact email</label>
-          <input type="email" id="contact_email">
-        </div>
-      </div>
 
-      <div class="field-row">
-        <div class="field">
-          <label for="address">Company address</label>
-          <input type="text" id="address">
+        <div class="field-row">
+          <div class="field">
+            <label for="address">Company address</label>
+            <input type="text" id="address">
+          </div>
+          <div class="field">
+            <label for="website">Company website</label>
+            <input type="url" id="website" placeholder="e.g. www.example.com">
+          </div>
         </div>
-        <div class="field">
-          <label for="website">Company website</label>
-          <input type="url" id="website" placeholder="e.g. www.example.com">
-        </div>
-      </div>
 
-      <div class="field-row">
-        <div class="field">
-          <label for="country">Country</label>
-          <select id="country" required></select>
+        <div class="field-row">
+          <div class="field">
+            <label for="country">Country</label>
+            <select id="country" required></select>
+          </div>
+          <div class="field">
+            <label for="business_territory_region">Business territory / region</label>
+            <select id="business_territory_region" required></select>
+          </div>
         </div>
-        <div class="field">
-          <label for="business_territory_region">Business territory / region</label>
-          <select id="business_territory_region" required></select>
-        </div>
-      </div>
+      </fieldset>
 
-      <div class="field-row">
-        <div class="field">
-          <label for="industry">Industry</label>
-          <select id="industry" required></select>
+      <fieldset class="field-group">
+        <legend>Business profile</legend>
+        <div class="field-row">
+          <div class="field">
+            <label for="industry">Industry</label>
+            <select id="industry" required></select>
+          </div>
+          <div class="field">
+            <label for="company_stage">Company stage</label>
+            <select id="company_stage" required></select>
+          </div>
         </div>
-        <div class="field">
-          <label for="company_stage">Company stage</label>
-          <select id="company_stage" required></select>
-        </div>
-      </div>
 
-      <div class="field">
-        <label for="business_activity">Business activity</label>
-        <input type="text" id="business_activity" placeholder="e.g. Selling software">
-      </div>
+        <div class="field">
+          <label for="business_activity">Business activity</label>
+          <input type="text" id="business_activity" placeholder="e.g. Selling software">
+        </div>
 
-      <div class="field-row">
-        <div class="field">
-          <label for="business_model">Business model</label>
-          <input type="text" id="business_model" placeholder="e.g. SaaS">
+        <div class="field-row">
+          <div class="field">
+            <label for="business_model">Business model</label>
+            <input type="text" id="business_model" placeholder="e.g. SaaS">
+          </div>
+          <div class="field">
+            <label for="exit_strategy">Exit strategy</label>
+            <input type="text" id="exit_strategy" placeholder="e.g. B2B sale">
+          </div>
         </div>
-        <div class="field">
-          <label for="exit_strategy">Exit strategy</label>
-          <input type="text" id="exit_strategy" placeholder="e.g. B2B sale">
-        </div>
-      </div>
 
-      <div class="field-row">
-        <div class="field">
-          <label for="num_founders">Number of founders</label>
-          <input type="number" id="num_founders" min="0" step="1">
+        <div class="field-row">
+          <div class="field">
+            <label for="num_founders">Number of founders</label>
+            <input type="number" id="num_founders" min="0" step="1">
+          </div>
+          <div class="field">
+            <label for="num_employees">Number of employees</label>
+            <input type="number" id="num_employees" min="0" step="1">
+          </div>
+          <div class="field">
+            <label for="year_of_incorporation">Year incorporated</label>
+            <input type="number" id="year_of_incorporation" min="1900" step="1">
+          </div>
         </div>
-        <div class="field">
-          <label for="num_employees">Number of employees</label>
-          <input type="number" id="num_employees" min="0" step="1">
-        </div>
-        <div class="field">
-          <label for="year_of_incorporation">Year incorporated</label>
-          <input type="number" id="year_of_incorporation" min="1900" step="1">
-        </div>
-      </div>
+      </fieldset>
 
-      <div class="field-row">
-        <div class="field">
-          <label for="committed_capital">Committed capital</label>
-          <input type="number" id="committed_capital" min="0" step="1" value="0">
-        </div>
-        <div class="field">
-          <label for="planned_time_to_exit_years">Planned time to exit (years)</label>
-          <input type="number" id="planned_time_to_exit_years" min="1" max="5" step="1" value="3">
+      <fieldset class="field-group">
+        <legend>Financial profile</legend>
+        <div class="field-row">
+          <div class="field">
+            <label for="committed_capital">Committed capital</label>
+            <input type="number" id="committed_capital" min="0" step="1" value="0">
+          </div>
+          <div class="field">
+            <label for="planned_time_to_exit_years">Planned time to exit (years)</label>
+            <input type="number" id="planned_time_to_exit_years" min="1" max="5" step="1" value="3">
+          </div>
         </div>
         <div class="field">
           <label for="dcf_tax_rate_override">Tax rate assumption for DCF</label>
           <input type="number" id="dcf_tax_rate_override" min="0" max="1" step="0.01" value="0.10">
           <p class="field-hint">As a fraction, e.g. 0.10 = 10%. Used for both the P&amp;L and the DCF Method &mdash; not necessarily the country's statutory rate.</p>
         </div>
-      </div>
+      </fieldset>
     </form>
 
     <!-- Step 2: Market & Team Assessment -->
