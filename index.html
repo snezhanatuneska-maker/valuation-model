@@ -343,23 +343,40 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
 .suggested-table tbody tr.subtotal-row td { font-weight: 700; border-top: 1px solid var(--ink); }
 .suggested-table tbody tr.spacer-row td { border-bottom: none; padding: 2px 0; }
 
-/* ---------- Print (PDF export of the results step) ---------- */
-.print-report-header { display: none; }
+/* ---------- Full PDF report (print-only) ---------- */
+.print-report-full { display: none; }
 @media print {
-  .masthead, .step-tracker, .wizard-nav, .results-actions,
-  .view#view-history, .btn { display: none !important; }
-  body { background: #fff; color: #1a1a1a; }
-  main.page { max-width: 100%; padding: 0; margin: 0; }
-  .wizard-step[data-step="6"] { display: block !important; }
-  .print-report-header {
-    display: block;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 2px solid #1a1a1a;
+  body * { visibility: hidden; }
+  .print-report-full, .print-report-full * { visibility: visible; }
+  .print-report-full {
+    display: block; position: absolute; left: 0; top: 0; width: 100%;
+    background: #fff; color: #1a1a1a; font-family: Georgia, 'Times New Roman', serif;
   }
-  .print-report-header h1 { margin: 0 0 4px; font-size: 20px; }
-  .print-report-header p { margin: 0; color: #555; font-size: 12px; }
-  .ledger-table { page-break-inside: avoid; }
+  .pr-page { padding: 24px 0; page-break-after: always; }
+  .pr-page:last-child { page-break-after: auto; }
+  .pr-eyebrow { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7a8f; margin: 0 0 4px; }
+  .pr-h1 { font-size: 24px; margin: 0 0 6px; color: #1f3a5f; }
+  .pr-h2 { font-size: 17px; margin: 0 0 12px; color: #1f3a5f; border-bottom: 2px solid #1f3a5f; padding-bottom: 6px; }
+  .pr-h3 { font-size: 14px; margin: 18px 0 8px; color: #1f3a5f; }
+  .pr-sub { color: #555; font-size: 12px; margin: 0 0 4px; }
+  .pr-cover-meta { margin-top: 40px; font-size: 13px; line-height: 1.8; }
+  .pr-cover-meta strong { color: #1f3a5f; }
+  .pr-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px; }
+  .pr-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
+  .pr-table td, .pr-table th { padding: 5px 6px; border-bottom: 1px solid #ddd; text-align: left; vertical-align: top; }
+  .pr-table td:last-child, .pr-table th:last-child { text-align: right; font-weight: 600; }
+  .pr-table th { color: #555; font-weight: 600; }
+  .pr-total-row td { font-weight: 700; border-top: 2px solid #1f3a5f; border-bottom: none; }
+  .pr-callout-row { background: #eef2f7; }
+  .pr-disclaimer { font-size: 10.5px; color: #555; line-height: 1.5; background: #f4f6f8; padding: 14px; border-radius: 4px; }
+  .pr-chart-row { display: flex; gap: 24px; align-items: flex-start; margin: 12px 0 20px; flex-wrap: wrap; }
+  .pr-legend { font-size: 11px; margin-top: 8px; }
+  .pr-legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .pr-legend-dot { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+  .pr-postmoney-box { display: flex; justify-content: space-between; align-items: center; background: #eef2f7; padding: 14px 18px; border-radius: 4px; margin-top: 16px; font-size: 13px; }
+  .pr-postmoney-box strong { font-size: 17px; color: #1f3a5f; }
+  .pr-method-value { font-size: 20px; color: #1f3a5f; font-weight: 700; margin: 0 0 14px; }
+  .pr-footer-note { font-size: 10px; color: #888; margin-top: 6px; }
 }
 </style>
 </head>
@@ -586,6 +603,21 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
       </div>
 
       <fieldset class="field-group">
+        <legend>Ownership structure</legend>
+        <p class="field-hint">Current shareholders and their ownership percentage. Leave a row blank to skip it.</p>
+        <div class="field-row field-row-3">
+          <div class="field"><input type="text" id="shareholder_name_1" placeholder="Shareholder 1 name"><input type="number" id="shareholder_pct_1" min="0" max="100" step="0.1" placeholder="%" style="margin-top:6px"></div>
+          <div class="field"><input type="text" id="shareholder_name_2" placeholder="Shareholder 2 name"><input type="number" id="shareholder_pct_2" min="0" max="100" step="0.1" placeholder="%" style="margin-top:6px"></div>
+          <div class="field"><input type="text" id="shareholder_name_3" placeholder="Shareholder 3 name"><input type="number" id="shareholder_pct_3" min="0" max="100" step="0.1" placeholder="%" style="margin-top:6px"></div>
+        </div>
+        <div class="field-row field-row-3">
+          <div class="field"><input type="text" id="shareholder_name_4" placeholder="Shareholder 4 name"><input type="number" id="shareholder_pct_4" min="0" max="100" step="0.1" placeholder="%" style="margin-top:6px"></div>
+          <div class="field"><input type="text" id="shareholder_name_5" placeholder="Shareholder 5 name"><input type="number" id="shareholder_pct_5" min="0" max="100" step="0.1" placeholder="%" style="margin-top:6px"></div>
+          <div class="field"><input type="text" id="shareholder_name_6" placeholder="Other minor shareholders" value="Other minor shareholders"><input type="number" id="shareholder_pct_6" min="0" max="100" step="0.1" placeholder="%" style="margin-top:6px"></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="field-group">
         <legend>Use of funds (optional)</legend>
         <div class="field-row field-row-3">
           <div class="field"><label for="use_rd">Product &amp; R&amp;D</label><input type="number" id="use_rd" min="0" step="1"></div>
@@ -625,6 +657,8 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
   </section>
 
 </main>
+
+<div id="print-report-full" class="print-report-full"></div>
 
 <script>
 // ============================================================
@@ -910,6 +944,19 @@ function numOrUndefined(id) {
   return v === "" ? undefined : Number(v);
 }
 
+function buildOwnership() {
+  const rows = [];
+  for (let i = 1; i <= 6; i++) {
+    const name = (val(`shareholder_name_${i}`) || "").trim();
+    const pctVal = val(`shareholder_pct_${i}`);
+    const ownershipPct = Number(pctVal || 0) / 100;
+    if (name && ownershipPct > 0) {
+      rows.push({ name, ownership_pct: ownershipPct });
+    }
+  }
+  return rows;
+}
+
 function buildPayload() {
   const marketAssessment = {};
   for (const key of Object.keys(SCORECARD_LABELS)) {
@@ -966,7 +1013,7 @@ function buildPayload() {
       ],
       existing_debt_balance: Number(val("existing_debt_balance") || 0),
     },
-    ownership: [],
+    ownership: buildOwnership(),
     funding: {
       capital_needed: Number(val("capital_needed") || 0),
       use_of_funds: useOfFunds,
@@ -1024,13 +1071,8 @@ function renderResults(result) {
   `).join("");
 
   const companyName = (lastResult && lastResult.payload.company_profile.company_name) || "Untitled company";
-  const todayStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
   panel.innerHTML = `
-    <div class="print-report-header">
-      <h1>${companyName} — Valuation Summary</h1>
-      <p>Generated ${todayStr}. Informational estimate only — not a certified appraisal or investment advice.</p>
-    </div>
     <h2 class="ledger-title">Valuation summary</h2>
     <p class="ledger-subtitle">Blended across the Scorecard, Venture Capital, DCF Multiples and DCF methods, weighted by company stage.</p>
     <table class="ledger-table">
@@ -1057,17 +1099,436 @@ function renderResults(result) {
   `;
 
   document.getElementById("btn-save").addEventListener("click", saveCurrentValuation);
-  document.getElementById("btn-pdf").addEventListener("click", () => downloadResultsPdf(companyName));
+  document.getElementById("btn-pdf").addEventListener("click", downloadResultsPdf);
   document.getElementById("btn-restart").addEventListener("click", () => {
     lastResult = null;
     goToStep(1);
   });
 }
 
-function downloadResultsPdf(companyName) {
+// ============================================================
+// Full PDF report (mirrors the original Valuativa report layout:
+// company summary -> projections & benchmarks -> valuation summary
+// -> one page per method -> methodology & disclaimer)
+// ============================================================
+const CRITERIA_LABELS = {
+  strength_of_the_team: "Strength of the team",
+  size_of_the_opportunity: "Size of the opportunity",
+  competitive_environment: "Competitive Environment",
+  strength_and_protection_of_product: "Strength & Protection of Product",
+  strategic_relationships_with_partners: "Strategic Relationships with partners",
+  funding_required: "Funding Required",
+};
+
+const MARKET_POTENTIAL_KEYS = [
+  "strength_of_competitors_in_market", "strength_of_competitive_products",
+  "target_market_size", "revenue_potential_in_5_years",
+  "sales_channels_partners", "marketing_partners",
+];
+const TEAM_PRODUCT_KEYS = [
+  "management_team_experience", "willingness_to_step_aside_for_ceo",
+  "management_team_completeness", "product_development_stage",
+  "product_compelling_to_customers", "product_can_be_duplicated",
+  "need_for_additional_funding_rounds",
+];
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+const PR_COLORS = ["#1f3a5f", "#3d6d99", "#7fa8c9", "#c9a24b", "#a3623f", "#6b8f71", "#9a7fb5", "#c2c2c2"];
+
+function pieChartSvg(entries, size) {
+  size = size || 150;
+  const total = entries.reduce((s, e) => s + Math.max(e.value, 0), 0) || 1;
+  const cx = size / 2, cy = size / 2, r = size / 2 - 3;
+  let angle = -90;
+  const toXY = (deg) => {
+    const rad = (deg * Math.PI) / 180;
+    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+  };
+  const parts = entries.map((e) => {
+    const frac = Math.max(e.value, 0) / total;
+    if (frac <= 0) return "";
+    const start = angle;
+    const end = angle + frac * 360;
+    angle = end;
+    if (frac >= 0.9995) return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${e.color}" />`;
+    const [x1, y1] = toXY(start);
+    const [x2, y2] = toXY(end);
+    const large = (end - start) > 180 ? 1 : 0;
+    return `<path d="M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${e.color}" />`;
+  }).join("");
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${parts}</svg>`;
+}
+
+function pieLegend(entries, formatFn) {
+  const fmt = formatFn || money;
+  return `<div class="pr-legend">${entries.map((e) => `
+    <div class="pr-legend-item"><span class="pr-legend-dot" style="background:${e.color}"></span>${escapeHtml(e.label)} &mdash; ${fmt(e.value)}</div>
+  `).join("")}</div>`;
+}
+
+function barChartSvg(categories, values, opts) {
+  opts = opts || {};
+  const width = opts.width || 380, height = opts.height || 170, padding = 26;
+  const max = Math.max.apply(null, values.concat([1]));
+  const gap = (width - padding * 2) / categories.length;
+  const barW = gap * 0.55;
+  const bars = values.map((v, i) => {
+    const h = max > 0 ? (v / max) * (height - padding * 2) : 0;
+    const x = padding + i * gap + (gap - barW) / 2;
+    const y = height - padding - h;
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${opts.color || '#1f3a5f'}" />
+      <text x="${(x + barW / 2).toFixed(1)}" y="${height - padding + 12}" font-size="9" text-anchor="middle" fill="#333">${escapeHtml(categories[i])}</text>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+    <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="#bbb" />
+    ${bars}
+  </svg>`;
+}
+
+function buildFullReportHTML(payload, output) {
+  const cp = payload.company_profile;
+  const mkt = payload.market_and_team_assessment;
+  const ops = payload.operating_performance;
+  const fin = payload.financial_assumptions;
+  const funding = payload.funding;
+  const ownership = payload.ownership || [];
+  const years = output.projections.years;
+  const todayStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+
+  const infoRow = (label, value) => `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`;
+  const mktRow = (key) => infoRow(SCORECARD_LABELS[key] || key, mkt[key]);
+
+  // ---- Page 1: Cover + Company summary ----
+  const page1 = `
+    <section class="pr-page">
+      <p class="pr-eyebrow">Company Valuation Report</p>
+      <h1 class="pr-h1">${escapeHtml(cp.company_name || "Untitled company")}</h1>
+      <div class="pr-cover-meta">
+        <div><strong>Prepared for:</strong> ${escapeHtml(cp.company_name || "—")}</div>
+        <div><strong>Prepared with:</strong> Startup Valuation Tool</div>
+        <div><strong>As of:</strong> ${todayStr}</div>
+      </div>
+    </section>
+    <section class="pr-page">
+      <h2 class="pr-h2">Company summary</h2>
+      <div class="pr-grid-2">
+        <div>
+          <h3 class="pr-h3">General info</h3>
+          <table class="pr-table"><tbody>
+            ${infoRow("Company name", cp.company_name)}
+            ${infoRow("Contact name", cp.contact_name)}
+            ${infoRow("Contact email", cp.contact_email)}
+            ${infoRow("Company address", cp.address)}
+            ${infoRow("Website", cp.website)}
+            ${infoRow("Country", cp.country)}
+            ${infoRow("Number of founders", cp.num_founders)}
+            ${infoRow("Number of employees", cp.num_employees)}
+            ${infoRow("Year of incorporation", cp.year_of_incorporation)}
+            ${infoRow("Company stage", cp.company_stage)}
+          </tbody></table>
+        </div>
+        <div>
+          <h3 class="pr-h3">Business profile</h3>
+          <table class="pr-table"><tbody>
+            ${infoRow("Business activity", cp.business_activity)}
+            ${infoRow("Industry", cp.industry)}
+            ${infoRow("Business territory", cp.business_territory_region)}
+            ${infoRow("Business model", cp.business_model)}
+            ${infoRow("Committed capital", money(cp.committed_capital || 0))}
+            ${infoRow("Exit strategy", cp.exit_strategy)}
+            ${infoRow("Planned time to exit (yrs)", cp.planned_time_to_exit_years)}
+            ${infoRow("Tax rate assumption", pct(cp.dcf_tax_rate_override || 0))}
+          </tbody></table>
+        </div>
+      </div>
+      <div class="pr-grid-2">
+        <div>
+          <h3 class="pr-h3">Market potential</h3>
+          <table class="pr-table"><tbody>
+            ${MARKET_POTENTIAL_KEYS.map(mktRow).join("")}
+            ${infoRow("Key competitors", [val("key_competitor_1"), val("key_competitor_2"), val("key_competitor_3")].filter(Boolean).join(", ") || "—")}
+          </tbody></table>
+        </div>
+        <div>
+          <h3 class="pr-h3">Team &amp; product</h3>
+          <table class="pr-table"><tbody>
+            ${TEAM_PRODUCT_KEYS.map(mktRow).join("")}
+          </tbody></table>
+          <h3 class="pr-h3">Latest operating performance</h3>
+          <table class="pr-table"><tbody>
+            ${infoRow("Current revenue", money(ops.current_revenue_last_12_months))}
+            ${infoRow("Current EBITDA", money(ops.current_ebitda))}
+            ${infoRow("Cash currently available", money(ops.cash_available))}
+            ${infoRow("Current PP&E value", money(ops.current_ppe_value))}
+          </tbody></table>
+        </div>
+      </div>
+    </section>`;
+
+  // ---- Page 2: Projections, benchmarks, capex, use of funds, ownership ----
+  const revenueChart = barChartSvg(years.map(y => y.year_label), years.map(y => y.revenue), { color: "#1f3a5f" });
+  const ebitdaChart = barChartSvg(years.map(y => y.year_label), years.map(y => y.ebitda), { color: "#3d6d99" });
+
+  const benchmark = payload.__benchmark || {};
+  const region = cp.business_territory_region;
+  const bmPct = (table) => (table && table[region] != null) ? pct(table[region]) : "—";
+
+  const capexRow = fin.capex_by_year.slice(1).map((c, i) => `<td>${money(c)}</td>`).join("");
+
+  const fundsEntries = Object.entries(funding.use_of_funds || {})
+    .filter(([, v]) => v > 0)
+    .map(([label, value], i) => ({ label, value, color: PR_COLORS[i % PR_COLORS.length] }));
+  const ownershipEntries = ownership
+    .filter((s) => s.ownership_pct > 0)
+    .map((s, i) => ({ label: s.name, value: s.ownership_pct, color: PR_COLORS[i % PR_COLORS.length] }));
+  const unallocated = 1 - ownershipEntries.reduce((s, e) => s + e.value, 0);
+  if (unallocated > 0.001) ownershipEntries.push({ label: "Unallocated", value: unallocated, color: "#c2c2c2" });
+
+  const page2 = `
+    <section class="pr-page">
+      <h2 class="pr-h2">Projected financials &amp; valuation inputs</h2>
+      <div class="pr-chart-row">
+        <div><h3 class="pr-h3" style="margin-top:0">Revenue by year</h3>${revenueChart}</div>
+        <div><h3 class="pr-h3" style="margin-top:0">EBITDA by year</h3>${ebitdaChart}</div>
+      </div>
+      <h3 class="pr-h3">Industry benchmarks &mdash; ${escapeHtml(cp.industry)} / ${escapeHtml(region)}</h3>
+      <table class="pr-table"><tbody>
+        ${infoRow("Hurdle rate / risk multiplier", pct(output.dcf.hurdle_rate))}
+        ${infoRow("Benchmark average pre-money valuation (stage)", money(output.scorecard.benchmark_pre_money_valuation))}
+        ${infoRow("EV/EBITDA multiple", output.dcf_multiples.ev_ebitda_multiple.toFixed(2) + "x")}
+        ${infoRow("COGS (% of revenue)", bmPct(benchmark.cogs_pct_revenue))}
+        ${infoRow("SG&A (% of revenue)", bmPct(benchmark.sga_pct_revenue))}
+        ${infoRow("D&A (% of revenue)", bmPct(benchmark.da_pct_revenue))}
+        ${infoRow("Accounts receivable (% of revenue)", bmPct(benchmark.acc_receivable_pct_revenue))}
+        ${infoRow("Inventory (% of revenue)", bmPct(benchmark.inventory_pct_revenue))}
+        ${infoRow("Accounts payable (% of revenue)", bmPct(benchmark.acc_payable_pct_revenue))}
+      </tbody></table>
+      <h3 class="pr-h3">Planned capital expenditures</h3>
+      <table class="pr-table">
+        <thead><tr><th>Y2</th><th>Y3</th><th>Y4</th><th>Y5</th></tr></thead>
+        <tbody><tr>${capexRow}</tr></tbody>
+      </table>
+      <div class="pr-chart-row">
+        <div>
+          <h3 class="pr-h3">Use of funds</h3>
+          ${pieChartSvg(fundsEntries)}
+          ${pieLegend(fundsEntries)}
+        </div>
+        <div>
+          <h3 class="pr-h3">Ownership structure</h3>
+          ${pieChartSvg(ownershipEntries)}
+          ${pieLegend(ownershipEntries, pct)}
+        </div>
+      </div>
+    </section>`;
+
+  // ---- Page 3: Valuation summary ----
+  const methodRows = Object.entries(output.method_values).map(([key, mv]) => `
+    <tr><td>${METHOD_LABELS[key] || key}</td><td>${pct(mv.weight)}</td><td>${money(mv.pre_money_value)}</td><td>${money(mv.weighted_value)}</td></tr>
+  `).join("");
+  const methodChartCats = Object.keys(output.method_values).map(k => METHOD_LABELS[k] || k);
+  const methodChartVals = Object.values(output.method_values).map(mv => mv.pre_money_value);
+  methodChartCats.push("Blended");
+  methodChartVals.push(output.blended_pre_money_valuation);
+
+  const page3 = `
+    <section class="pr-page">
+      <h2 class="pr-h2">Valuation</h2>
+      <p class="pr-sub">Blended average of four valuation methodologies, weighted by company stage.</p>
+      <table class="pr-table">
+        <thead><tr><th>Method</th><th>Weight</th><th>Pre-money value</th><th>Weighted value</th></tr></thead>
+        <tbody>
+          ${methodRows}
+          <tr class="pr-total-row"><td colspan="3">Blended pre-money valuation</td><td>${money(output.blended_pre_money_valuation)}</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:20px">${barChartSvg(methodChartCats, methodChartVals, { width: 460, height: 200, color: "#1f3a5f" })}</div>
+      <div class="pr-postmoney-box">
+        <span>Pre-money valuation</span><strong>${money(output.blended_pre_money_valuation)}</strong>
+      </div>
+      <div class="pr-postmoney-box">
+        <span>Capital needed</span><strong>${money(output.capital_needed)}</strong>
+      </div>
+      <div class="pr-postmoney-box">
+        <span>Post-money valuation</span><strong>${money(output.post_money_valuation)}</strong>
+      </div>
+    </section>`;
+
+  // ---- Page 4: Scorecard method ----
+  const scRows = Object.entries(output.scorecard.criteria).map(([key, c]) => `
+    <tr><td>${CRITERIA_LABELS[key] || key}</td><td>${pct(c.weight)}</td><td>${pct(c.score)}</td><td>${money(c.amount_assigned)}</td></tr>
+  `).join("");
+  const page4 = `
+    <section class="pr-page">
+      <h2 class="pr-h2">Scorecard method</h2>
+      <p class="pr-method-value">${money(output.scorecard.pre_money_valuation)}</p>
+      <p class="pr-sub">Compares the company's qualitative traits against a benchmark average company for the same stage/region, scoring each of six weighted criteria above or below 100%.</p>
+      <table class="pr-table">
+        <thead><tr><th>Criterion</th><th>Weight</th><th>Score</th><th>Amount assigned</th></tr></thead>
+        <tbody>
+          ${scRows}
+          <tr class="pr-total-row"><td colspan="3">Pre-money valuation</td><td>${money(output.scorecard.pre_money_valuation)}</td></tr>
+        </tbody>
+      </table>
+      <table class="pr-table" style="margin-top:16px"><tbody>
+        ${infoRow("Benchmark average pre-money valuation", money(output.scorecard.benchmark_pre_money_valuation))}
+        ${infoRow("Risk multiplier", output.scorecard.risk_multiplier)}
+      </tbody></table>
+    </section>`;
+
+  // ---- Page 5: Venture Capital method ----
+  const vc = output.venture_capital;
+  const page5 = `
+    <section class="pr-page">
+      <h2 class="pr-h2">Venture Capital method</h2>
+      <p class="pr-method-value">${money(vc.pre_money_valuation)}</p>
+      <p class="pr-sub">Values the company by discounting a projected exit value (at the planned exit year) back to today, using a hurdle rate that compensates investors for early-stage risk.</p>
+      <h3 class="pr-h3">Exit-year base model</h3>
+      <table class="pr-table"><tbody>
+        ${infoRow("Exit-year revenue", money(vc.exit_year_revenue))}
+        ${infoRow("Exit-year EBITDA", money(vc.exit_year_ebitda))}
+        ${infoRow("EV/EBITDA multiple", vc.ev_ebitda_multiple.toFixed(2) + "x")}
+        ${infoRow("Exit value", money(vc.exit_value))}
+      </tbody></table>
+      <h3 class="pr-h3">Discounting to present value</h3>
+      <table class="pr-table"><tbody>
+        ${infoRow("Time to exit (years)", vc.time_to_exit)}
+        ${infoRow("Hurdle rate / risk multiplier", pct(vc.hurdle_rate))}
+        ${infoRow("Investment amount", money(vc.investment_amount))}
+        ${infoRow("Number of existing shares", vc.number_of_existing_shares.toLocaleString())}
+        ${infoRow("Post-money valuation", money(vc.post_money_valuation))}
+        ${infoRow("Pre-money valuation", money(vc.pre_money_valuation))}
+        ${infoRow("Ownership fraction — investors", pct(vc.ownership_fraction_investors))}
+        ${infoRow("Ownership fraction — entrepreneurs", pct(vc.ownership_fraction_entrepreneurs))}
+        ${infoRow("Number of new shares", Math.round(vc.number_of_new_shares).toLocaleString())}
+        ${infoRow("Price per share", money(vc.price_per_share))}
+        ${infoRow("Final wealth — investors (at exit)", money(vc.final_wealth_investors))}
+        ${infoRow("Final wealth — entrepreneurs (at exit)", money(vc.final_wealth_entrepreneurs))}
+      </tbody></table>
+    </section>`;
+
+  // ---- Page 6: Comparables / DCF Multiples method (with revenue sensitivity) ----
+  const dm = output.dcf_multiples;
+  const scenarios = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3];
+  const y1Revenue = years[0].revenue;
+  const cogsPctY1 = years[0].cogs / y1Revenue;
+  const sgaPctY1 = years[0].sga / y1Revenue;
+  const otherOpexY1 = years[0].other_opex;
+  const scenarioCells = (fn) => scenarios.map((s) => `<td>${fn(s)}</td>`).join("");
+  const scenarioRevenue = (s) => y1Revenue * s;
+  const scenarioEbitda = (s) => scenarioRevenue(s) - scenarioRevenue(s) * cogsPctY1 - scenarioRevenue(s) * sgaPctY1 - otherOpexY1;
+  const scenarioExit = (s) => scenarioEbitda(s) * dm.ev_ebitda_multiple;
+  const scenarioPreMoney = (s) => scenarioExit(s) * dm.risk_multiplier;
+
+  const page6 = `
+    <section class="pr-page">
+      <h2 class="pr-h2">Comparables (DCF Multiples) method</h2>
+      <p class="pr-method-value">${money(dm.pre_money_valuation)}</p>
+      <p class="pr-sub">Applies an industry EV/EBITDA multiple to Year 1 EBITDA, then discounts by the stage risk multiplier — the market-multiples counterpart to the VC method.</p>
+      <table class="pr-table"><tbody>
+        ${infoRow("Year 1 revenue", money(dm.revenue))}
+        ${infoRow("Year 1 EBITDA", money(dm.ebitda))}
+        ${infoRow("EV/EBITDA multiple", dm.ev_ebitda_multiple.toFixed(2) + "x")}
+        ${infoRow("Exit value", money(dm.exit_value))}
+        ${infoRow("Risk multiplier", dm.risk_multiplier)}
+        ${infoRow("Pre-money valuation", money(dm.pre_money_valuation))}
+      </tbody></table>
+      <h3 class="pr-h3">Sensitivity to Year 1 revenue</h3>
+      <table class="pr-table">
+        <thead><tr><th></th>${scenarios.map(s => `<th>${Math.round(s*100)}%</th>`).join("")}</tr></thead>
+        <tbody>
+          <tr><td>Revenue</td>${scenarioCells(s => money(scenarioRevenue(s)))}</tr>
+          <tr><td>EBITDA</td>${scenarioCells(s => money(scenarioEbitda(s)))}</tr>
+          <tr><td>Exit value</td>${scenarioCells(s => money(scenarioExit(s)))}</tr>
+          <tr class="pr-total-row"><td>Pre-money valuation</td>${scenarioCells(s => money(scenarioPreMoney(s)))}</tr>
+        </tbody>
+      </table>
+    </section>`;
+
+  // ---- Page 7: DCF method ----
+  const dcf = output.dcf;
+  const fcfRow = (label, arr) => `<tr><td>${label}</td>${arr.map(v => `<td>${money(v)}</td>`).join("")}</tr>`;
+  const page7 = `
+    <section class="pr-page">
+      <h2 class="pr-h2">DCF method</h2>
+      <p class="pr-method-value">${money(dcf.hurdle_adjusted.enterprise_value)}</p>
+      <p class="pr-sub">Discounts five years of unlevered free cash flow plus a terminal value back to present, then applies the same stage risk multiplier used across the other methods.</p>
+      <table class="pr-table"><tbody>
+        ${infoRow("Tax rate", pct(dcf.tax_rate))}
+        ${infoRow("Discount rate (WACC)", pct(dcf.discount_rate))}
+        ${infoRow("Perpetual growth rate", pct(dcf.perpetual_growth_rate))}
+        ${infoRow("Hurdle rate / risk multiplier", pct(dcf.hurdle_rate))}
+      </tbody></table>
+      <h3 class="pr-h3">Unlevered free cash flow</h3>
+      <table class="pr-table">
+        <thead><tr><th></th>${years.map(y => `<th>${y.year_label}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${fcfRow("EBIT", years.map(y => y.ebit))}
+          ${fcfRow("Less: taxes", years.map(y => y.tax_amount))}
+          ${fcfRow("Plus: D&amp;A", years.map(y => y.da))}
+          ${fcfRow("Less: capex", years.map(y => y.capex))}
+          ${fcfRow("Less: change in NWC", years.map(y => y.change_in_working_capital))}
+          <tr class="pr-total-row"><td>Unlevered FCF</td>${dcf.unlevered_fcf_by_year.map(v => `<td>${money(v)}</td>`).join("")}</tr>
+        </tbody>
+      </table>
+      <div class="pr-grid-2" style="margin-top:16px">
+        <div>
+          <h3 class="pr-h3">Enterprise value (unadjusted)</h3>
+          <table class="pr-table"><tbody>
+            ${infoRow("PV of FCF", money(dcf.base.pv_of_fcf))}
+            ${infoRow("PV of terminal value", money(dcf.base.pv_of_terminal_value))}
+            <tr class="pr-total-row"><td>Enterprise value</td><td>${money(dcf.base.enterprise_value)}</td></tr>
+          </tbody></table>
+        </div>
+        <div>
+          <h3 class="pr-h3">Enterprise value (risk-adjusted)</h3>
+          <table class="pr-table"><tbody>
+            ${infoRow("PV of FCF", money(dcf.hurdle_adjusted.pv_of_fcf))}
+            ${infoRow("PV of terminal value", money(dcf.hurdle_adjusted.pv_of_terminal_value))}
+            <tr class="pr-total-row"><td>Enterprise value</td><td>${money(dcf.hurdle_adjusted.enterprise_value)}</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </section>`;
+
+  // ---- Page 8: Methodology & disclaimer ----
+  const page8 = `
+    <section class="pr-page">
+      <h2 class="pr-h2">Valuation approach: methods, data &amp; disclaimer</h2>
+      <h3 class="pr-h3">Methodologies used</h3>
+      <p class="pr-sub">This report blends four widely used valuation methods &mdash; Scorecard, Venture Capital, Comparables (Market Multiples), and Discounted Cash Flow &mdash; weighted by the company's development stage, so early-stage qualitative methods carry more weight for younger companies and cash-flow-based methods carry more weight as a company matures.</p>
+      <h3 class="pr-h3">Data sources</h3>
+      <p class="pr-sub">Industry and regional benchmarks (cost structure ratios, EV/EBITDA multiples, risk premiums) are drawn from the dataset maintained by Prof. Aswath Damodaran at NYU Stern School of Business, updated annually.</p>
+      <div class="pr-disclaimer">
+        <strong>Disclaimer:</strong> This tool is not a licensed financial advisor, investment advisor, or legal entity authorized to provide financial, investment, or legal advice. This report is intended for informational purposes only and should not be construed as a solicitation or recommendation for any financial transaction. All valuations are based on information and assumptions believed to be accurate at the time of preparation, but no guarantee is made regarding completeness, accuracy, or future performance. Consult a qualified financial, legal, or investment professional before making decisions based on this analysis.
+      </div>
+      <p class="pr-footer-note">Generated ${todayStr} via the Startup Valuation Tool.</p>
+    </section>`;
+
+  return page1 + page2 + page3 + page4 + page5 + page6 + page7 + page8;
+}
+
+async function downloadResultsPdf() {
+  if (!lastResult) return;
+  const container = document.getElementById("print-report-full");
+  const cp = lastResult.payload.company_profile;
+
+  // Fetch industry benchmark percentages for the benchmarks table (best-effort).
+  let benchmark = {};
+  try {
+    benchmark = await getIndustryBenchmark(cp.industry);
+  } catch (err) { /* table just shows dashes if this fails */ }
+  lastResult.payload.__benchmark = benchmark;
+
+  container.innerHTML = buildFullReportHTML(lastResult.payload, lastResult.output);
+
   const originalTitle = document.title;
-  // Browsers use document.title as the suggested filename in the print dialog.
-  document.title = `Valuation - ${companyName}`;
+  document.title = `Valuation Report - ${cp.company_name || "Untitled company"}`;
   window.print();
   document.title = originalTitle;
 }
