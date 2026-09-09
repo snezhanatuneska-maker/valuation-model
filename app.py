@@ -182,7 +182,7 @@ def get_valuation_route(valuation_id: str) -> ValuationDetailResponse:
     return ValuationDetailResponse(**record)
 
 
-@valuations_router.delete("/{valuation_id}", status_code=204)
+@valuations_router.delete("/{valuation_id}", status_code=204, response_model=None)
 def delete_valuation_route(valuation_id: str) -> None:
     if not delete_valuation(valuation_id):
         raise HTTPException(status_code=404, detail=f"No valuation found with id {valuation_id!r}")
