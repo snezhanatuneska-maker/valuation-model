@@ -283,11 +283,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Wide open for now (local dev / same-org frontend). Tighten before any
-# public deployment - restrict allow_origins to the actual frontend domain.
+# Restricted to the deployed frontend + localhost (for local dev/testing).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://snezhanatuneska-maker.github.io",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
