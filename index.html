@@ -330,6 +330,19 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
   font-style: italic;
 }
 
+/* ---------- Suggested-data benchmark table (step 4) ---------- */
+.suggested-data-wrap { margin-top: 28px; }
+.suggested-data-wrap h3 { font-size: 15px; margin-bottom: 4px; }
+.suggested-data-hint { color: var(--ink-soft); font-size: 13px; margin: 0 0 12px; }
+.suggested-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.suggested-table th, .suggested-table td {
+  padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--rule);
+}
+.suggested-table th:first-child, .suggested-table td:first-child { text-align: left; }
+.suggested-table thead th { font-weight: 600; color: var(--ink-soft); }
+.suggested-table tbody tr.subtotal-row td { font-weight: 700; border-top: 1px solid var(--ink); }
+.suggested-table tbody tr.spacer-row td { border-bottom: none; padding: 2px 0; }
+
 /* ---------- Print (PDF export of the results step) ---------- */
 .print-report-header { display: none; }
 @media print {
@@ -394,9 +407,15 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
         </div>
       </div>
 
-      <div class="field">
-        <label for="address">Company address</label>
-        <input type="text" id="address">
+      <div class="field-row">
+        <div class="field">
+          <label for="address">Company address</label>
+          <input type="text" id="address">
+        </div>
+        <div class="field">
+          <label for="website">Company website</label>
+          <input type="url" id="website" placeholder="e.g. www.example.com">
+        </div>
       </div>
 
       <div class="field-row">
@@ -473,6 +492,16 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
     <form class="wizard-step" data-step="2" id="step-2">
       <p class="step-intro">These qualitative answers drive the Scorecard method. Each dropdown offers exactly the option set the calculation engine recognizes.</p>
       <div id="scorecard-fields"><p class="loading-hint">Loading question set&hellip;</p></div>
+
+      <fieldset class="field-group">
+        <legend>Key competitors</legend>
+        <p class="field-hint">For your own reference &mdash; not used in the valuation calculation (the original workbook collects these but never scores them).</p>
+        <div class="field-row field-row-3">
+          <div class="field"><input type="text" id="key_competitor_1" placeholder="Competitor 1"></div>
+          <div class="field"><input type="text" id="key_competitor_2" placeholder="Competitor 2"></div>
+          <div class="field"><input type="text" id="key_competitor_3" placeholder="Competitor 3"></div>
+        </div>
+      </fieldset>
     </form>
 
     <!-- Step 3: Operating Performance -->
@@ -536,6 +565,8 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
         <label for="existing_debt_balance">Existing interest-bearing debt</label>
         <input type="number" id="existing_debt_balance" min="0" step="1" value="0">
       </div>
+
+      <div id="suggested-data-wrap"></div>
     </form>
 
     <!-- Step 5: Ownership & Funding -->
@@ -726,6 +757,104 @@ function buildScorecardFields(scorecardLookup) {
 }
 
 // ============================================================
+// Suggested-data benchmark table (step 4) — mirrors the industry
+// benchmark table from the original Excel/mockup design. Purely
+// illustrative: the real calculation happens server-side when the
+// valuation is submitted, this just previews the same logic
+// client-side using the raw benchmark percentages.
+// ============================================================
+const industryBenchmarkCache = {};
+
+async function getIndustryBenchmark(industry) {
+  if (!industryBenchmarkCache[industry]) {
+    industryBenchmarkCache[industry] = await apiFetch(`/reference-data/industries/${encodeURIComponent(industry)}`);
+  }
+  return industryBenchmarkCache[industry];
+}
+
+async function updateSuggestedDataTable() {
+  const wrap = document.getElementById("suggested-data-wrap");
+  const industry = val("industry");
+  const region = val("business_territory_region");
+  const revenueY1 = Number(val("revenue_year1"));
+
+  if (!industry || !region || !revenueY1) {
+    wrap.innerHTML = "";
+    return;
+  }
+
+  let benchmark;
+  try {
+    benchmark = await getIndustryBenchmark(industry);
+  } catch (err) {
+    wrap.innerHTML = "";
+    return;
+  }
+
+  const pctOf = (table) => (table && table[region] != null) ? table[region] : 0;
+  const cogsPct = pctOf(benchmark.cogs_pct_revenue);
+  const sgaPct = pctOf(benchmark.sga_pct_revenue);
+  const daPct = pctOf(benchmark.da_pct_revenue);
+  const arPct = pctOf(benchmark.acc_receivable_pct_revenue);
+  const invPct = pctOf(benchmark.inventory_pct_revenue);
+  const apPct = pctOf(benchmark.acc_payable_pct_revenue);
+
+  const growth = [1, Number(val("growth_y2")) || 0, Number(val("growth_y3")) || 0,
+    Number(val("growth_y4")) || 0, Number(val("growth_y5")) || 0];
+  const revenue = [];
+  let r = revenueY1;
+  for (let i = 0; i < 5; i++) {
+    if (i > 0) r = r * (1 + growth[i]);
+    revenue.push(r);
+  }
+
+  // Other opex: 1.5% of Y1 revenue, growing 10%/yr — matches the
+  // engine's illustrative assumption (see valuation_engine).
+  const otherOpexY1 = 0.015 * revenueY1;
+
+  const cogs = revenue.map((rev) => rev * cogsPct);
+  const sga = revenue.map((rev) => rev * sgaPct);
+  const otherOpex = revenue.map((_, i) => otherOpexY1 * Math.pow(1.10, i));
+  const ebitda = revenue.map((rev, i) => rev - cogs[i] - sga[i] - otherOpex[i]);
+  const da = revenue.map((rev) => rev * daPct);
+  const ebit = revenue.map((_, i) => ebitda[i] - da[i]);
+  const ar = revenue.map((rev) => rev * arPct);
+  const inv = revenue.map((rev) => rev * invPct);
+  const ap = revenue.map((rev) => rev * apPct);
+  const workingCapital = revenue.map((_, i) => ar[i] + inv[i] - ap[i]);
+  const changeInWc = workingCapital.map((wc, i) => (i === 0 ? 0 : wc - workingCapital[i - 1]));
+
+  const yearCells = (arr) => arr.map((v) => `<td>${money(v)}</td>`).join("");
+
+  wrap.innerHTML = `
+    <div class="suggested-data-wrap">
+      <h3>Suggested data based on industry benchmarks</h3>
+      <p class="suggested-data-hint">Illustrative preview using ${industry} / ${region} averages. These are the assumptions the calculation engine uses automatically — override anything above and this updates.</p>
+      <table class="suggested-table">
+        <thead>
+          <tr><th>&nbsp;</th><th>Y1</th><th>Y2</th><th>Y3</th><th>Y4</th><th>Y5</th><th>Avg % of revenue</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>COGS</td>${yearCells(cogs)}<td>${pct(cogsPct)}</td></tr>
+          <tr><td>SG&amp;A</td>${yearCells(sga)}<td>${pct(sgaPct)}</td></tr>
+          <tr><td>Other operational expenses</td>${yearCells(otherOpex)}<td>&mdash;</td></tr>
+          <tr class="subtotal-row"><td>Suggested EBITDA</td>${yearCells(ebitda)}<td>&nbsp;</td></tr>
+          <tr class="spacer-row"><td colspan="7">&nbsp;</td></tr>
+          <tr><td>D&amp;A</td>${yearCells(da)}<td>${pct(daPct)}</td></tr>
+          <tr class="subtotal-row"><td>Suggested EBIT</td>${yearCells(ebit)}<td>&nbsp;</td></tr>
+          <tr class="spacer-row"><td colspan="7">&nbsp;</td></tr>
+          <tr><td>Accounts receivable</td>${yearCells(ar)}<td>${pct(arPct)}</td></tr>
+          <tr><td>Inventory</td>${yearCells(inv)}<td>${pct(invPct)}</td></tr>
+          <tr><td>Accounts payable</td>${yearCells(ap)}<td>${pct(apPct)}</td></tr>
+          <tr class="subtotal-row"><td>Suggested working capital</td>${yearCells(workingCapital)}<td>&nbsp;</td></tr>
+          <tr><td>Suggested change in working capital</td>${yearCells(changeInWc)}<td>&nbsp;</td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ============================================================
 // Wizard navigation
 // ============================================================
 function goToStep(step) {
@@ -745,6 +874,8 @@ function goToStep(step) {
   document.getElementById("btn-back").hidden = step === 1;
   document.getElementById("btn-next").hidden = step === 5 || step === 6;
   document.getElementById("btn-calculate").hidden = step !== 5;
+
+  if (step === 4) updateSuggestedDataTable();
 
   clearFormError();
 }
@@ -801,6 +932,7 @@ function buildPayload() {
       contact_name: val("contact_name") || null,
       contact_email: val("contact_email") || null,
       address: val("address") || null,
+      website: val("website") || null,
       country: val("country"),
       num_founders: numOrUndefined("num_founders") ?? null,
       num_employees: numOrUndefined("num_employees") ?? null,
@@ -1015,6 +1147,12 @@ async function loadHistory() {
 // ============================================================
 // Init
 // ============================================================
+["revenue_year1", "growth_y2", "growth_y3", "growth_y4", "growth_y5"].forEach((id) => {
+  document.getElementById(id).addEventListener("input", () => {
+    if (currentStep === 4) updateSuggestedDataTable();
+  });
+});
+
 (async function init() {
   goToStep(1);
   try {
