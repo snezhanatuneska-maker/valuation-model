@@ -595,6 +595,19 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
           <p class="field-hint">As a fraction, e.g. 0.10 = 10%. Used for both the P&amp;L and the DCF Method &mdash; not necessarily the country's statutory rate.</p>
         </div>
       </fieldset>
+
+      <fieldset class="field-group">
+        <legend>Report branding (optional)</legend>
+        <div class="field">
+          <label for="company_logo">Company logo</label>
+          <input type="file" id="company_logo" accept="image/png,image/jpeg,image/svg+xml">
+          <p class="field-hint">Shown on the cover page and header of your downloadable PDF report instead of the default mark. PNG or JPEG, ideally with a transparent background.</p>
+          <div id="logo-preview-wrap" hidden style="margin-top:10px; display:flex; align-items:center; gap:12px;">
+            <img id="logo-preview" alt="Logo preview" style="max-width:140px; max-height:60px; border:1px solid var(--rule); border-radius:4px; background:#fff; padding:6px;">
+            <button type="button" class="btn btn-ghost" id="btn-remove-logo">Remove logo</button>
+          </div>
+        </div>
+      </fieldset>
     </form>
 
     <!-- Step 2: Market & Team Assessment -->
@@ -791,6 +804,7 @@ const METHOD_LABELS = {
 let currentStep = 1;
 const TOTAL_STEPS = 6;
 let lastResult = null; // holds the last computed ValuationOutput
+let companyLogoBase64 = null; // optional data URL for the PDF report's cover/header
 
 // ============================================================
 // Utilities
@@ -1085,6 +1099,7 @@ function buildPayload() {
       exit_strategy: val("exit_strategy") || null,
       planned_time_to_exit_years: Number(val("planned_time_to_exit_years") || 3),
       dcf_tax_rate_override: Number(val("dcf_tax_rate_override") || 0.10),
+      logo_base64: companyLogoBase64 || null,
     },
     market_and_team_assessment: marketAssessment,
     operating_performance: {
@@ -1639,22 +1654,60 @@ function buildFullReportHTML(payload, output) {
 
 async function downloadResultsPdf() {
   if (!lastResult) return;
-  const container = document.getElementById("print-report-full");
-  const cp = lastResult.payload.company_profile;
-
-  // Fetch industry benchmark percentages for the benchmarks table (best-effort).
-  let benchmark = {};
+  const btn = document.getElementById("btn-pdf");
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Preparing PDF\u2026";
   try {
-    benchmark = await getIndustryBenchmark(cp.industry);
-  } catch (err) { /* table just shows dashes if this fails */ }
-  lastResult.payload.__benchmark = benchmark;
+    const res = await fetch(`${API_BASE}/valuations/preview/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(lastResult.payload),
+    });
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const body = await res.json();
+        detail = body.detail ? JSON.stringify(body.detail) : detail;
+      } catch (_) { /* ignore */ }
+      throw new Error(`${res.status}: ${detail}`);
+    }
+    const blob = await res.blob();
+    const companyName = (lastResult.payload.company_profile.company_name || "valuation").trim();
+    const safeName = companyName.replace(/[^a-z0-9 _-]/gi, "").replace(/\s+/g, "-") || "valuation";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${safeName}-Valuation-Report.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    showFormError(`Could not generate the PDF report: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
 
-  container.innerHTML = buildFullReportHTML(lastResult.payload, lastResult.output);
-
-  const originalTitle = document.title;
-  document.title = `Valuation Report - ${cp.company_name || "Untitled company"}`;
-  window.print();
-  document.title = originalTitle;
+async function downloadSavedValuationPdf(valuationId, companyName) {
+  try {
+    const res = await fetch(`${API_BASE}/valuations/${valuationId}/report`);
+    if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+    const blob = await res.blob();
+    const safeName = (companyName || "valuation").replace(/[^a-z0-9 _-]/gi, "").replace(/\s+/g, "-") || "valuation";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${safeName}-Valuation-Report.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert(`Could not generate the PDF report: ${err.message}`);
+  }
 }
 
 async function saveCurrentValuation() {
@@ -1671,6 +1724,35 @@ async function saveCurrentValuation() {
     showFormError(`Could not save: ${err.message}`);
   }
 }
+
+// ============================================================
+// Company logo upload (optional, used by the PDF report)
+// ============================================================
+const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
+
+document.getElementById("company_logo").addEventListener("change", (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  if (file.size > MAX_LOGO_BYTES) {
+    showFormError("That logo file is larger than 2 MB \u2014 please choose a smaller image.");
+    e.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    companyLogoBase64 = reader.result; // data URL, e.g. "data:image/png;base64,...."
+    document.getElementById("logo-preview").src = companyLogoBase64;
+    document.getElementById("logo-preview-wrap").hidden = false;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById("btn-remove-logo").addEventListener("click", () => {
+  companyLogoBase64 = null;
+  document.getElementById("company_logo").value = "";
+  document.getElementById("logo-preview-wrap").hidden = true;
+  document.getElementById("logo-preview").src = "";
+});
 
 // ============================================================
 // History view
@@ -1703,6 +1785,7 @@ async function loadHistory() {
         </div>
         <div class="history-item-actions">
           <button class="btn-small" data-action="view" data-id="${item.id}">View</button>
+          <button class="btn-small" data-action="pdf" data-id="${item.id}" data-name="${(item.company_name || "").replace(/"/g, "&quot;")}">Download PDF</button>
           <button class="btn-small" data-action="delete" data-id="${item.id}">Delete</button>
         </div>
       </div>
@@ -1712,6 +1795,16 @@ async function loadHistory() {
       btn.addEventListener("click", async () => {
         await apiFetch(`/valuations/${btn.dataset.id}`, { method: "DELETE" });
         loadHistory();
+      });
+    });
+    list.querySelectorAll("[data-action='pdf']").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Preparing\u2026";
+        await downloadSavedValuationPdf(btn.dataset.id, btn.dataset.name);
+        btn.disabled = false;
+        btn.textContent = original;
       });
     });
     list.querySelectorAll("[data-action='view']").forEach((btn) => {

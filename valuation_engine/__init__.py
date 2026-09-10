@@ -141,6 +141,11 @@ class CompanyProfile(BaseModel):
     # to faithfully reproduce the original model's behavior.
     dcf_tax_rate_override: float = 0.10
 
+    # Optional company logo for the PDF report cover page/header. Either a
+    # plain base64 string or a data URL (e.g. "data:image/png;base64,....").
+    # Not used in any valuation math - purely cosmetic for report.py.
+    logo_base64: Optional[str] = None
+
 
 class MarketAndTeamAssessment(BaseModel):
     """

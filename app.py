@@ -20,11 +20,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import valuation_engine as ve
+import report as pdf_report
 
 # ============================================================================
 # SECTION 1 — Database
@@ -196,6 +197,50 @@ def preview_valuation(payload: ve.ValuationInput) -> dict:
     except KeyError as e:
         raise HTTPException(status_code=400, detail=f"Unresolvable reference data: {e}")
     return dataclasses.asdict(result)
+
+
+def _pdf_response(payload: ve.ValuationInput, output_dict: dict) -> Response:
+    """Builds the branded PDF report and wraps it as a one-click file download."""
+    input_dict = payload.model_dump()
+    try:
+        benchmark = ve.industry_benchmarks().get(payload.company_profile.industry, {})
+    except Exception:
+        benchmark = {}
+    pdf_bytes = pdf_report.build_pdf_bytes(input_dict, output_dict, benchmark)
+
+    company_name = payload.company_profile.company_name or "valuation"
+    safe_name = "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in company_name).strip() or "valuation"
+    filename = f"{safe_name} - Valuation Report.pdf".replace(" ", "-")
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@valuations_router.post("/preview/report")
+def preview_valuation_report(payload: ve.ValuationInput) -> Response:
+    """Runs a valuation (without persisting) and returns the branded PDF report directly."""
+    try:
+        result = ve.run_valuation(payload)
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Unresolvable reference data: {e}")
+    return _pdf_response(payload, dataclasses.asdict(result))
+
+
+@valuations_router.get("/{valuation_id}/report")
+def get_valuation_report(valuation_id: str) -> Response:
+    """Re-runs a previously saved valuation's inputs and returns the branded PDF report."""
+    record = get_valuation(valuation_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"No valuation found with id {valuation_id!r}")
+    payload = ve.ValuationInput(**record["input"])
+    try:
+        result = ve.run_valuation(payload)
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Unresolvable reference data: {e}")
+    return _pdf_response(payload, dataclasses.asdict(result))
 
 
 # ============================================================================
