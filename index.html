@@ -265,7 +265,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 .btn-small:hover { border-color: var(--rust); color: var(--rust); }
 
 /* ---------- Paywall gate (demo checkout) ---------- */
-#paywall-gate {
+#login-gate, #paywall-gate {
   min-height: calc(100vh - 90px);
   display: flex;
   align-items: center;
@@ -512,8 +512,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
       <span class="nav-user" id="nav-user-email"></span>
       <button id="nav-new" class="nav-link is-active" type="button">New valuation</button>
       <button id="nav-history" class="nav-link" type="button">Past valuations</button>
-      <button id="nav-logout" class="nav-link" type="button" title="Sign out of this demo account">Log out</button>
-      <button id="nav-reset-demo" class="nav-link" type="button" title="Re-lock the app to preview the paywall again">Reset demo</button>
+      <button id="nav-reset-demo" class="nav-link" type="button" title="Start over from the beginning (sign-in and payment)">Reset demo</button>
     </nav>
   </div>
 </header>
@@ -2048,17 +2047,11 @@ document.getElementById("paywall-form").addEventListener("submit", (e) => {
 
 document.getElementById("nav-reset-demo").addEventListener("click", () => {
   try {
-    localStorage.removeItem(UNLOCK_STORAGE_KEY);
-  } catch (_) { /* ignore */ }
-  determineGate();
-});
-
-document.getElementById("nav-logout").addEventListener("click", () => {
-  try {
     localStorage.removeItem(USER_STORAGE_KEY);
     localStorage.removeItem(UNLOCK_STORAGE_KEY);
   } catch (_) { /* ignore */ }
   document.getElementById("login_email").value = "";
+  document.getElementById("login_password").value = "";
   determineGate();
 });
 
