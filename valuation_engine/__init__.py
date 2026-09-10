@@ -837,3 +837,43 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
         capital_needed=capital_needed,
         post_money_valuation=post_money_valuation,
     )
+
+
+# ============================================================================
+# SECTION 10 — Scenario / sensitivity analysis
+#
+# Re-runs the full valuation (all four methods, blended) at scaled Year-1
+# revenue levels, so the effect of a revenue scenario is reflected exactly
+# the way each method actually responds to it - Scorecard doesn't move at
+# all (it never looks at revenue), Venture Capital and DCF move through the
+# whole 5-year projection (growth rates, cost ratios, working capital all
+# scale together), and DCF Multiples moves off Year 1 alone. This reuses
+# run_valuation() itself rather than approximating each method separately,
+# so scenario numbers are exactly as accurate as the base valuation.
+# ============================================================================
+
+SCENARIO_REVENUE_MULTIPLIERS = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3]
+
+
+def scenario_label(multiplier: float) -> str:
+    return f"{round(multiplier * 100)}%"
+
+
+def run_valuation_scenarios(
+    inputs: ValuationInput,
+    multipliers: Optional[list[float]] = None,
+) -> dict[str, ValuationOutput]:
+    """
+    Returns an ordered dict: scenario label (e.g. "80%") -> full ValuationOutput,
+    for each revenue multiplier applied to Year 1 revenue (growth rates from
+    Year 1 onward are kept as given, so the whole trajectory scales with it).
+    """
+    multipliers = multipliers if multipliers is not None else SCENARIO_REVENUE_MULTIPLIERS
+    base_revenue = inputs.financial_assumptions.revenue_year1
+
+    results: dict[str, ValuationOutput] = {}
+    for m in multipliers:
+        scaled_inputs = inputs.model_copy(deep=True)
+        scaled_inputs.financial_assumptions.revenue_year1 = base_revenue * m
+        results[scenario_label(m)] = run_valuation(scaled_inputs)
+    return results

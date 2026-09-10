@@ -256,6 +256,35 @@ def preview_valuation(payload: ve.ValuationInput) -> dict:
     return dataclasses.asdict(result)
 
 
+def _scenarios_dict(payload: ve.ValuationInput) -> dict[str, dict]:
+    try:
+        scenarios = ve.run_valuation_scenarios(payload)
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Unresolvable reference data: {e}")
+    return {label: dataclasses.asdict(output) for label, output in scenarios.items()}
+
+
+@valuations_router.post("/preview/scenarios", response_model=dict)
+def preview_valuation_scenarios(payload: ve.ValuationInput) -> dict:
+    """
+    Re-runs the valuation at several Year-1 revenue multipliers (80%-130%)
+    without persisting anything. Returns {"80%": <full output>, "90%": ..., ...}
+    so the frontend can show how all four methods (and the blend) move
+    together, not just one.
+    """
+    return _scenarios_dict(payload)
+
+
+@valuations_router.get("/{valuation_id}/scenarios", response_model=dict)
+def get_valuation_scenarios(valuation_id: str) -> dict:
+    """Same as POST /valuations/preview/scenarios, but re-runs a previously saved valuation's inputs."""
+    record = get_valuation(valuation_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"No valuation found with id {valuation_id!r}")
+    payload = ve.ValuationInput(**record["input"])
+    return _scenarios_dict(payload)
+
+
 def _pdf_response(payload: ve.ValuationInput, output_dict: dict) -> Response:
     """Builds the branded PDF report and wraps it as a one-click file download."""
     input_dict = payload.model_dump()
@@ -263,7 +292,13 @@ def _pdf_response(payload: ve.ValuationInput, output_dict: dict) -> Response:
         benchmark = ve.industry_benchmarks().get(payload.company_profile.industry, {})
     except Exception:
         benchmark = {}
-    pdf_bytes = pdf_report.build_pdf_bytes(input_dict, output_dict, benchmark)
+    try:
+        scenarios_dict = {
+            label: dataclasses.asdict(out) for label, out in ve.run_valuation_scenarios(payload).items()
+        }
+    except Exception:
+        scenarios_dict = {}
+    pdf_bytes = pdf_report.build_pdf_bytes(input_dict, output_dict, benchmark, scenarios_dict)
 
     company_name = payload.company_profile.company_name or "valuation"
     safe_name = "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in company_name).strip() or "valuation"

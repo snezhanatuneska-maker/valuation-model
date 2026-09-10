@@ -745,7 +745,7 @@ def _vc_page(vc: dict) -> list:
     return story
 
 
-def _dcf_multiples_page(dm: dict, years: list) -> list:
+def _dcf_multiples_page(dm: dict) -> list:
     story = [P("Comparables (DCF Multiples) method", STYLES["h2"])]
     story += _method_value_header("Pre-money valuation", money(g(dm, "pre_money_valuation")))
     story.append(P(
@@ -760,35 +760,51 @@ def _dcf_multiples_page(dm: dict, years: list) -> list:
         ("Risk multiplier", g(dm, "risk_multiplier")),
         ("Pre-money valuation", money(g(dm, "pre_money_valuation"))),
     ]))
+    story.append(P(
+        "See \u201cScenario & sensitivity\u201d for how this method's value shifts across a range of "
+        "Year 1 revenue outcomes.", STYLES["sub"],
+    ))
+    return story
 
-    story.append(P("Sensitivity to Year 1 revenue", STYLES["h3"]))
-    if years:
-        y1 = years[0]
-        y1_revenue = y1.get("revenue", 0) or 1
-        cogs_pct = (y1.get("cogs", 0) or 0) / y1_revenue
-        sga_pct = (y1.get("sga", 0) or 0) / y1_revenue
-        other_opex = y1.get("other_opex", 0) or 0
-        ev_mult = g(dm, "ev_ebitda_multiple", 0)
-        risk_mult = g(dm, "risk_multiplier", 0)
-        scenarios = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3]
 
-        def scen(s):
-            rev = y1_revenue * s
-            ebitda = rev - rev * cogs_pct - rev * sga_pct - other_opex
-            exit_v = ebitda * ev_mult
-            pre = exit_v * risk_mult
-            return rev, ebitda, exit_v, pre
+def _scenario_sensitivity_page(scenarios: dict) -> list:
+    story = [P("Scenario & sensitivity", STYLES["h2"])]
+    story.append(P(
+        "How the valuation shifts if Year 1 revenue comes in above or below plan (with the rest of "
+        "the growth trajectory scaling proportionally). Scorecard doesn't move \u2014 it scores "
+        "qualitative traits, not revenue \u2014 while Venture Capital, DCF Multiples, and DCF each "
+        "move through their own full projection.", STYLES["sub"],
+    ))
+    if not scenarios:
+        story.append(P(
+            "Scenario data wasn't available when this report was generated.", STYLES["td_label"],
+        ))
+        return story
 
-        headers = [""] + [f"{round(s * 100)}%" for s in scenarios]
-        computed = [scen(s) for s in scenarios]
-        rows = [
-            ["Revenue"] + [money(c[0]) for c in computed],
-            ["EBITDA"] + [money(c[1]) for c in computed],
-            ["Exit value"] + [money(c[2]) for c in computed],
-        ]
-        total_row = ["Pre-money valuation"] + [money(c[3]) for c in computed]
-        col_w = [CONTENT_W * 0.22] + [CONTENT_W * 0.78 / 6] * 6
-        story.append(data_table(headers, rows, total_row=total_row, col_widths=col_w))
+    labels = list(scenarios.keys())
+    n = len(labels)
+
+    def val(label, *path):
+        d = scenarios[label]
+        for key in path:
+            d = d.get(key, {}) if isinstance(d, dict) else {}
+        return d if not isinstance(d, dict) else None
+
+    rows = [
+        ["Scorecard"] + [money(val(l, "scorecard", "pre_money_valuation")) for l in labels],
+        ["Venture Capital"] + [money(val(l, "venture_capital", "pre_money_valuation")) for l in labels],
+        ["DCF Multiples"] + [money(val(l, "dcf_multiples", "pre_money_valuation")) for l in labels],
+        ["DCF"] + [money(val(l, "dcf", "hurdle_adjusted", "enterprise_value")) for l in labels],
+    ]
+    total_row = ["Blended pre-money"] + [money(val(l, "blended_pre_money_valuation")) for l in labels]
+    headers = ["Method"] + labels
+    col_w = [CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n
+    story.append(data_table(headers, rows, total_row=total_row, col_widths=col_w))
+    story.append(Spacer(1, 14))
+
+    story.append(P("Blended pre-money valuation across scenarios", STYLES["h3"]))
+    blended_vals = [val(l, "blended_pre_money_valuation") or 0 for l in labels]
+    story.append(bar_chart(labels, blended_vals, color=NAVY_LINE, width=CONTENT_W, height=140))
     return story
 
 
@@ -888,12 +904,17 @@ def _methodology_page() -> list:
 # ============================================================================
 
 
-def build_pdf_bytes(payload: dict, output: dict, benchmark: Optional[dict] = None) -> bytes:
+def build_pdf_bytes(
+    payload: dict, output: dict, benchmark: Optional[dict] = None, scenarios: Optional[dict] = None,
+) -> bytes:
     """
     payload: a ValuationInput.model_dump() dict.
     output:  a dataclasses.asdict(ValuationOutput) dict.
     benchmark: optional industry-benchmark dict (ve.industry_benchmarks()[industry]),
                used for the % of revenue benchmark rows. Safe to omit.
+    scenarios: optional {"80%": <asdict ValuationOutput>, "90%": ..., ...} from
+               ve.run_valuation_scenarios(), used for the Scenario & sensitivity
+               page. Safe to omit (that page just notes the data wasn't available).
     """
     cp = g(payload, "company_profile", {}) or {}
     mkt = g(payload, "market_and_team_assessment", {}) or {}
@@ -930,11 +951,13 @@ def build_pdf_bytes(payload: dict, output: dict, benchmark: Optional[dict] = Non
     story.append(PageBreak())
     story += _valuation_summary_page(output)
     story.append(PageBreak())
+    story += _scenario_sensitivity_page(scenarios or {})
+    story.append(PageBreak())
     story += _scorecard_page(g(output, "scorecard", {}))
     story.append(PageBreak())
     story += _vc_page(g(output, "venture_capital", {}))
     story.append(PageBreak())
-    story += _dcf_multiples_page(g(output, "dcf_multiples", {}), g(output, "projections", {}).get("years", []))
+    story += _dcf_multiples_page(g(output, "dcf_multiples", {}))
     story.append(PageBreak())
     story += _dcf_page(g(output, "dcf", {}), g(output, "projections", {}).get("years", []))
     story.append(PageBreak())

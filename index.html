@@ -366,6 +366,26 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
   color: var(--navy);
   font-variant-numeric: tabular-nums;
 }
+.scenario-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 18px;
+  padding: 14px 16px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.scenario-slider-row label { font-size: 13.5px; color: var(--ink-soft); white-space: nowrap; }
+.scenario-slider-row input[type="range"] { flex: 1; accent-color: var(--navy); }
+.scenario-slider-row span {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+  min-width: 42px;
+  text-align: right;
+}
 .results-actions {
   display: flex;
   gap: 10px;
@@ -1239,12 +1259,12 @@ document.getElementById("btn-calculate").addEventListener("click", async () => {
 
   try {
     const payload = buildPayload();
-    const result = await apiFetch("/valuations/preview", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    lastResult = { payload, output: result };
-    renderResults(result);
+    const [result, scenarios] = await Promise.all([
+      apiFetch("/valuations/preview", { method: "POST", body: JSON.stringify(payload) }),
+      apiFetch("/valuations/preview/scenarios", { method: "POST", body: JSON.stringify(payload) }).catch(() => null),
+    ]);
+    lastResult = { payload, output: result, scenarios };
+    renderResults(result, scenarios);
   } catch (err) {
     document.getElementById("results-loading").hidden = true;
     showResultsError(err.message);
@@ -1258,7 +1278,51 @@ function showResultsError(message) {
     <button class="btn btn-ghost" onclick="goToStep(1)">Back to the form</button>`;
 }
 
-function renderResults(result) {
+function scenarioBlock(scenarios) {
+  if (!scenarios || Object.keys(scenarios).length === 0) return "";
+  return `
+    <h2 class="ledger-title" style="margin-top:32px">Scenario &amp; sensitivity</h2>
+    <p class="ledger-subtitle">How the valuation shifts if Year 1 revenue comes in above or below plan. Scorecard doesn't move &mdash; it scores qualitative traits, not revenue.</p>
+    <div class="scenario-slider-row">
+      <label for="scenario-slider">Revenue scenario</label>
+      <input type="range" id="scenario-slider" min="80" max="130" step="10" value="100">
+      <span id="scenario-slider-out">100%</span>
+    </div>
+    <table class="ledger-table" id="scenario-table">
+      <thead><tr><th>Method</th><th>Pre-money value</th></tr></thead>
+      <tbody id="scenario-table-body"></tbody>
+      <tbody><tr class="ledger-total-row"><td>Blended pre-money</td><td id="scenario-blended"></td></tr></tbody>
+    </table>
+  `;
+}
+
+function updateScenarioDisplay(scenarios, label) {
+  const s = scenarios[label];
+  if (!s) return;
+  document.getElementById("scenario-slider-out").textContent = label;
+  const rows = [
+    ["Scorecard", s.scorecard.pre_money_valuation],
+    ["Venture Capital", s.venture_capital.pre_money_valuation],
+    ["DCF Multiples", s.dcf_multiples.pre_money_valuation],
+    ["DCF", s.dcf.hurdle_adjusted.enterprise_value],
+  ];
+  document.getElementById("scenario-table-body").innerHTML = rows.map(([name, v]) => `
+    <tr><td>${name}</td><td>${money(v)}</td></tr>
+  `).join("");
+  document.getElementById("scenario-blended").textContent = money(s.blended_pre_money_valuation);
+}
+
+function wireScenarioSlider(scenarios) {
+  if (!scenarios || Object.keys(scenarios).length === 0) return;
+  const slider = document.getElementById("scenario-slider");
+  if (!slider) return;
+  updateScenarioDisplay(scenarios, "100%");
+  slider.addEventListener("input", () => {
+    updateScenarioDisplay(scenarios, `${slider.value}%`);
+  });
+}
+
+function renderResults(result, scenarios) {
   document.getElementById("results-loading").hidden = true;
   const panel = document.getElementById("results-panel");
   panel.hidden = false;
@@ -1294,6 +1358,7 @@ function renderResults(result) {
       <span class="ledger-postmoney-label">Post-money (+ ${money(result.capital_needed)} raised)</span>
       <span class="ledger-postmoney-value">${money(result.post_money_valuation)}</span>
     </div>
+    ${scenarioBlock(scenarios)}
     <div class="results-actions">
       <button class="btn btn-primary" id="btn-save">Save this valuation</button>
       <button class="btn btn-ghost" id="btn-pdf">Download PDF</button>
@@ -1307,6 +1372,7 @@ function renderResults(result) {
     lastResult = null;
     goToStep(1);
   });
+  wireScenarioSlider(scenarios);
 }
 
 // ============================================================
@@ -1910,11 +1976,12 @@ async function loadHistory() {
     list.querySelectorAll("[data-action='view']").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const detail = await apiFetch(`/valuations/${btn.dataset.id}`);
-        lastResult = { payload: detail.input, output: detail.output };
+        const scenarios = await apiFetch(`/valuations/${btn.dataset.id}/scenarios`).catch(() => null);
+        lastResult = { payload: detail.input, output: detail.output, scenarios };
         switchView("wizard");
         goToStep(6);
         document.getElementById("results-loading").hidden = true;
-        renderResults(detail.output);
+        renderResults(detail.output, scenarios);
       });
     });
   } catch (err) {
