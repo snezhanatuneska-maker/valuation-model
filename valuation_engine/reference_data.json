@@ -12801,6 +12801,8 @@
       }
     },
     "Growth Stage": {
+      "risk_multiplier": 0.8,
+      "hurdle_rate": 0.8,
       "method_weights": {
         "scorecard": 0,
         "venture_capital": 0.2,
@@ -12810,6 +12812,7 @@
     },
     "Maturity stage": {
       "risk_multiplier": 0.85,
+      "hurdle_rate": 0.85,
       "method_weights": {
         "scorecard": 0,
         "venture_capital": 0,
