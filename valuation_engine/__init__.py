@@ -469,7 +469,12 @@ def compute_wacc(company: CompanyProfile) -> WaccResult:
     country = get_country(company.country)
 
     beta = get_industry_metric(industry, "beta", region, min_valid=0.01)
-    country_market_risk_premium = country["country_risk_premium"]
+    # "equity_risk_premium" is the TOTAL market risk premium (mature-market baseline
+    # + this country's incremental risk on top of it) - "country_risk_premium" alone
+    # is only that incremental slice, and is 0 for the safest countries (US, Germany,
+    # Switzerland, etc.), which would otherwise zero out the entire risk premium and
+    # leave cost of equity equal to the bare risk-free rate regardless of company risk.
+    country_market_risk_premium = country["equity_risk_premium"]
     adjusted_market_risk_premium = beta * country_market_risk_premium
 
     cost_of_equity = _mround(
