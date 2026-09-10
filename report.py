@@ -713,6 +713,18 @@ def _scorecard_page(sc: dict) -> list:
     return story
 
 
+def _benchmark_source_note(source: str, label: str = "EV/EBITDA multiple") -> Optional[str]:
+    """A short, honest note when a benchmark value had to fall back from the
+    requested industry+region, because Damodaran's raw source data for that
+    exact combination was missing or unusable (common for EV/EBITDA in
+    financial-sector industries, where EBITDA isn't a meaningful metric)."""
+    if source == "industry_global":
+        return f"Note: no {label} data for this region \u2014 using this industry's global average instead."
+    if source == "cross_industry":
+        return f"Note: no {label} data for this industry/region \u2014 using a broader cross-industry benchmark instead."
+    return None
+
+
 def _vc_page(vc: dict) -> list:
     story = [P("Venture Capital method", STYLES["h2"])]
     story += _method_value_header("Pre-money valuation", money(g(vc, "pre_money_valuation")))
@@ -727,6 +739,9 @@ def _vc_page(vc: dict) -> list:
         ("EV/EBITDA multiple", f"{g(vc, 'ev_ebitda_multiple', 0):.2f}x"),
         ("Exit value", money(g(vc, "exit_value"))),
     ]))
+    note = _benchmark_source_note(g(vc, "ev_ebitda_multiple_source"))
+    if note:
+        story.append(P(note, STYLES["sub"]))
     story.append(P("Discounting to present value", STYLES["h3"]))
     story.append(info_table([
         ("Time to exit (years)", g(vc, "time_to_exit")),
@@ -760,6 +775,9 @@ def _dcf_multiples_page(dm: dict) -> list:
         ("Risk multiplier", g(dm, "risk_multiplier")),
         ("Pre-money valuation", money(g(dm, "pre_money_valuation"))),
     ]))
+    note = _benchmark_source_note(g(dm, "ev_ebitda_multiple_source"))
+    if note:
+        story.append(P(note, STYLES["sub"]))
     story.append(P(
         "See \u201cScenario & sensitivity\u201d for how this method's value shifts across a range of "
         "Year 1 revenue outcomes.", STYLES["sub"],

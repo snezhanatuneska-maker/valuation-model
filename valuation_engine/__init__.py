@@ -18,7 +18,7 @@ import json
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -73,14 +73,88 @@ def categorical_options() -> dict:
     return _all_reference_data()["categorical_options"]
 
 
-def get_industry_metric(industry: str, metric: str, region: str) -> float:
-    """Convenience accessor with a clear error if industry/metric/region is unknown."""
+def _is_usable_number(v: Any, min_valid: Optional[float] = None) -> bool:
+    """True for a real, finite number that's above min_valid (if given).
+    False for Damodaran's raw source artifacts - "NA", "#N/A", "#VALUE!",
+    None, etc. - which are strings, not numbers, in the underlying data."""
+    if not isinstance(v, (int, float)) or isinstance(v, bool):
+        return False
+    if v != v or v in (float("inf"), float("-inf")):  # NaN / inf guard
+        return False
+    if min_valid is not None and v < min_valid:
+        return False
+    return True
+
+
+def _cross_industry_fallback(metric: str, min_valid: Optional[float] = None) -> Optional[float]:
+    """Median of every industry's own Global value for this metric, as a last-resort
+    fallback when neither the requested region nor that industry's Global figure is
+    usable. Grounded in the same dataset, just aggregated more broadly - not invented."""
+    pool = sorted(
+        v for data in industry_benchmarks().values()
+        for v in [data.get(metric, {}).get("Global")]
+        if _is_usable_number(v, min_valid)
+    )
+    if not pool:
+        return None
+    mid = len(pool) // 2
+    return pool[mid] if len(pool) % 2 else (pool[mid - 1] + pool[mid]) / 2
+
+
+def get_industry_metric(
+    industry: str, metric: str, region: str, *, min_valid: Optional[float] = None
+) -> float:
+    """
+    Resilient accessor for an industry benchmark. Damodaran's raw tables contain
+    literal "NA"/"#N/A"/"#VALUE!" text and, for a handful of industries and
+    metrics (mostly EV/EBITDA for banks and insurers, where EBITDA isn't a
+    meaningful metric in the source data), nonsensical negative values.
+
+    Falls back in order: the requested region -> that industry's own "Global"
+    figure -> the median "Global" figure across all industries for this metric.
+    Only raises if the industry/metric itself is unrecognized, or if literally
+    no usable number exists anywhere for this metric (which doesn't currently
+    happen for any metric this engine uses).
+
+    `min_valid`: pass e.g. 0 for metrics that can never legitimately be
+    negative or zero (a valuation multiple, a cost of debt). Leave as None
+    (the default) for metrics like beta where a small negative value is
+    unusual but can be genuinely real - only non-numeric artifacts get
+    filtered out in that case.
+    """
+    value, _source = get_industry_metric_with_source(industry, metric, region, min_valid=min_valid)
+    return value
+
+
+def get_industry_metric_with_source(
+    industry: str, metric: str, region: str, *, min_valid: Optional[float] = None
+) -> tuple[float, str]:
+    """Same as get_industry_metric(), but also returns where the number came from:
+    "region" (used as entered), "industry_global" (that industry's Global value),
+    or "cross_industry" (median Global across all industries - rare)."""
     try:
-        return industry_benchmarks()[industry][metric][region]
+        table = industry_benchmarks()[industry][metric]
     except KeyError as e:
         raise KeyError(
             f"No benchmark for industry={industry!r}, metric={metric!r}, region={region!r}"
         ) from e
+
+    region_val = table.get(region)
+    if _is_usable_number(region_val, min_valid):
+        return region_val, "region"
+
+    global_val = table.get("Global")
+    if _is_usable_number(global_val, min_valid):
+        return global_val, "industry_global"
+
+    fallback = _cross_industry_fallback(metric, min_valid)
+    if fallback is not None:
+        return fallback, "cross_industry"
+
+    raise KeyError(
+        f"No usable benchmark for industry={industry!r}, metric={metric!r}, region={region!r} "
+        "(source data and all fallbacks were missing/invalid)"
+    )
 
 
 def get_country(country: str) -> dict:
@@ -284,13 +358,13 @@ def build_projections(
     industry = company.industry
     region = company.business_territory_region
 
-    cogs_pct = get_industry_metric(industry, "cogs_pct_revenue", region)
-    sga_pct = get_industry_metric(industry, "sga_pct_revenue", region)
-    da_pct = get_industry_metric(industry, "da_pct_revenue", region)
-    ar_pct = get_industry_metric(industry, "acc_receivable_pct_revenue", region)
-    inv_pct = get_industry_metric(industry, "inventory_pct_revenue", region)
-    ap_pct = get_industry_metric(industry, "acc_payable_pct_revenue", region)
-    book_interest_rate = get_industry_metric(industry, "book_interest_rate", region)
+    cogs_pct = get_industry_metric(industry, "cogs_pct_revenue", region, min_valid=0)
+    sga_pct = get_industry_metric(industry, "sga_pct_revenue", region, min_valid=0)
+    da_pct = get_industry_metric(industry, "da_pct_revenue", region, min_valid=0)
+    ar_pct = get_industry_metric(industry, "acc_receivable_pct_revenue", region, min_valid=0)
+    inv_pct = get_industry_metric(industry, "inventory_pct_revenue", region, min_valid=0)
+    ap_pct = get_industry_metric(industry, "acc_payable_pct_revenue", region, min_valid=0)
+    book_interest_rate = get_industry_metric(industry, "book_interest_rate", region, min_valid=0)
 
     # "Other operational expenses" in the source workbook is a flat 1.5%
     # of Year-1 revenue, held constant in € terms across all 5 years
@@ -394,7 +468,7 @@ def compute_wacc(company: CompanyProfile) -> WaccResult:
     region = company.business_territory_region
     country = get_country(company.country)
 
-    beta = get_industry_metric(industry, "beta", region)
+    beta = get_industry_metric(industry, "beta", region, min_valid=0.01)
     country_market_risk_premium = country["country_risk_premium"]
     adjusted_market_risk_premium = beta * country_market_risk_premium
 
@@ -403,12 +477,12 @@ def compute_wacc(company: CompanyProfile) -> WaccResult:
         0.0025,
     )
 
-    long_term_debt_rate = get_industry_metric(industry, "book_interest_rate", region)
+    long_term_debt_rate = get_industry_metric(industry, "book_interest_rate", region, min_valid=0)
     country_corporate_tax_rate = country["corporate_tax_rate"]
     after_tax_cost_of_debt = (1 - country_corporate_tax_rate) * long_term_debt_rate
 
-    equity_pct_capital = get_industry_metric(industry, "equity_pct_capital", region)
-    debt_pct_capital = get_industry_metric(industry, "debt_pct_capital", region)
+    equity_pct_capital = get_industry_metric(industry, "equity_pct_capital", region, min_valid=0.01)
+    debt_pct_capital = get_industry_metric(industry, "debt_pct_capital", region, min_valid=0)
 
     wacc = _mround(
         debt_pct_capital * after_tax_cost_of_debt + equity_pct_capital * cost_of_equity,
@@ -561,6 +635,7 @@ class VCMethodResult:
     exit_year_revenue: float
     exit_year_ebitda: float
     ev_ebitda_multiple: float
+    ev_ebitda_multiple_source: str  # "region" | "industry_global" | "cross_industry" - see get_industry_metric_with_source
     exit_value: float
     time_to_exit: int
     hurdle_rate: float
@@ -589,8 +664,8 @@ def compute_venture_capital(
     exit_year_index = time_to_exit - 1  # Y1 = index 0
     exit_year = projections.years[exit_year_index]
 
-    ev_ebitda_multiple = get_industry_metric(
-        company.industry, "ev_ebitda_multiple", company.business_territory_region
+    ev_ebitda_multiple, ev_ebitda_multiple_source = get_industry_metric_with_source(
+        company.industry, "ev_ebitda_multiple", company.business_territory_region, min_valid=0
     )
     exit_value = exit_year.ebitda * ev_ebitda_multiple
 
@@ -615,6 +690,7 @@ def compute_venture_capital(
         exit_year_revenue=exit_year.revenue,
         exit_year_ebitda=exit_year.ebitda,
         ev_ebitda_multiple=ev_ebitda_multiple,
+        ev_ebitda_multiple_source=ev_ebitda_multiple_source,
         exit_value=exit_value,
         time_to_exit=time_to_exit,
         hurdle_rate=hurdle_rate,
@@ -645,6 +721,7 @@ class DCFMultiplesResult:
     revenue: float
     ebitda: float
     ev_ebitda_multiple: float
+    ev_ebitda_multiple_source: str  # "region" | "industry_global" | "cross_industry" - see get_industry_metric_with_source
     exit_value: float
     risk_multiplier: float
     pre_money_valuation: float
@@ -656,8 +733,8 @@ def compute_dcf_multiples(
 ) -> DCFMultiplesResult:
     year1 = projections.years[0]
 
-    ev_ebitda_multiple = get_industry_metric(
-        company.industry, "ev_ebitda_multiple", company.business_territory_region
+    ev_ebitda_multiple, ev_ebitda_multiple_source = get_industry_metric_with_source(
+        company.industry, "ev_ebitda_multiple", company.business_territory_region, min_valid=0
     )
     exit_value = year1.ebitda * ev_ebitda_multiple
 
@@ -668,6 +745,7 @@ def compute_dcf_multiples(
         revenue=year1.revenue,
         ebitda=year1.ebitda,
         ev_ebitda_multiple=ev_ebitda_multiple,
+        ev_ebitda_multiple_source=ev_ebitda_multiple_source,
         exit_value=exit_value,
         risk_multiplier=risk_multiplier,
         pre_money_valuation=pre_money_valuation,
@@ -688,6 +766,10 @@ def compute_dcf_multiples(
 # ============================================================================
 
 PERPETUAL_GROWTH_RATE = 0.02
+# Minimum required gap between the DCF discount rate and the perpetual growth
+# rate, for the Gordon Growth terminal-value formula to stay mathematically
+# sane (see compute_dcf).
+MIN_DISCOUNT_GROWTH_SPREAD = 0.02
 
 
 @dataclass
@@ -704,6 +786,7 @@ class DCFResult:
     perpetual_growth_rate: float
     hurdle_rate: float
     unlevered_fcf_by_year: list[float]
+    terminal_value_floor_applied: bool  # see MIN_DISCOUNT_GROWTH_SPREAD below
     base: DCFColumnResult          # discounted at `discount_rate` only
     hurdle_adjusted: DCFColumnResult  # discounted at `discount_rate + hurdle_rate` - this feeds the blended valuation
 
@@ -732,16 +815,34 @@ def compute_dcf(
 
     terminal_year_fcf = unlevered_fcf[-1]
 
+    # The Gordon Growth terminal-value formula is only mathematically valid when
+    # the discount rate exceeds the perpetual growth rate - otherwise the
+    # denominator is zero or negative. A handful of industry/region combinations
+    # (mostly banks in very low-rate markets) produce a WACC that rounds to
+    # exactly the 2% perpetual growth rate, which would crash or silently
+    # produce a nonsensical terminal value. This floor keeps the formula
+    # well-defined; it only ever affects the (rare) discount rate used inside
+    # the terminal-value formula itself, never the rate used to discount the
+    # interim years' cash flows.
+    floor_applied = False
+
+    def _tv_rate(rate: float) -> float:
+        nonlocal floor_applied
+        floored = max(rate, g + MIN_DISCOUNT_GROWTH_SPREAD)
+        if floored != rate:
+            floor_applied = True
+        return floored
+
     # --- base column: discount rate only ---
     pv_fcf_base = _npv(discount_rate, unlevered_fcf)
-    tv_base_at_exit = terminal_year_fcf * (1 + g) / (discount_rate - g)
+    tv_base_at_exit = terminal_year_fcf * (1 + g) / (_tv_rate(discount_rate) - g)
     pv_tv_base = tv_base_at_exit / (1 + discount_rate) ** n
     ev_base = pv_fcf_base + pv_tv_base
 
     # --- hurdle-adjusted column: discount rate + hurdle rate ---
     r_adj = discount_rate + hurdle_rate
     pv_fcf_adj = _npv(r_adj, unlevered_fcf)
-    tv_adj_at_exit = terminal_year_fcf * (1 + g) / (r_adj - g)
+    tv_adj_at_exit = terminal_year_fcf * (1 + g) / (_tv_rate(r_adj) - g)
     pv_tv_adj = tv_adj_at_exit / (1 + r_adj) ** n
     ev_adj = pv_fcf_adj + pv_tv_adj
 
@@ -751,6 +852,7 @@ def compute_dcf(
         perpetual_growth_rate=g,
         hurdle_rate=hurdle_rate,
         unlevered_fcf_by_year=unlevered_fcf,
+        terminal_value_floor_applied=floor_applied,
         base=DCFColumnResult(pv_of_fcf=pv_fcf_base, pv_of_terminal_value=pv_tv_base, enterprise_value=ev_base),
         hurdle_adjusted=DCFColumnResult(pv_of_fcf=pv_fcf_adj, pv_of_terminal_value=pv_tv_adj, enterprise_value=ev_adj),
     )
