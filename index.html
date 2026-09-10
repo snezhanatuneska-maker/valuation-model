@@ -86,6 +86,9 @@ body {
   padding: 32px 20px 96px;
 }
 .view[hidden] { display: none; }
+.masthead-nav[hidden] { display: none; }
+#paywall-gate[hidden] { display: none; }
+#app-main[hidden] { display: none; }
 .view {
   background: var(--paper-raised);
   border: 1px solid var(--rule-soft);
@@ -258,6 +261,41 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
   transition: border-color 0.12s ease, color 0.12s ease;
 }
 .btn-small:hover { border-color: var(--rust); color: var(--rust); }
+
+/* ---------- Paywall gate (demo checkout) ---------- */
+#paywall-gate {
+  min-height: calc(100vh - 90px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.paywall-card {
+  max-width: 400px;
+  width: 100%;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 36px 34px 30px;
+  box-shadow: 0 1px 2px rgba(23, 41, 59, 0.06), 0 12px 32px rgba(23, 41, 59, 0.10);
+}
+.paywall-eyebrow {
+  font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--brass); margin: 0 0 8px;
+}
+.paywall-title {
+  font-family: var(--font-serif); font-size: 24px; color: var(--navy); margin: 0 0 8px; font-weight: 600;
+}
+.paywall-sub { color: var(--ink-soft); font-size: 14px; line-height: 1.55; margin: 0 0 20px; }
+.paywall-price {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 22px;
+  padding-bottom: 20px; border-bottom: 1px solid var(--rule);
+}
+.paywall-price-amount { font-family: var(--font-serif); font-size: 32px; font-weight: 600; color: var(--navy); }
+.paywall-price-note { font-family: var(--font-sans); font-size: 13px; color: var(--ink-soft); }
+.paywall-test-note {
+  font-family: var(--font-sans); font-size: 11.5px; color: var(--ink-soft);
+  margin: 14px 0 0; text-align: center; line-height: 1.5;
+}
 
 /* ---------- Results (ledger) ---------- */
 .results-loading { color: var(--ink-soft); font-style: italic; padding: 40px 0; text-align: center; }
@@ -468,14 +506,44 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 <header class="masthead">
   <div class="masthead-inner">
     <h1 class="wordmark">Startup Valuation</h1>
-    <nav class="masthead-nav">
+    <nav class="masthead-nav" id="masthead-nav" hidden>
       <button id="nav-new" class="nav-link is-active" type="button">New valuation</button>
       <button id="nav-history" class="nav-link" type="button">Past valuations</button>
+      <button id="nav-reset-demo" class="nav-link" type="button" title="Re-lock the app to preview the paywall again">Reset demo</button>
     </nav>
   </div>
 </header>
 
-<main class="page">
+<!-- ============ PAYWALL GATE (demo only - see notes in JS) ============ -->
+<section id="paywall-gate" class="page">
+  <div class="paywall-card">
+    <p class="paywall-eyebrow">Startup Valuation Tool</p>
+    <h2 class="paywall-title">Unlock the valuation tool</h2>
+    <p class="paywall-sub">One-time access to the full wizard, the blended four-method valuation, and your branded PDF report.</p>
+    <div class="paywall-price"><span class="paywall-price-amount">&euro;9.00</span><span class="paywall-price-note">one-time</span></div>
+
+    <form id="paywall-form">
+      <div class="field">
+        <label for="pw_card_number">Card number</label>
+        <input type="text" id="pw_card_number" placeholder="4242 4242 4242 4242" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="pw_card_expiry">Expiry</label>
+          <input type="text" id="pw_card_expiry" placeholder="MM / YY" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="pw_card_cvc">CVC</label>
+          <input type="text" id="pw_card_cvc" placeholder="123" autocomplete="off">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" id="btn-paywall-pay" style="width:100%; justify-content:center; margin-top:6px;">Pay &euro;9.00</button>
+    </form>
+    <p class="paywall-test-note">&#128274; Test mode &mdash; this is a preview of the checkout flow. No card is charged and no real payment is processed.</p>
+  </div>
+</section>
+
+<main class="page" id="app-main" hidden>
 
   <!-- ============ NEW VALUATION WIZARD ============ -->
   <section id="view-wizard" class="view">
@@ -497,6 +565,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
           <label for="company_name">Company name</label>
           <input type="text" id="company_name" required>
         </div>
+
 
         <div class="field-row">
           <div class="field">
@@ -1831,7 +1900,69 @@ async function loadHistory() {
   });
 });
 
-(async function init() {
+// ============================================================
+// Paywall gate (DEMO ONLY)
+//
+// This does not process any real payment - it's a preview of what a
+// "pay before you access the tool" flow would look and feel like, so
+// the real thing (Stripe or similar) can be dropped in later without
+// reworking the rest of the app. The "unlocked" flag is stored per
+// browser (localStorage), not per account, since there's no login
+// system yet - once user accounts exist, this should key off the
+// account instead.
+// ============================================================
+const UNLOCK_STORAGE_KEY = "valuationToolUnlockedDemo";
+
+function isUnlocked() {
+  try {
+    return localStorage.getItem(UNLOCK_STORAGE_KEY) === "true";
+  } catch (_) {
+    return false; // e.g. localStorage blocked - fail closed, show the gate
+  }
+}
+
+function showApp() {
+  document.getElementById("paywall-gate").hidden = true;
+  document.getElementById("app-main").hidden = false;
+  document.getElementById("masthead-nav").hidden = false;
+}
+
+function showPaywall() {
+  document.getElementById("paywall-gate").hidden = false;
+  document.getElementById("app-main").hidden = true;
+  document.getElementById("masthead-nav").hidden = true;
+}
+
+document.getElementById("paywall-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btn-paywall-pay");
+  btn.disabled = true;
+  btn.textContent = "Processing payment\u2026";
+  setTimeout(() => {
+    try {
+      localStorage.setItem(UNLOCK_STORAGE_KEY, "true");
+    } catch (_) { /* ignore - still unlock for this page view */ }
+    btn.disabled = false;
+    btn.textContent = "Pay \u20ac9.00";
+    showApp();
+    runInit();
+  }, 1100);
+});
+
+document.getElementById("nav-reset-demo").addEventListener("click", () => {
+  try {
+    localStorage.removeItem(UNLOCK_STORAGE_KEY);
+  } catch (_) { /* ignore */ }
+  showPaywall();
+});
+
+// ============================================================
+// Startup
+// ============================================================
+let didInit = false;
+async function runInit() {
+  if (didInit) return;
+  didInit = true;
   goToStep(1);
   try {
     await loadReferenceData();
@@ -1840,7 +1971,14 @@ async function loadHistory() {
       `Could not reach the valuation API at ${API_BASE}. Is it running? (${err.message})`
     );
   }
-})();
+}
+
+if (isUnlocked()) {
+  showApp();
+  runInit();
+} else {
+  showPaywall();
+}
 
 </script>
 </body>
