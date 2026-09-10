@@ -87,8 +87,10 @@ body {
 }
 .view[hidden] { display: none; }
 .masthead-nav[hidden] { display: none; }
+#login-gate[hidden] { display: none; }
 #paywall-gate[hidden] { display: none; }
 #app-main[hidden] { display: none; }
+.nav-user { font-family: var(--font-sans); font-size: 13px; color: rgba(247, 244, 236, 0.68); margin-right: 4px; }
 .view {
   background: var(--paper-raised);
   border: 1px solid var(--rule-soft);
@@ -507,15 +509,40 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
   <div class="masthead-inner">
     <h1 class="wordmark">Startup Valuation</h1>
     <nav class="masthead-nav" id="masthead-nav" hidden>
+      <span class="nav-user" id="nav-user-email"></span>
       <button id="nav-new" class="nav-link is-active" type="button">New valuation</button>
       <button id="nav-history" class="nav-link" type="button">Past valuations</button>
+      <button id="nav-logout" class="nav-link" type="button" title="Sign out of this demo account">Log out</button>
       <button id="nav-reset-demo" class="nav-link" type="button" title="Re-lock the app to preview the paywall again">Reset demo</button>
     </nav>
   </div>
 </header>
 
+<!-- ============ LOGIN GATE (demo only - see notes in JS) ============ -->
+<section id="login-gate" class="page">
+  <div class="paywall-card">
+    <p class="paywall-eyebrow">Startup Valuation Tool</p>
+    <h2 class="paywall-title">Sign in</h2>
+    <p class="paywall-sub">Sign in to save your valuations and come back to them later.</p>
+
+    <form id="login-form">
+      <div class="field">
+        <label for="login_email">Email</label>
+        <input type="email" id="login_email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="login_password">Password</label>
+        <input type="password" id="login_password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password">
+      </div>
+      <p id="login-error" class="form-error" hidden></p>
+      <button type="submit" class="btn btn-primary" id="btn-login" style="width:100%; justify-content:center; margin-top:6px;">Continue</button>
+    </form>
+    <p class="paywall-test-note">&#128274; Test mode &mdash; any email/password works and nothing is verified. This previews the account flow; real sign-in comes later.</p>
+  </div>
+</section>
+
 <!-- ============ PAYWALL GATE (demo only - see notes in JS) ============ -->
-<section id="paywall-gate" class="page">
+<section id="paywall-gate" class="page" hidden>
   <div class="paywall-card">
     <p class="paywall-eyebrow">Startup Valuation Tool</p>
     <h2 class="paywall-title">Unlock the valuation tool</h2>
@@ -547,6 +574,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 
   <!-- ============ NEW VALUATION WIZARD ============ -->
   <section id="view-wizard" class="view">
+
 
     <div class="step-tracker">
       <p class="step-label"><span id="step-current">1</span> of <span id="step-total">6</span> &mdash; <span id="step-name">Company profile</span></p>
@@ -1785,7 +1813,9 @@ async function saveCurrentValuation() {
   btn.disabled = true;
   btn.textContent = "Saving\u2026";
   try {
-    await apiFetch("/valuations", { method: "POST", body: JSON.stringify(lastResult.payload) });
+    const email = getCurrentUserEmail();
+    const qs = email ? `?user_email=${encodeURIComponent(email)}` : "";
+    await apiFetch(`/valuations${qs}`, { method: "POST", body: JSON.stringify(lastResult.payload) });
     btn.textContent = "Saved";
   } catch (err) {
     btn.disabled = false;
@@ -1841,7 +1871,9 @@ async function loadHistory() {
   const list = document.getElementById("history-list");
   list.innerHTML = `<p class="loading-hint">Loading&hellip;</p>`;
   try {
-    const items = await apiFetch("/valuations?limit=50");
+    const email = getCurrentUserEmail();
+    const qs = email ? `&user_email=${encodeURIComponent(email)}` : "";
+    const items = await apiFetch(`/valuations?limit=50${qs}`);
     if (items.length === 0) {
       list.innerHTML = `<p class="empty-state">No valuations saved yet. Run one from "New valuation" and save it to see it here.</p>`;
       return;
@@ -1901,17 +1933,28 @@ async function loadHistory() {
 });
 
 // ============================================================
-// Paywall gate (DEMO ONLY)
+// Accounts + Paywall gates (DEMO ONLY)
 //
-// This does not process any real payment - it's a preview of what a
-// "pay before you access the tool" flow would look and feel like, so
-// the real thing (Stripe or similar) can be dropped in later without
-// reworking the rest of the app. The "unlocked" flag is stored per
-// browser (localStorage), not per account, since there's no login
-// system yet - once user accounts exist, this should key off the
-// account instead.
+// Neither of these processes anything real:
+// - "Sign in" accepts any email/password and never checks the password -
+//   it just calls POST /auth/demo-login, which creates-or-reuses a row in
+//   a real `users` table so saved valuations can genuinely be scoped per
+//   email. Swap in real auth later by replacing loginDemoUser() below.
+// - "Pay" doesn't touch a real payment provider - see the note further
+//   down by UNLOCK_STORAGE_KEY.
+// Both "sessions" are stored per-browser (localStorage), not tied to a
+// real server-side session, since there's no real login yet.
 // ============================================================
+const USER_STORAGE_KEY = "demoUserEmailDemo";
 const UNLOCK_STORAGE_KEY = "valuationToolUnlockedDemo";
+
+function getCurrentUserEmail() {
+  try {
+    return localStorage.getItem(USER_STORAGE_KEY) || null;
+  } catch (_) {
+    return null;
+  }
+}
 
 function isUnlocked() {
   try {
@@ -1921,17 +1964,71 @@ function isUnlocked() {
   }
 }
 
-function showApp() {
+function showLogin() {
+  document.getElementById("login-gate").hidden = false;
   document.getElementById("paywall-gate").hidden = true;
-  document.getElementById("app-main").hidden = false;
-  document.getElementById("masthead-nav").hidden = false;
+  document.getElementById("app-main").hidden = true;
+  document.getElementById("masthead-nav").hidden = true;
 }
 
 function showPaywall() {
+  document.getElementById("login-gate").hidden = true;
   document.getElementById("paywall-gate").hidden = false;
   document.getElementById("app-main").hidden = true;
   document.getElementById("masthead-nav").hidden = true;
 }
+
+function showApp() {
+  document.getElementById("login-gate").hidden = true;
+  document.getElementById("paywall-gate").hidden = true;
+  document.getElementById("app-main").hidden = false;
+  document.getElementById("masthead-nav").hidden = false;
+  const email = getCurrentUserEmail();
+  document.getElementById("nav-user-email").textContent = email ? `Signed in as ${email}` : "";
+}
+
+// Decides which of the three states to show based on current local state.
+function determineGate() {
+  if (!getCurrentUserEmail()) {
+    showLogin();
+  } else if (!isUnlocked()) {
+    showPaywall();
+  } else {
+    showApp();
+    runInit();
+  }
+}
+
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById("login-error");
+  errEl.hidden = true;
+  const email = document.getElementById("login_email").value.trim();
+  if (!email) return;
+  const btn = document.getElementById("btn-login");
+  btn.disabled = true;
+  btn.textContent = "Signing in\u2026";
+  try {
+    const res = await fetch(`${API_BASE}/auth/demo-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || res.statusText);
+    }
+    const user = await res.json();
+    try { localStorage.setItem(USER_STORAGE_KEY, user.email); } catch (_) { /* ignore */ }
+    determineGate();
+  } catch (err) {
+    errEl.textContent = `Could not sign in: ${err.message}`;
+    errEl.hidden = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Continue";
+  }
+});
 
 document.getElementById("paywall-form").addEventListener("submit", (e) => {
   e.preventDefault();
@@ -1953,7 +2050,16 @@ document.getElementById("nav-reset-demo").addEventListener("click", () => {
   try {
     localStorage.removeItem(UNLOCK_STORAGE_KEY);
   } catch (_) { /* ignore */ }
-  showPaywall();
+  determineGate();
+});
+
+document.getElementById("nav-logout").addEventListener("click", () => {
+  try {
+    localStorage.removeItem(USER_STORAGE_KEY);
+    localStorage.removeItem(UNLOCK_STORAGE_KEY);
+  } catch (_) { /* ignore */ }
+  document.getElementById("login_email").value = "";
+  determineGate();
 });
 
 // ============================================================
@@ -1973,12 +2079,7 @@ async function runInit() {
   }
 }
 
-if (isUnlocked()) {
-  showApp();
-  runInit();
-} else {
-  showPaywall();
-}
+determineGate();
 
 </script>
 </body>

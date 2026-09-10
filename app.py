@@ -46,6 +46,10 @@ CREATE TABLE IF NOT EXISTS valuations (
     input_json TEXT NOT NULL,
     output_json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS users (
+    email TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -62,17 +66,46 @@ def _get_connection():
 
 def init_db() -> None:
     with _get_connection() as conn:
-        conn.execute(_SCHEMA)
+        conn.executescript(_SCHEMA)
+        # Migration for databases created before accounts existed.
+        existing_cols = {row["name"] for row in conn.execute("PRAGMA table_info(valuations)")}
+        if "user_email" not in existing_cols:
+            conn.execute("ALTER TABLE valuations ADD COLUMN user_email TEXT")
 
 
-def save_valuation(company_name: str, input_dict: dict, output_dict: dict) -> str:
+# ----------------------------------------------------------------------------
+# Accounts (DEMO ONLY)
+#
+# This is real, persistent plumbing (a genuine `users` table, valuations are
+# genuinely tied to an email) but the "authentication" itself is fake: there
+# is no password check anywhere below. Any email is accepted and either
+# creates or reuses that user row. This lets the rest of the app (saved
+# history scoped per-user) behave like the real thing while login stays a
+# one-line swap away from something real (e.g. verifying a password hash or
+# a magic-link token) later.
+# ----------------------------------------------------------------------------
+
+
+def upsert_demo_user(email: str) -> dict:
+    email = email.strip().lower()
+    with _get_connection() as conn:
+        row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        if row is None:
+            created_at = datetime.now(timezone.utc).isoformat()
+            conn.execute("INSERT INTO users (email, created_at) VALUES (?, ?)", (email, created_at))
+            return {"email": email, "created_at": created_at}
+        return {"email": row["email"], "created_at": row["created_at"]}
+
+
+def save_valuation(company_name: str, input_dict: dict, output_dict: dict, user_email: Optional[str] = None) -> str:
     valuation_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     with _get_connection() as conn:
         conn.execute(
-            "INSERT INTO valuations (id, created_at, company_name, input_json, output_json) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (valuation_id, created_at, company_name, json.dumps(input_dict), json.dumps(output_dict)),
+            "INSERT INTO valuations (id, created_at, company_name, input_json, output_json, user_email) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (valuation_id, created_at, company_name, json.dumps(input_dict), json.dumps(output_dict),
+             user_email.strip().lower() if user_email else None),
         )
     return valuation_id
 
@@ -86,17 +119,26 @@ def get_valuation(valuation_id: str) -> Optional[dict]:
         "id": row["id"],
         "created_at": row["created_at"],
         "company_name": row["company_name"],
+        "user_email": row["user_email"],
         "input": json.loads(row["input_json"]),
         "output": json.loads(row["output_json"]),
     }
 
 
-def list_valuations(limit: int = 50, offset: int = 0) -> list[dict]:
+def list_valuations(limit: int = 50, offset: int = 0, user_email: Optional[str] = None) -> list[dict]:
     with _get_connection() as conn:
-        rows = conn.execute(
-            "SELECT id, created_at, company_name FROM valuations ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            (limit, offset),
-        ).fetchall()
+        if user_email:
+            rows = conn.execute(
+                "SELECT id, created_at, company_name, user_email FROM valuations "
+                "WHERE user_email = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (user_email.strip().lower(), limit, offset),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id, created_at, company_name, user_email FROM valuations "
+                "ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            ).fetchall()
     return [dict(row) for row in rows]
 
 
@@ -120,12 +162,14 @@ class ValuationSummary(BaseModel):
     id: str
     created_at: str
     company_name: Optional[str] = None
+    user_email: Optional[str] = None
 
 
 class ValuationRunResponse(BaseModel):
     id: str
     created_at: str
     company_name: Optional[str] = None
+    user_email: Optional[str] = None
     output: dict[str, Any]
 
 
@@ -133,8 +177,14 @@ class ValuationDetailResponse(BaseModel):
     id: str
     created_at: str
     company_name: Optional[str] = None
+    user_email: Optional[str] = None
     input: dict[str, Any]
     output: dict[str, Any]
+
+
+class DemoUser(BaseModel):
+    email: str
+    created_at: str
 
 
 # ============================================================================
@@ -145,8 +195,13 @@ valuations_router = APIRouter(prefix="/valuations", tags=["valuations"])
 
 
 @valuations_router.post("", response_model=ValuationRunResponse, status_code=201)
-def create_valuation(payload: ve.ValuationInput) -> ValuationRunResponse:
-    """Run a full valuation and persist it. Returns the computed result."""
+def create_valuation(payload: ve.ValuationInput, user_email: Optional[str] = None) -> ValuationRunResponse:
+    """Run a full valuation and persist it. Returns the computed result.
+
+    `user_email` is optional and unverified (see the accounts section above) -
+    when provided, the valuation is tagged with it so it shows up in that
+    user's history.
+    """
     try:
         result = ve.run_valuation(payload)
     except KeyError as e:
@@ -161,18 +216,20 @@ def create_valuation(payload: ve.ValuationInput) -> ValuationRunResponse:
         company_name=payload.company_profile.company_name,
         input_dict=input_dict,
         output_dict=output_dict,
+        user_email=user_email,
     )
     record = get_valuation(valuation_id)
 
     return ValuationRunResponse(
         id=record["id"], created_at=record["created_at"],
-        company_name=record["company_name"], output=output_dict,
+        company_name=record["company_name"], user_email=record["user_email"], output=output_dict,
     )
 
 
 @valuations_router.get("", response_model=list[ValuationSummary])
-def list_valuations_route(limit: int = 50, offset: int = 0) -> list[ValuationSummary]:
-    return [ValuationSummary(**row) for row in list_valuations(limit=limit, offset=offset)]
+def list_valuations_route(limit: int = 50, offset: int = 0, user_email: Optional[str] = None) -> list[ValuationSummary]:
+    """If `user_email` is given, only that user's saved valuations are returned."""
+    return [ValuationSummary(**row) for row in list_valuations(limit=limit, offset=offset, user_email=user_email)]
 
 
 @valuations_router.get("/{valuation_id}", response_model=ValuationDetailResponse)
@@ -244,7 +301,33 @@ def get_valuation_report(valuation_id: str) -> Response:
 
 
 # ============================================================================
-# SECTION 4 — Routes: /reference-data
+# SECTION 4 — Routes: /auth (DEMO ONLY - see note above upsert_demo_user)
+# ============================================================================
+
+auth_router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class DemoLoginRequest(BaseModel):
+    email: str
+
+
+@auth_router.post("/demo-login", response_model=DemoUser)
+def demo_login(payload: DemoLoginRequest) -> DemoUser:
+    """
+    Accepts any non-empty email and no password check whatsoever - this is a
+    stand-in for real authentication (password hash + verification, or a
+    magic-link/OTP flow), just enough to give each "account" a persistent
+    identity so saved valuations can be scoped per-user. Swap this one
+    function out first when real login is needed.
+    """
+    email = (payload.email or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Please provide a valid-looking email address.")
+    return DemoUser(**upsert_demo_user(email))
+
+
+# ============================================================================
+# SECTION 5 — Routes: /reference-data
 # ============================================================================
 
 reference_router = APIRouter(prefix="/reference-data", tags=["reference-data"])
@@ -307,7 +390,7 @@ def get_scorecard_lookup() -> dict:
 
 
 # ============================================================================
-# SECTION 5 — App
+# SECTION 6 — App
 # ============================================================================
 
 
@@ -341,6 +424,7 @@ app.add_middleware(
 )
 
 app.include_router(valuations_router)
+app.include_router(auth_router)
 app.include_router(reference_router)
 
 
