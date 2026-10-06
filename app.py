@@ -16,12 +16,14 @@ import json
 import sqlite3
 import uuid
 from contextlib import asynccontextmanager, contextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, FastAPI, HTTPException, Response
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 import valuation_engine as ve
@@ -191,6 +193,28 @@ class DemoUser(BaseModel):
 # SECTION 3 — Routes: /valuations
 # ============================================================================
 
+
+def _with_valuation_date(payload: ve.ValuationInput) -> ve.ValuationInput:
+    """Pins the valuation date (default: today) so a saved valuation re-runs identically later."""
+    if payload.company_profile.valuation_date is None:
+        payload = payload.model_copy(deep=True)
+        payload.company_profile.valuation_date = date.today()
+    return payload
+
+
+def _run(fn, *args):
+    """Runs an engine call and turns every failure into a plain-language HTTP error
+    (never a bare 500), so the wizard can show the user what to fix."""
+    try:
+        return fn(*args)
+    except ve.ValuationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except KeyError as e:
+        # Unknown industry, country, stage, region or questionnaire answer.
+        raise HTTPException(status_code=400, detail=f"Unrecognised input: {e.args[0] if e.args else e}")
+    except (ValueError, ZeroDivisionError, OverflowError) as e:
+        raise HTTPException(status_code=422, detail=f"These inputs can't be valued: {e}")
+
 valuations_router = APIRouter(prefix="/valuations", tags=["valuations"])
 
 
@@ -202,15 +226,11 @@ def create_valuation(payload: ve.ValuationInput, user_email: Optional[str] = Non
     when provided, the valuation is tagged with it so it shows up in that
     user's history.
     """
-    try:
-        result = ve.run_valuation(payload)
-    except KeyError as e:
-        # Raised by reference-data lookups when e.g. an unknown industry,
-        # country, stage, or dropdown option text was submitted.
-        raise HTTPException(status_code=400, detail=f"Unresolvable reference data: {e}")
+    payload = _with_valuation_date(payload)
+    result = _run(ve.run_valuation, payload)
 
     output_dict = dataclasses.asdict(result)
-    input_dict = payload.model_dump()
+    input_dict = payload.model_dump(mode="json")
 
     valuation_id = save_valuation(
         company_name=payload.company_profile.company_name,
@@ -249,18 +269,31 @@ def delete_valuation_route(valuation_id: str) -> None:
 @valuations_router.post("/preview", response_model=dict)
 def preview_valuation(payload: ve.ValuationInput) -> dict:
     """Same computation as POST /valuations but does NOT persist anything."""
-    try:
-        result = ve.run_valuation(payload)
-    except KeyError as e:
-        raise HTTPException(status_code=400, detail=f"Unresolvable reference data: {e}")
-    return dataclasses.asdict(result)
+    return dataclasses.asdict(_run(ve.run_valuation, _with_valuation_date(payload)))
+
+
+class ProjectionPreviewInput(BaseModel):
+    company_profile: ve.CompanyProfile
+    operating_performance: ve.OperatingPerformance
+    financial_assumptions: ve.FinancialAssumptions
+
+
+@valuations_router.post("/preview/projections", response_model=dict)
+def preview_projections(payload: ProjectionPreviewInput) -> dict:
+    """The 5-year projection exactly as the engine builds it (for the wizard's
+    preview table, so the browser never re-implements the math)."""
+    def build():
+        bench = ve._BenchmarkRecorder(payload.company_profile.industry,
+                                      payload.company_profile.business_territory_region)
+        proj = ve.build_projections(payload.company_profile, payload.financial_assumptions,
+                                    payload.operating_performance, bench)
+        return {"projections": dataclasses.asdict(proj),
+                "benchmarks_used": {k: dataclasses.asdict(v) for k, v in bench.used.items()}}
+    return _run(build)
 
 
 def _scenarios_dict(payload: ve.ValuationInput) -> dict[str, dict]:
-    try:
-        scenarios = ve.run_valuation_scenarios(payload)
-    except KeyError as e:
-        raise HTTPException(status_code=400, detail=f"Unresolvable reference data: {e}")
+    scenarios = _run(ve.run_valuation_scenarios, _with_valuation_date(payload))
     return {label: dataclasses.asdict(output) for label, output in scenarios.items()}
 
 
@@ -281,13 +314,36 @@ def get_valuation_scenarios(valuation_id: str) -> dict:
     record = get_valuation(valuation_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"No valuation found with id {valuation_id!r}")
-    payload = ve.ValuationInput(**record["input"])
-    return _scenarios_dict(payload)
+    return _scenarios_dict(_saved_input(record))
+
+
+def _saved_input(record: dict) -> ve.ValuationInput:
+    """Rebuilds a saved valuation's input. Records saved before the valuation date
+    existed are dated by the day they were saved."""
+    data = record["input"]
+    data["company_profile"].setdefault("valuation_date", None)
+    if data["company_profile"]["valuation_date"] is None:
+        data["company_profile"]["valuation_date"] = record["created_at"][:10]
+    try:
+        return ve.ValuationInput(**data)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"This saved valuation's inputs are no longer valid: {e}")
+
+
+@valuations_router.post("/{valuation_id}/rerun", response_model=dict)
+def rerun_valuation(valuation_id: str) -> dict:
+    """Re-runs a saved valuation's inputs with the current methodology (what History > View shows)."""
+    record = get_valuation(valuation_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"No valuation found with id {valuation_id!r}")
+    payload = _saved_input(record)
+    return {"input": payload.model_dump(mode="json"),
+            "output": dataclasses.asdict(_run(ve.run_valuation, payload))}
 
 
 def _pdf_response(payload: ve.ValuationInput, output_dict: dict) -> Response:
     """Builds the branded PDF report and wraps it as a one-click file download."""
-    input_dict = payload.model_dump()
+    input_dict = payload.model_dump(mode="json")
     try:
         benchmark = ve.resolved_industry_benchmarks(payload.company_profile.industry)
     except Exception:
@@ -296,9 +352,11 @@ def _pdf_response(payload: ve.ValuationInput, output_dict: dict) -> Response:
         scenarios_dict = {
             label: dataclasses.asdict(out) for label, out in ve.run_valuation_scenarios(payload).items()
         }
-    except Exception:
+    except Exception:  # scenarios are optional extras; the report still builds without them
         scenarios_dict = {}
-    pdf_bytes = pdf_report.build_pdf_bytes(input_dict, output_dict, benchmark, scenarios_dict)
+    stage_params = ve.stage_parameters().get(payload.company_profile.company_stage)
+    pdf_bytes = pdf_report.build_pdf_bytes(input_dict, output_dict, benchmark, scenarios_dict,
+                                           ve.data_sources(), stage_params)
 
     company_name = payload.company_profile.company_name or "valuation"
     safe_name = "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in company_name).strip() or "valuation"
@@ -314,10 +372,8 @@ def _pdf_response(payload: ve.ValuationInput, output_dict: dict) -> Response:
 @valuations_router.post("/preview/report")
 def preview_valuation_report(payload: ve.ValuationInput) -> Response:
     """Runs a valuation (without persisting) and returns the branded PDF report directly."""
-    try:
-        result = ve.run_valuation(payload)
-    except KeyError as e:
-        raise HTTPException(status_code=400, detail=f"Unresolvable reference data: {e}")
+    payload = _with_valuation_date(payload)
+    result = _run(ve.run_valuation, payload)
     return _pdf_response(payload, dataclasses.asdict(result))
 
 
@@ -327,11 +383,8 @@ def get_valuation_report(valuation_id: str) -> Response:
     record = get_valuation(valuation_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"No valuation found with id {valuation_id!r}")
-    payload = ve.ValuationInput(**record["input"])
-    try:
-        result = ve.run_valuation(payload)
-    except KeyError as e:
-        raise HTTPException(status_code=400, detail=f"Unresolvable reference data: {e}")
+    payload = _saved_input(record)
+    result = _run(ve.run_valuation, payload)
     return _pdf_response(payload, dataclasses.asdict(result))
 
 
@@ -414,6 +467,20 @@ def get_country_detail(country: str) -> dict:
         raise HTTPException(status_code=404, detail=f"Unknown country {country!r}")
 
 
+@reference_router.get("/sources")
+def get_sources() -> dict:
+    """Where every benchmark and assumption comes from, and the data date."""
+    return ve.data_sources()
+
+
+@reference_router.get("/default-region/{country}")
+def get_default_region(country: str) -> dict:
+    try:
+        return {"region": ve.default_region_for_country(country)}
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Unknown country {country!r}")
+
+
 @reference_router.get("/scorecard-lookup")
 def get_scorecard_lookup() -> dict:
     """
@@ -458,6 +525,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def _readable_validation_errors(exc: RequestValidationError) -> str:
+    parts = []
+    for err in exc.errors():
+        loc = [str(x) for x in err.get("loc", []) if x not in ("body",)]
+        field = loc[-1].replace("_", " ") if loc else "input"
+        msg = err.get("msg", "is invalid").removeprefix("Value error, ")
+        parts.append(f"{field}: {msg}")
+    return "Please check these inputs - " + "; ".join(parts)
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=422, content={"detail": _readable_validation_errors(exc)})
+
 
 app.include_router(valuations_router)
 app.include_router(auth_router)
