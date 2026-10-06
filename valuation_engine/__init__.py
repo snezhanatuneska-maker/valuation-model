@@ -157,6 +157,27 @@ def get_industry_metric_with_source(
     )
 
 
+# min_valid per metric, matching the lookups in build_projections / compute_wacc /
+# the EV/EBITDA methods (every other metric uses 0).
+_INDUSTRY_METRIC_MIN_VALID = {"beta": 0.01, "equity_pct_capital": 0.01}
+
+
+def resolved_industry_benchmarks(industry: str) -> dict:
+    """An industry's benchmark table with the same fallback chain the engine
+    applies, so anything displayed (wizard, PDF) matches what was calculated.
+    Shape: {metric: {region: value}}; value is None only if nothing resolves."""
+    resolved = {}
+    for metric, table in industry_benchmarks()[industry].items():
+        min_valid = _INDUSTRY_METRIC_MIN_VALID.get(metric, 0)
+        resolved[metric] = {}
+        for region in table:
+            try:
+                resolved[metric][region] = get_industry_metric(industry, metric, region, min_valid=min_valid)
+            except KeyError:
+                resolved[metric][region] = None
+    return resolved
+
+
 def get_country(country: str) -> dict:
     try:
         return country_data()[country]

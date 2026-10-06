@@ -289,7 +289,7 @@ def _pdf_response(payload: ve.ValuationInput, output_dict: dict) -> Response:
     """Builds the branded PDF report and wraps it as a one-click file download."""
     input_dict = payload.model_dump()
     try:
-        benchmark = ve.industry_benchmarks().get(payload.company_profile.industry, {})
+        benchmark = ve.resolved_industry_benchmarks(payload.company_profile.industry)
     except Exception:
         benchmark = {}
     try:
@@ -399,8 +399,9 @@ def get_stage_detail(stage: str) -> dict:
 
 @reference_router.get("/industries/{industry}")
 def get_industry_detail(industry: str) -> dict:
+    """Benchmarks with the engine's fallbacks applied (no raw "NA" values)."""
     try:
-        return ve.industry_benchmarks()[industry]
+        return ve.resolved_industry_benchmarks(industry)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Unknown industry {industry!r}")
 
