@@ -66,6 +66,11 @@ def stage_parameters() -> dict:
     return _all_reference_data()["stage_parameters"]
 
 
+def stage_descriptions() -> dict:
+    """stage -> one-line definition shown in the wizard."""
+    return _all_reference_data().get("stage_descriptions", {})
+
+
 def stage_region_pre_money_benchmarks() -> dict:
     """stage -> region -> value"""
     return _all_reference_data()["stage_region_pre_money_benchmarks"]

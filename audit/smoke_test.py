@@ -50,17 +50,15 @@ with TestClient(api.app) as client:
     r = client.post("/valuations/preview/scenarios", json=REFERENCE_CASE)
     check("POST /valuations/preview/scenarios", r.status_code == 200 and len(r.json()) == 6)
 
-    r = client.post("/auth/demo-login", json={"email": "audit@example.com"})
-    check("POST /auth/demo-login", r.status_code == 200)
-    r = client.post("/valuations?user_email=audit@example.com", json=REFERENCE_CASE)
+    r = client.post("/valuations?owner_id=audit-browser", json=REFERENCE_CASE)
     check("POST /valuations (save)", r.status_code == 201)
     vid = r.json()["id"]
-    check("GET /valuations?user_email=", client.get("/valuations?user_email=audit@example.com").status_code == 200)
+    check("GET /valuations?owner_id=", client.get("/valuations?owner_id=audit-browser").status_code == 200)
     check("GET /valuations/{id}", client.get(f"/valuations/{vid}").status_code == 200)
     check("GET /valuations/{id}/scenarios", client.get(f"/valuations/{vid}/scenarios").status_code == 200)
     r = client.get(f"/valuations/{vid}/report")
     check("GET /valuations/{id}/report", r.status_code == 200 and r.content[:4] == b"%PDF")
-    check("DELETE /valuations/{id}", client.delete(f"/valuations/{vid}").status_code == 204)
+    check("DELETE /valuations/{id}", client.delete(f"/valuations/{vid}?owner_id=audit-browser").status_code == 204)
 
     r = client.post("/valuations/preview/report", json=REFERENCE_CASE)
     check("POST /valuations/preview/report", r.status_code == 200 and r.content[:4] == b"%PDF")

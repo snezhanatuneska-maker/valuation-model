@@ -11,7 +11,7 @@ Everything below the line is the original audit, kept as written. This table rec
 | # | Finding | Status | What changed |
 |---|---|---|---|
 | 1 | Scorecard table didn't add up | **Fixed** | No hidden multiplier any more, so the rows add up to the total. A test checks this. |
-| 2 | 0.55 used four ways; hurdle rose with maturity | **Fixed** | Three separate stage assumptions, each used by one method only: VC target return 60% (Idea) → 20% (Maturity), private-company discount 40% → 20% (Comparables), survival probability 35% → 95% (DCF). Scorecard has no haircut (Payne). |
+| 2 | 0.55 used four ways; hurdle rose with maturity | **Fixed** | Three separate stage assumptions, each used by one method only: VC target return 65% (Idea) → 20% (Maturity), private-company discount 40% → 20% (Comparables), survival probability 30% → 95% (DCF). Scorecard has no haircut (Payne). |
 | 3 | DCF double-counted risk (WACC + 55%) | **Fixed** | Discounts at WACC only, then weights the result by the stage's survival probability (anchored on BLS data: ~78% of new businesses survive one year, ~49% survive five). |
 | 4 | DCF PVs / terminal value disclosure | **Fixed** | The PDF shows PV of cash flows, PV of terminal value, terminal value % of EV, and every input to the discount rate. |
 | 5 | No valuation date | **Fixed** | New valuation-date field (default today, pinned when saved). Years are labelled "Y1 (Oct 2027)" etc. |
@@ -35,13 +35,13 @@ Everything below the line is the original audit, kept as written. This table rec
 | N12 | Two report builders | **Fixed** | The unused browser report (~350 lines) removed; the server PDF is the only one. |
 | N13 | Missing `docs/` references | **Fixed** | References removed. |
 | Data | Stage pre-money benchmark has no source | **Partly fixed** | Labelled "internal estimate" in the app and PDF. Users can enter their own benchmark. **A cited table is still needed from you.** |
-| Data | Country risk data not verified | **Open** | Damodaran's site is blocked from this environment. Values are internally consistent; check them against `ctryprem` January 2026. |
+| Data | Country risk data not verified | **Checked; update pending** | All 157 countries follow Damodaran's January 2026 method exactly (premium = 4.23% + 1.52 × default spread; a test enforces this). Tanzania, Brazil, China and India match his published figures. Damodaran's July 2026 update (4.20%, ~180 countries) can be loaded with `refresh_country_data.py` once `ctryprem.xlsx` is available. |
 | Data | Retail (Online) had stale values (zeros for India) | **Fixed** | Uses Damodaran's current Retail (General) figures. |
 | Validation | Section 4 rules | **Fixed** | Engine warnings for every rule. The wizard blocks ownership ≠ 100% and use of funds ≠ raise. Region is preset from the country. Tax defaults to the country's rate. |
 | Tests | No tests | **Fixed** | `tests/` has 72 tests; GitHub Actions runs them on every push. All 819 checked benchmark values match Damodaran's files. |
-| Business | Demo login/payment; SQLite on Render | **Not in scope** | Needs a real auth/payment provider and a persistent database. Not changed. |
+| Business | Demo login/payment; SQLite on Render | **Login and payment removed** | The fake sign-in and €9 checkout are gone. Saved valuations belong to the browser (anonymous ID) and nobody can list other people's. Real accounts, payment and a persistent database come later. |
 
-New stage assumptions (VC returns, private-company discounts, survival probabilities) are the app's own assumptions, chosen within published ranges. Their sources are listed in `reference_data.json` → `sources` and on the PDF's last page.
+New stage assumptions (VC returns, private-company discounts, survival probabilities) are the app's own assumptions, set at the midpoints of published ranges for the matching stage (re-checked: VC returns were raised one step, e.g. Startup 40% → 50%, after matching the app's stage definitions to the literature's financing stages). Their sources are listed in `reference_data.json` → `sources` and on the PDF's last page.
 
 ---
 

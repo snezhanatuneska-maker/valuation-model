@@ -107,9 +107,9 @@ report is rebuilt fresh from the saved inputs each time.
 | Method | What it does | Stage assumption it uses (only here) |
 |---|---|---|
 | Scorecard (Payne) | Typical pre-money for the stage/region × your weighted questionnaire score | — |
-| Venture Capital | Exit-year EBITDA × EV/EBITDA multiple, minus debt, discounted at the investor's target return; minus the raise | Target return: 60% (Idea) falling to 20% (Maturity) |
+| Venture Capital | Exit-year EBITDA × EV/EBITDA multiple, minus debt, discounted at the investor's target return; minus the raise | Target return: 65% (Idea) falling to 20% (Maturity) |
 | Comparables | Last-12-month EBITDA × EV/EBITDA multiple, less a private-company discount, minus debt plus cash | Private-company discount: 40% → 20% |
-| DCF | 5 years of free cash flow + Gordon terminal value at WACC, × probability of survival, minus debt plus cash | Survival: 35% → 95% |
+| DCF | 5 years of free cash flow + Gordon terminal value at WACC, × probability of survival, minus debt plus cash | Survival: 30% → 95% |
 
 - Projected EBITDA margin starts from the company's own last-12-month margin and moves in equal steps to the industry EBITDA margin (Damodaran EBITDA/Sales, which includes R&D) by Year 5, unless the user sets a target.
 - One tax rate for everything: the user's, else the country's statutory rate. Losses are carried forward.
@@ -127,11 +127,11 @@ cash €20,000, no debt. Year-1 revenue €1,000,000 growing 10% a year, capex
 | Method | Value |
 |---|---|
 | Scorecard | 1,860,000 € |
-| Venture Capital | 1,597,004 € |
+| Venture Capital | 1,242,335 € |
 | Comparables | 697,925 € |
 | DCF | 813,856 € |
-| **Blended pre-money** | **1,131,786 €** |
-| **Post-money** | **1,431,786 €** |
+| **Blended pre-money** | **1,043,118 €** |
+| **Post-money** | **1,343,118 €** |
 
 These are pinned in `tests/test_engine.py` and recomputed independently by
 `audit/recompute.py`.
@@ -172,7 +172,9 @@ Rules the refresh applies:
   directly, so they are derived from Damodaran's margin and debt ratios;
   implausible results fall back the same way.
 - "Retail (Online)" is no longer published by Damodaran; it uses his "Retail (General)" figures.
-- Country risk data (`country_data`) is not covered by this tool; update it from Damodaran's `ctryprem` file.
+- Country risk data (`country_data`) has its own tool: download `ctryprem.xlsx` from Damodaran's
+  [country risk page](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html), then run
+  `python refresh_country_data.py ctryprem.xlsx valuation_engine/reference_data.json` (add `--write` to apply).
 - The Scorecard's "average pre-money by stage and region" table is an internal estimate with no published source. Users can replace it in the wizard; replace the table itself if you get a cited source.
 
 ## License
