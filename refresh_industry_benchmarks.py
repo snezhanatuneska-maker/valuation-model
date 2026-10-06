@@ -65,7 +65,16 @@ METRICS = {
     "acc_receivable_pct_revenue": ("wcdata", r"^acc rec/sales$", 0),
     "inventory_pct_revenue": ("wcdata", r"^inventory/sales$", 0),
     "acc_payable_pct_revenue": ("wcdata", r"^acc pay/sales$", 0),
+    # The engine projects EBITDA from this margin directly: COGS% + SG&A% alone
+    # leave out R&D, which overstated EBITDA by 10-18 points for software/pharma.
+    "ebitda_margin": ("margin", r"^ebitda/sales$", 0),
+    "rd_pct_revenue": ("margin", r"^r&d/sales$", 0),
 }
+
+# Industries the app lists that Damodaran no longer publishes under that name:
+# app industry -> the Damodaran industry whose figures are used instead.
+# Damodaran's current files class online retailers under Retail (General).
+SOURCE_ALIASES = {"Retail (Online)": "Retail (General)"}
 
 # Metrics Damodaran doesn't publish directly, derived from published ratios.
 # Results outside a plausible range (e.g. negative D&A for insurers, where the
@@ -162,6 +171,9 @@ def main():
     ref = json.loads(ref_path.read_text())
     old = ref["industry_benchmarks"]
     new = {ind: {m: dict(v) for m, v in metrics.items()} for ind, metrics in old.items()}
+    for ind in new:
+        for metric in list(METRICS) + list(DERIVED):
+            new[ind].setdefault(metric, {})
     unmatched = {}
 
     for region, suffix in REGIONS.items():
@@ -169,7 +181,7 @@ def main():
             fname, headers, rows = read_file(folder, stem, suffix)
             col = column(headers, pattern, occ, fname)
             for ind in old:
-                row = rows.get(norm(ind))
+                row = rows.get(norm(SOURCE_ALIASES.get(ind, ind)))
                 if row is None:  # not in Damodaran's file: keep the prior value, report it
                     unmatched.setdefault(f"{stem}{suffix}", set()).add(ind)
                 elif too_few_firms(headers, row):
@@ -177,11 +189,12 @@ def main():
                 else:
                     new[ind][metric][region] = num(row[col])
         for ind in old:
-            if norm(ind) not in read_file(folder, EBITDA_MARGIN[0], suffix)[2]:
+            src = SOURCE_ALIASES.get(ind, ind)
+            if norm(src) not in read_file(folder, EBITDA_MARGIN[0], suffix)[2]:
                 continue  # already reported as unmatched; prior values kept
-            def v(source):
+            def v(source, src=src):
                 fname, headers, rows = read_file(folder, source[0], suffix)
-                row = rows.get(norm(ind))
+                row = rows.get(norm(src))
                 if row is None or too_few_firms(headers, row):
                     raise ValueError
                 x = num(row[column(headers, source[1], 0, fname)])
@@ -198,9 +211,9 @@ def main():
     for f, inds in sorted(unmatched.items()):
         print(f"UNMATCHED in {f}: {sorted(inds)}")
     print(f"\n{'metric':28} {'region':10} {'old median':>11} {'new median':>11} {'NA old':>6} {'NA new':>6}")
-    for metric in old[next(iter(old))]:
+    for metric in new[next(iter(new))]:
         for region in REGIONS:
-            o = [old[i][metric].get(region) for i in old]
+            o = [old[i].get(metric, {}).get(region) for i in old]
             n = [new[i][metric].get(region) for i in new]
             on = [v for v in o if isinstance(v, (int, float))]
             nn = [v for v in n if isinstance(v, (int, float))]

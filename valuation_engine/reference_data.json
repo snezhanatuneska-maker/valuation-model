@@ -117,6 +117,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.021677378019830797,
         "China": 0.007429527246382409,
         "India": 0.05507104766474451
+      },
+      "ebitda_margin": {
+        "US": 0.14055245204906705,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.13116120006826015,
+        "Japan": 0.10162485595693324,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.040798225611345586,
+        "China": 0.019060568431801025,
+        "India": 0.17096872494303614,
+        "Global": 0.10568367173546026
+      },
+      "rd_pct_revenue": {
+        "US": 0.030676294148830982,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.002501669040134593,
+        "Japan": 0.001245470884668085,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.014007678926637523,
+        "China": 0.010462624638214922,
+        "India": 0.003549702109263401,
+        "Global": 0.011020356647648524
       }
     },
     "Aerospace/Defense": {
@@ -236,6 +254,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.026598150378059852,
         "China": 0.023235426033681863,
         "India": 0.006428112542310733
+      },
+      "ebitda_margin": {
+        "US": 0.1068539788925033,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.10808669413140445,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.09637150290021976,
+        "China": 0.07504002941794499,
+        "India": 0.2290977220526632,
+        "Global": 0.10598476191359137
+      },
+      "rd_pct_revenue": {
+        "US": 0.040183202711432574,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.059808010292451745,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03820858784980806,
+        "China": 0.05144752048749739,
+        "India": 0.03437285385574591,
+        "Global": 0.04644711808482324
       }
     },
     "Air Transport": {
@@ -355,6 +391,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04109622997380606,
         "China": 0.02718391693398053,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.10266258028530147,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1332440927235142,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.1535603779539802,
+        "China": 0.10455202216908058,
+        "India": "NA",
+        "Global": 0.1312727896697474
+      },
+      "rd_pct_revenue": {
+        "US": 0.0038304562427768116,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0003386781053459735,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0010290735063598743,
+        "China": 0.0026617528630036155,
+        "India": "NA",
+        "Global": 0.0016851113757649595
       }
     },
     "Apparel": {
@@ -474,6 +528,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.049770571163743046,
         "China": 0.02607595553889756,
         "India": 0.054594874892535276
+      },
+      "ebitda_margin": {
+        "US": 0.11474146388695698,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.20637908839828056,
+        "Japan": 0.08228879084639636,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.07330822278615004,
+        "China": 0.09990774358813087,
+        "India": 0.02785851605026909,
+        "Global": 0.1447657331719154
+      },
+      "rd_pct_revenue": {
+        "US": 0.0001387863060824985,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.003903925860244058,
+        "Japan": 0.0073941308198803455,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.006591164297567246,
+        "China": 0.01760638876861637,
+        "India": 0.0009186736591888325,
+        "Global": 0.004631457664357876
       }
     },
     "Auto & Truck": {
@@ -593,6 +665,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.018937639623170834,
         "China": 0.030792854319166667,
         "India": 0.021493737253733682
+      },
+      "ebitda_margin": {
+        "US": 0.07489374639612317,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.09400207873389745,
+        "Japan": 0.10506137500247525,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.08158670254073355,
+        "China": 0.06605729001252203,
+        "India": 0.13529623980244476,
+        "Global": 0.08966660145658077
+      },
+      "rd_pct_revenue": {
+        "US": 0.053030240578919814,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.05017542035514626,
+        "Japan": 0.04093541598368321,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.037885593126117834,
+        "China": 0.04850336688066224,
+        "India": 0.03329880527206417,
+        "Global": 0.044454294294238444
       }
     },
     "Auto Parts": {
@@ -712,6 +802,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03848915099366016,
         "China": 0.025058568792349002,
         "India": 0.06250078172715184
+      },
+      "ebitda_margin": {
+        "US": 0.09035108972189304,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.08258789311053637,
+        "Japan": 0.10262137736915009,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.08360194634931006,
+        "China": 0.08673725920429703,
+        "India": 0.10251769664871013,
+        "Global": 0.08987380160756259
+      },
+      "rd_pct_revenue": {
+        "US": 0.049499954579051264,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.06517262823524077,
+        "Japan": 0.023879604060721586,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03314155360804523,
+        "China": 0.046926617307094444,
+        "India": 0.002954909675701772,
+        "Global": 0.03887490939964058
       }
     },
     "Bank (Money Center)": {
@@ -831,6 +939,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0006622542454306875,
         "China": 0.0003784122405250783,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.0,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.8251147292908497e-05,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.006532965782457968,
+        "China": 0.006470348180436365,
+        "India": 0.0,
+        "Global": 0.0029942547779044904
+      },
+      "rd_pct_revenue": {
+        "US": 0.0,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.2167431528605664e-06,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0,
+        "China": 0.0,
+        "India": 0.0,
+        "Global": 3.135059857595634e-07
       }
     },
     "Banks (Regional)": {
@@ -950,6 +1076,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 8.826646021503831e-07,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.0,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0,
+        "Japan": 0.0,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": -0.0012028929657976221,
+        "China": 0.0,
+        "India": "NA",
+        "Global": -0.0002838802807251875
+      },
+      "rd_pct_revenue": {
+        "US": 0.0,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0,
+        "Japan": 2.5327945903587218e-05,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0,
+        "China": 0.0,
+        "India": "NA",
+        "Global": 4.217585185766571e-06
       }
     },
     "Beverage (Alcoholic)": {
@@ -1069,6 +1213,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.06690005502535916,
         "China": 0.028904637841768426,
         "India": 0.057094198502172226
+      },
+      "ebitda_margin": {
+        "US": 0.2952251033944647,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.23951275353099166,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.33406199250655577,
+        "China": 0.466425931384934,
+        "India": 0.12604694941552214,
+        "Global": 0.2630896438651218
+      },
+      "rd_pct_revenue": {
+        "US": 6.275950782826342e-06,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0017664525955766854,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0030784715421729955,
+        "China": 0.005996762511089368,
+        "India": 0.0006387300404522215,
+        "Global": 0.002547717496837368
       }
     },
     "Beverage (Soft)": {
@@ -1188,6 +1350,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0558923072380053,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.22784289751602432,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.13601254392017698,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.1939606777909085,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.199597921142116
+      },
+      "rd_pct_revenue": {
+        "US": 0.004861637345331118,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.00015128299840334059,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0015522256426425474,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.003637773927803669
       }
     },
     "Broadcasting": {
@@ -1307,6 +1487,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05377773268067842,
         "China": "NA",
         "India": 0.08884001544384823
+      },
+      "ebitda_margin": {
+        "US": 0.1821287934482517,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.11497015170906215,
+        "Japan": 0.09262960943862272,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.11895803232449069,
+        "China": "NA",
+        "India": 0.12486332949040012,
+        "Global": 0.14773754731542177
+      },
+      "rd_pct_revenue": {
+        "US": 7.280566661064366e-05,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0,
+        "Japan": 0.000816389713355005,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.004627576347864999,
+        "China": "NA",
+        "India": 8.15943340894408e-05,
+        "Global": 0.0009068214653088348
       }
     },
     "Brokerage & Investment Banking": {
@@ -1426,6 +1624,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0003595181225241132,
         "China": 2.4034392601985085e-05,
         "India": 0.0025979617315946973
+      },
+      "ebitda_margin": {
+        "US": -8.227833390552346e-06,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.007415064281972706,
+        "Japan": 0.08186135061239097,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.009494324519702068,
+        "China": -0.0004036436813616069,
+        "India": 0.0075663787509450235,
+        "Global": 0.008076097524414223
+      },
+      "rd_pct_revenue": {
+        "US": 0.002749696988974386,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.00795280636461245,
+        "Japan": 0.0003945025049768884,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.002878836680993085,
+        "China": 0.004545046306757715,
+        "India": 0.0012910494759486735,
+        "Global": 0.0032493349784802326
       }
     },
     "Building Materials": {
@@ -1545,6 +1761,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03903832058647607,
         "China": 0.030816223224596973,
         "India": 0.054199992780089794
+      },
+      "ebitda_margin": {
+        "US": 0.17320410164697317,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1410404380837991,
+        "Japan": 0.11495574277487469,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.11815172631763002,
+        "China": 0.11722617744607541,
+        "India": 0.1047623061533011,
+        "Global": 0.14038986529735942
+      },
+      "rd_pct_revenue": {
+        "US": 0.012639099475497156,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.016524766370986356,
+        "Japan": 0.020658227578116674,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.018987654180699084,
+        "China": 0.03671088875147561,
+        "India": 0.0020008533498325886,
+        "Global": 0.01652540302273285
       }
     },
     "Business & Consumer Services": {
@@ -1664,6 +1898,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03732793844098872,
         "China": 0.04574819931445475,
         "India": 0.01882699587736461
+      },
+      "ebitda_margin": {
+        "US": 0.15645965559174238,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.10334777125652639,
+        "Japan": 0.12004375677029848,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.06148020719507158,
+        "China": 0.028414447344636346,
+        "India": 0.08852357916310644,
+        "Global": 0.12526079830623219
+      },
+      "rd_pct_revenue": {
+        "US": 0.011829097051887155,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.004619873785574129,
+        "Japan": 0.014604682224007431,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.014894091699847825,
+        "China": 0.021983102243447836,
+        "India": 4.251632654910753e-06,
+        "Global": 0.010162161534697341
       }
     },
     "Cable TV": {
@@ -1783,6 +2035,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05146319588555945,
         "China": 0.044668585483630605,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.17013009134671325,
+        "China": 0.13704645250751096,
+        "India": "NA",
+        "Global": 0.3156951220832863
+      },
+      "rd_pct_revenue": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.014025213565697267,
+        "China": 0.03669117801542114,
+        "India": "NA",
+        "Global": 0.0019665959734491457
       }
     },
     "Chemical (Basic)": {
@@ -1902,6 +2172,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03419683052139054,
         "China": 0.025968445722288867,
         "India": 0.07996619959966594
+      },
+      "ebitda_margin": {
+        "US": 0.12338324699137568,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.09393780926728494,
+        "Japan": 0.11425512169432978,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.09209913985336858,
+        "China": 0.08754951890564756,
+        "India": 0.1278601337860103,
+        "Global": 0.09950924133111964
+      },
+      "rd_pct_revenue": {
+        "US": 0.009974522453280935,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.008461604586949965,
+        "Japan": 0.030606022663244244,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.016253569150002013,
+        "China": 0.021921740385528164,
+        "India": 0.0017710681299397777,
+        "Global": 0.01686032216262172
       }
     },
     "Chemical (Diversified)": {
@@ -2021,6 +2309,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05187477220806904,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.13174165707554927,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.15613303523563524,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.11910074491910233
+      },
+      "rd_pct_revenue": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.04013970237437434,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.01112984713355102,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.027351645590091934
       }
     },
     "Chemical (Specialty)": {
@@ -2140,6 +2446,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.037407838030727614,
         "China": 0.026625298745926375,
         "India": 0.07351600493856095
+      },
+      "ebitda_margin": {
+        "US": 0.18008981421154488,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1551707721105162,
+        "Japan": 0.1853607913507247,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.14050358623333073,
+        "China": 0.13857843371299522,
+        "India": 0.12167478322081073,
+        "Global": 0.1597402394336859
+      },
+      "rd_pct_revenue": {
+        "US": 0.0261263605253223,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.025523197926861464,
+        "Japan": 0.025817037633145554,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.020237608310568287,
+        "China": 0.029654590691826573,
+        "India": 0.0024161093868321974,
+        "Global": 0.023456015426006248
       }
     },
     "Coal & Related Energy": {
@@ -2259,6 +2583,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03850929135863429,
         "China": 0.030543562420080096,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.1304216890103519,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1818676156914333,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.2939322230352069,
+        "China": 0.30269089111773,
+        "India": "NA",
+        "Global": 0.28814915920415735
+      },
+      "rd_pct_revenue": {
+        "US": 0.0025537291786968818,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.003473901092917598,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.009473231432365893,
+        "China": 0.013825481486452304,
+        "India": "NA",
+        "Global": 0.008956835977651127
       }
     },
     "Computer Services": {
@@ -2378,6 +2720,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04446970837491062,
         "China": 0.04642303816341267,
         "India": 0.057664678127460955
+      },
+      "ebitda_margin": {
+        "US": 0.08976204696621921,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.09614881246869224,
+        "Japan": 0.0947991419857049,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0751017899863962,
+        "China": 0.021787065358568964,
+        "India": 0.1837552151289802,
+        "Global": 0.0871296240706557
+      },
+      "rd_pct_revenue": {
+        "US": 0.02525120690261836,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.008242457281570319,
+        "Japan": 0.01099226837208346,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.009138718969742008,
+        "China": 0.03219430595327265,
+        "India": 0.0033011831545330405,
+        "Global": 0.013794743665773814
       }
     },
     "Computers/Peripherals": {
@@ -2497,6 +2857,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05004187050462266,
         "China": 0.0688321013056065,
         "India": 0.0897586358044766
+      },
+      "ebitda_margin": {
+        "US": 0.2532063954429002,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.12773154642756476,
+        "Japan": 0.1174500783224184,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.08985229791114036,
+        "China": 0.04984112555634013,
+        "India": 0.12551900752830297,
+        "Global": 0.1573978391107966
+      },
+      "rd_pct_revenue": {
+        "US": 0.07082191051320001,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.06907501839456597,
+        "Japan": 0.05328934105977592,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05171425867994078,
+        "China": 0.03601463472793292,
+        "India": 8.979369001781506e-06,
+        "Global": 0.05958710511255436
       }
     },
     "Construction Supplies": {
@@ -2616,6 +2994,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04179172791443787,
         "China": 0.02937519134061187,
         "India": 0.06325114958052194
+      },
+      "ebitda_margin": {
+        "US": 0.1946449499137033,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.13089777411311893,
+        "Japan": 0.14222694122812582,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.11154053564406048,
+        "China": 0.09846820875767673,
+        "India": 0.15772740635305688,
+        "Global": 0.13250691231462197
+      },
+      "rd_pct_revenue": {
+        "US": 0.02429806077671633,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0291797015013949,
+        "Japan": 0.02416306527968394,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02205376159292344,
+        "China": 0.03503482396806952,
+        "India": 0.0024611850742017804,
+        "Global": 0.024852437521993134
       }
     },
     "Diversified": {
@@ -2735,6 +3131,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05520833586170987,
         "China": "NA",
         "India": 0.051204935557710836
+      },
+      "ebitda_margin": {
+        "US": 0.31274565625004214,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.20577333899659853,
+        "Japan": 0.13563810519684077,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.15832046070202427,
+        "China": "NA",
+        "India": 0.14449273205195898,
+        "Global": 0.20592845309670443
+      },
+      "rd_pct_revenue": {
+        "US": 0.006563468221365836,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.030484747080418175,
+        "Japan": 0.02439367833132669,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.002315787229728054,
+        "China": "NA",
+        "India": 0.0022075423527723307,
+        "Global": 0.00940177070831972
       }
     },
     "Drugs (Biotechnology)": {
@@ -2854,6 +3268,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02671500755970552,
         "China": 0.025381875312538587,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.15376551585006348,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.000951367767994529,
+        "Japan": 0.04619745450777795,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04144955638488019,
+        "China": 0.05249336339779039,
+        "India": "NA",
+        "Global": 0.1286708665824519
+      },
+      "rd_pct_revenue": {
+        "US": 0.42887428389658205,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.31753736946085,
+        "Japan": 0.2262340434060195,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.21051319085883544,
+        "China": 0.24546677080498314,
+        "India": "NA",
+        "Global": 0.37452693192394465
       }
     },
     "Drugs (Pharmaceutical)": {
@@ -2973,6 +3405,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03712994937005412,
         "China": 0.029599497372778744,
         "India": 0.059707502452497375
+      },
+      "ebitda_margin": {
+        "US": 0.33586471478613505,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.26962583061639184,
+        "Japan": 0.2338242751224767,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.15546140215071622,
+        "China": 0.1658630392180729,
+        "India": 0.22539943486977038,
+        "Global": 0.26166788776273275
+      },
+      "rd_pct_revenue": {
+        "US": 0.20936229841449244,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1837330137157855,
+        "Japan": 0.16462217745149835,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.059889233504308075,
+        "China": 0.08088292554609405,
+        "India": 0.04212442549264647,
+        "Global": 0.16256426072574262
       }
     },
     "Education": {
@@ -3092,6 +3542,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.08325799715095199,
         "China": 0.04525766384248669,
         "India": 0.059109668513760184
+      },
+      "ebitda_margin": {
+        "US": 0.1656521174388729,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1431710726141357,
+        "Japan": 0.11378482288777161,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.25352195835086133,
+        "China": 0.2909700644404901,
+        "India": 0.09749629088690555,
+        "Global": 0.18962020246576014
+      },
+      "rd_pct_revenue": {
+        "US": 0.039753367012176605,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.05465695431881409,
+        "Japan": 0.0003055710358732883,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.009874868915924836,
+        "China": 0.019434579305280808,
+        "India": 0.003316709727813494,
+        "Global": 0.029106217964378185
       }
     },
     "Electrical Equipment": {
@@ -3211,6 +3679,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.031378284905778105,
         "China": 0.028243972562192122,
         "India": 0.08902978823905378
+      },
+      "ebitda_margin": {
+        "US": 0.12647638947622328,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.12014391343918446,
+        "Japan": 0.11062777112151533,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.09334732273331259,
+        "China": 0.09978750054050958,
+        "India": 0.1039159196494672,
+        "Global": 0.10541358312333061
+      },
+      "rd_pct_revenue": {
+        "US": 0.039487935551464244,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.03441502558108531,
+        "Japan": 0.03198880851983218,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0341561674641449,
+        "China": 0.042543739728184225,
+        "India": 0.004633588566817154,
+        "Global": 0.0347180066843398
       }
     },
     "Electronics (Consumer & Office)": {
@@ -3330,6 +3816,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.039782007852150886,
         "China": 0.02699916037288874,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.15990163167774998,
+        "Japan": 0.114172770191762,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05484750723953499,
+        "China": 0.044687594444742594,
+        "India": "NA",
+        "Global": 0.09006649518025446
+      },
+      "rd_pct_revenue": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.10563575772845424,
+        "Japan": 0.0611952465609299,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.031715319173722584,
+        "China": 0.04178215640473052,
+        "India": "NA",
+        "Global": 0.05170711795488385
       }
     },
     "Electronics (General)": {
@@ -3449,6 +3953,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.026744055177199043,
         "China": 0.0241809387365629,
         "India": 0.07188868687247345
+      },
+      "ebitda_margin": {
+        "US": 0.12363308040497747,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.17351857507413534,
+        "Japan": 0.165271388017938,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.07856251554635504,
+        "China": 0.0876241370665571,
+        "India": 0.10249499924609166,
+        "Global": 0.09651962424084129
+      },
+      "rd_pct_revenue": {
+        "US": 0.04225240321739189,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.08275358242341418,
+        "Japan": 0.04977572185918668,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03952258657434421,
+        "China": 0.05025989916615491,
+        "India": 0.0017576614328787417,
+        "Global": 0.04250308100037906
       }
     },
     "Engineering/Construction": {
@@ -3568,6 +4090,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.030647954693485455,
         "China": 0.02666307586591794,
         "India": 0.07159343595483178
+      },
+      "ebitda_margin": {
+        "US": 0.07957368030825093,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.07271555685439372,
+        "Japan": 0.06868104474380246,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.057738323829839275,
+        "China": 0.05443403178839093,
+        "India": 0.12337432560607028,
+        "Global": 0.06369283942113486
+      },
+      "rd_pct_revenue": {
+        "US": 0.000421041110365401,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.00047787396787255806,
+        "Japan": 0.005464572912383631,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.021923053791435845,
+        "China": 0.027251866133309346,
+        "India": 0.007702633385527107,
+        "Global": 0.014102535775445355
       }
     },
     "Entertainment": {
@@ -3687,6 +4227,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0602402476316999,
         "China": 0.05608473708209055,
         "India": 0.09273827858003139
+      },
+      "ebitda_margin": {
+        "US": 0.17771317763188713,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.10858366303296782,
+        "Japan": 0.1940592326885237,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.16856012947930896,
+        "China": 0.17119044120913113,
+        "India": 0.10400322054724091,
+        "Global": 0.16679473182498672
+      },
+      "rd_pct_revenue": {
+        "US": 0.036772815854713446,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.060273666876641,
+        "Japan": 0.04100217908392198,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.07574730609862287,
+        "China": 0.10679110588723033,
+        "India": 0.0003946291210138374,
+        "Global": 0.04741026582266954
       }
     },
     "Environmental & Waste Services": {
@@ -3806,6 +4364,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.037514572049730764,
         "China": 0.030281441877409068,
         "India": 0.07838668068772245
+      },
+      "ebitda_margin": {
+        "US": 0.20992305474282424,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.09623367325345838,
+        "Japan": 0.12320466393119463,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.17908103160593397,
+        "China": 0.17190014109295987,
+        "India": 0.11444195849857403,
+        "Global": 0.1735613217525552
+      },
+      "rd_pct_revenue": {
+        "US": 0.004273695238378958,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.05081780709915598,
+        "Japan": 0.0030474716352963506,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.01758407362075879,
+        "China": 0.027204800025057034,
+        "India": 0.001323206037967755,
+        "Global": 0.01706718210091776
       }
     },
     "Farming/Agriculture": {
@@ -3925,6 +4501,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04439287511648346,
         "China": 0.03810402872682378,
         "India": 0.08767106070728929
+      },
+      "ebitda_margin": {
+        "US": 0.08042036063925903,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.11756970008581481,
+        "Japan": 0.11829300485649845,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.08615166240462237,
+        "China": 0.07706933542969212,
+        "India": 0.09503721347170332,
+        "Global": 0.08779636440239015
+      },
+      "rd_pct_revenue": {
+        "US": 0.015213972399411909,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.03810909304917544,
+        "Japan": 0.034906655072148705,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.002823752304399223,
+        "China": 0.01043178030814837,
+        "India": 0.005577000094438217,
+        "Global": 0.012964490068664411
       }
     },
     "Financial Svcs. (Non-bank & Insurance)": {
@@ -4044,6 +4638,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.005784544916267575,
         "China": 0.0027165605231260627,
         "India": 0.005232506737750979
+      },
+      "ebitda_margin": {
+        "US": 0.21021001535178777,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.09303917049963618,
+        "Japan": 0.17121991992789445,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.08434116013709712,
+        "China": 0.06250250140704147,
+        "India": 0.10639456928579794,
+        "Global": 0.1599125704969354
+      },
+      "rd_pct_revenue": {
+        "US": 0.022628688588039205,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.006733299039291334,
+        "Japan": 1.0075117868251296e-05,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.006016332578565955,
+        "China": 0.052833077981364523,
+        "India": 0.000603593303931457,
+        "Global": 0.013950037953058344
       }
     },
     "Food Processing": {
@@ -4163,6 +4775,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04483076599980387,
         "China": 0.030260612630689097,
         "India": 0.0774898647664891
+      },
+      "ebitda_margin": {
+        "US": 0.15253468981379967,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.11434037332025271,
+        "Japan": 0.08354304486609808,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.10792045091696104,
+        "China": 0.10721708722744502,
+        "India": 0.09075805499736815,
+        "Global": 0.11383646710933253
+      },
+      "rd_pct_revenue": {
+        "US": 0.006029187356157445,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.007851242360880976,
+        "Japan": 0.008664985841625868,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.003326448512417377,
+        "China": 0.007523121125206351,
+        "India": 0.0005885167975111207,
+        "Global": 0.005450585652674169
       }
     },
     "Food Wholesalers": {
@@ -4282,6 +4912,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.08761759821436091,
         "China": "NA",
         "India": 0.05139081797364766
+      },
+      "ebitda_margin": {
+        "US": 0.0370917016463097,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.019041074851451966,
+        "Japan": 0.023807655253078527,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.041928147193912496,
+        "China": "NA",
+        "India": 0.025969226339500478,
+        "Global": 0.034687928983968004
+      },
+      "rd_pct_revenue": {
+        "US": 0.0,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.001007274315701711,
+        "Japan": 4.6442825222491313e-05,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 9.729833591692522e-05,
+        "China": "NA",
+        "India": 0.0,
+        "Global": 0.00019427065857916985
       }
     },
     "Furn/Home Furnishings": {
@@ -4401,6 +5049,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03742352136379641,
         "China": 0.035571921618595785,
         "India": 0.06221513913862009
+      },
+      "ebitda_margin": {
+        "US": 0.09754555729130779,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.06416207580222075,
+        "Japan": 0.09357521098791992,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.10307105048657052,
+        "China": 0.10337231375317771,
+        "India": 0.09291689615066484,
+        "Global": 0.09607133159525479
+      },
+      "rd_pct_revenue": {
+        "US": 0.018989668032718197,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.020043914866919862,
+        "Japan": 0.018867801588614924,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03348075599871321,
+        "China": 0.038338669428534485,
+        "India": 0.005047489785893913,
+        "Global": 0.028860000542609114
       }
     },
     "Green & Renewable Energy": {
@@ -4520,6 +5186,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.035477942569529755,
         "China": 0.025634873514578233,
         "India": 0.05430544761073184
+      },
+      "ebitda_margin": {
+        "US": 0.5845083534942246,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.2631027448233241,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.6056993828645983,
+        "China": 0.7011717901827286,
+        "India": 0.6057935243436168,
+        "Global": 0.46651653470105
+      },
+      "rd_pct_revenue": {
+        "US": 0.0010351139884309693,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.007362616077756733,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.004304860660765684,
+        "China": 0.005043281688034083,
+        "India": 6.043077155907187e-06,
+        "Global": 0.005230210142233923
       }
     },
     "Healthcare Products": {
@@ -4639,6 +5323,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03410623267103795,
         "China": 0.028831166354832315,
         "India": 0.07194241410161221
+      },
+      "ebitda_margin": {
+        "US": 0.20335048986604062,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.18201187277416642,
+        "Japan": 0.22688369610404285,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.16184209440492608,
+        "China": 0.18712881560328357,
+        "India": 0.12318301334523991,
+        "Global": 0.19303994456432222
+      },
+      "rd_pct_revenue": {
+        "US": 0.0719738002264643,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.08011626066724337,
+        "Japan": 0.0617617261076867,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.08519298439729184,
+        "China": 0.09616707261616936,
+        "India": 0.015962196755469567,
+        "Global": 0.07545477193417448
       }
     },
     "Healthcare Support Services": {
@@ -4758,6 +5460,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04371965118905627,
         "China": 0.031120813502122875,
         "India": 0.03841642732089118
+      },
+      "ebitda_margin": {
+        "US": 0.03865277525408626,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.08799812295439262,
+        "Japan": 0.027676983791204122,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04119160975940227,
+        "China": 0.037743659574612336,
+        "India": 0.13355778413833197,
+        "Global": 0.04010818916736983
+      },
+      "rd_pct_revenue": {
+        "US": 0.0006733680141668893,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.012698853886766726,
+        "Japan": 0.0014068961497451969,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.004346844589373445,
+        "China": 0.00452323374621007,
+        "India": 0.00094022814865351,
+        "Global": 0.0013248744474030228
       }
     },
     "Heathcare Information and Technology": {
@@ -4877,6 +5597,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02368402726387563,
         "China": 0.015595848992483874,
         "India": 0.16167299969235627
+      },
+      "ebitda_margin": {
+        "US": 0.2049516450940989,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1675036730586651,
+        "Japan": 0.18824858290437615,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.20238429513121536,
+        "China": 0.19359321311514907,
+        "India": 0.22513815090456327,
+        "Global": 0.19496391705624655
+      },
+      "rd_pct_revenue": {
+        "US": 0.06894802188832837,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.03372852219895486,
+        "Japan": 0.01227343950542084,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05831262160321241,
+        "China": 0.05994336227449469,
+        "India": 0.008739347770587463,
+        "Global": 0.05996811550108123
       }
     },
     "Homebuilding": {
@@ -4996,6 +5734,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05515938575173172,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.14143498213141,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0972793932083493,
+        "Japan": 0.08508420870109966,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0855617621923475,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.11717009478754056
+      },
+      "rd_pct_revenue": {
+        "US": 0.0,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0004903342514894798,
+        "Japan": 0.00075801115324809,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.002725337573322542,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.00039985981222745014
       }
     },
     "Hospitals/Healthcare Facilities": {
@@ -5115,6 +5871,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05479286183218913,
         "China": 0.03776489318727277,
         "India": 0.0620383683687814
+      },
+      "ebitda_margin": {
+        "US": 0.15804141916584769,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1077599425372637,
+        "Japan": 0.10846903169526029,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.1693297482280373,
+        "China": 0.16031615207421962,
+        "India": 0.17965323585281479,
+        "Global": 0.15088885665973453
+      },
+      "rd_pct_revenue": {
+        "US": 0.0004860130134116699,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 6.048426118878187e-06,
+        "Japan": 0.00032931084617621403,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0013869969224972346,
+        "China": 0.008360489443986558,
+        "India": 0.0004636012111940098,
+        "Global": 0.0006341666042153183
       }
     },
     "Hotel/Gaming": {
@@ -5234,6 +6008,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05793095639521137,
         "China": 0.0351154254319851,
         "India": 0.07422083462193627
+      },
+      "ebitda_margin": {
+        "US": 0.24450633871432306,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.16843112024980303,
+        "Japan": 0.13104055294653225,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.20977608070677042,
+        "China": 0.1398031953070073,
+        "India": 0.22677665258045906,
+        "Global": 0.21517036942535417
+      },
+      "rd_pct_revenue": {
+        "US": 0.028388443200556196,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.034186929382841055,
+        "Japan": 0.0008591405060766735,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.004145792786910161,
+        "China": 0.027827385311694413,
+        "India": 0.0015796510184089983,
+        "Global": 0.023800675790992862
       }
     },
     "Household Products": {
@@ -5353,6 +6145,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02765641301458808,
         "China": 0.021578874283200808,
         "India": 0.050477117558111996
+      },
+      "ebitda_margin": {
+        "US": 0.2234450615011359,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.17816010134187132,
+        "Japan": 0.12260370961775299,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.1339255462821197,
+        "China": 0.11287761398697292,
+        "India": 0.22172578743124563,
+        "Global": 0.1843074137673256
+      },
+      "rd_pct_revenue": {
+        "US": 0.019905372801303046,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.02137798433103642,
+        "Japan": 0.02453941176195137,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.013871015279049811,
+        "China": 0.02629163524168667,
+        "India": 0.000934828238426571,
+        "Global": 0.019783574787869646
       }
     },
     "Information Services": {
@@ -5472,6 +6282,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0816201146639382,
         "China": "NA",
         "India": 0.07654092359755932
+      },
+      "ebitda_margin": {
+        "US": 0.17276703726376905,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.10111487927218082,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.128887255386193,
+        "China": "NA",
+        "India": 0.153271753117956,
+        "Global": 0.1566341220777747
+      },
+      "rd_pct_revenue": {
+        "US": 0.020781907225656118,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.0005446459395243994,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0017361076394735127,
+        "China": "NA",
+        "India": 0.001029738461416599,
+        "Global": 0.011337877146636368
       }
     },
     "Insurance (General)": {
@@ -5591,6 +6419,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.06596024469520438,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.2356536892258286,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.11695239983444493,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.12257249838774723,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.12664101127270688
+      },
+      "rd_pct_revenue": {
+        "US": 0.0018549931120412052,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.6514334020722316e-07,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.00021841083699865289,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.0001653133316798105
       }
     },
     "Insurance (Life)": {
@@ -5710,6 +6556,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.034971562682100006,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.11503115671533527,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.14227343643339688,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.15518790379172456,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.13900408098112788
+      },
+      "rd_pct_revenue": {
+        "US": 0.0,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.6674192472586212e-05,
+        "China": "NA",
+        "India": "NA",
+        "Global": 8.201358744180385e-06
       }
     },
     "Insurance (Prop/Cas.)": {
@@ -5829,6 +6693,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.07348043727735461,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.14733505712045253,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.19224609420485872,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.1143393103557799,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.14599122123134498
+      },
+      "rd_pct_revenue": {
+        "US": 6.767121847058476e-06,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0,
+        "China": "NA",
+        "India": "NA",
+        "Global": 2.7486006620990833e-06
       }
     },
     "Investments & Asset Management": {
@@ -5948,6 +6830,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.009283458437967206,
         "China": 0.0007939758149904819,
         "India": 0.028575209461230672
+      },
+      "ebitda_margin": {
+        "US": 0.1165017063434102,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.21620922337361195,
+        "Japan": 0.3843548439025961,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.20638805396854332,
+        "China": 0.05271408293279223,
+        "India": 0.34801307054169317,
+        "Global": 0.20435414465297366
+      },
+      "rd_pct_revenue": {
+        "US": 0.004656303270806553,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0008501211661450062,
+        "Japan": 0.0001738589167087005,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0020231340236507543,
+        "China": 5.988872090624413e-05,
+        "India": 0.002503283913885463,
+        "Global": 0.0025274617177524486
       }
     },
     "Machinery": {
@@ -6067,6 +6967,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03010517195196847,
         "China": 0.028595694779592267,
         "India": 0.04622094485433024
+      },
+      "ebitda_margin": {
+        "US": 0.19621634609402608,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.12967109809083566,
+        "Japan": 0.12234630966241969,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.09376761156772077,
+        "China": 0.0870207150147902,
+        "India": 0.14446025820466235,
+        "Global": 0.1323902950533147
+      },
+      "rd_pct_revenue": {
+        "US": 0.020329465195487523,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.02894814413991648,
+        "Japan": 0.02151484062852244,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.045012915552442266,
+        "China": 0.05243251548238356,
+        "India": 0.0030471671128017405,
+        "Global": 0.02965287453091625
       }
     },
     "Metals & Mining": {
@@ -6186,6 +7104,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0374953952048441,
         "China": 0.024050446808102654,
         "India": 0.0627935188777818
+      },
+      "ebitda_margin": {
+        "US": 0.293645538061676,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.122436298710555,
+        "Japan": 0.07236756331012721,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.13151478129181138,
+        "China": 0.09022581669420646,
+        "India": 0.21723620609636524,
+        "Global": 0.14890483758463474
+      },
+      "rd_pct_revenue": {
+        "US": 0.0017932634795040003,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.002019248043926567,
+        "Japan": 0.009271994567451968,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.012250264018601832,
+        "China": 0.009479242131385106,
+        "India": 8.646709259702606e-05,
+        "Global": 0.007251614328314431
       }
     },
     "Office Equipment & Services": {
@@ -6305,6 +7241,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.036003613171019064,
         "China": 0.03351978302440214,
         "India": 0.07670504735438108
+      },
+      "ebitda_margin": {
+        "US": 0.14330388232158972,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.10341431742176654,
+        "Japan": 0.09791223246339213,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.06769628712150597,
+        "China": 0.06076325617920987,
+        "India": 0.1351388001854752,
+        "Global": 0.10466241214360926
+      },
+      "rd_pct_revenue": {
+        "US": 0.02115643684473217,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.00593050201441468,
+        "Japan": 0.012773063185683881,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.013661293167236655,
+        "China": 0.016406587817047676,
+        "India": 0.0011563036777164385,
+        "Global": 0.01446361006131177
       }
     },
     "Oil/Gas (Integrated)": {
@@ -6424,6 +7378,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03729004611299455,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.29274485025833197,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.24508716146132173,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.22214875833479578
+      },
+      "rd_pct_revenue": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0031619624363311213,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.004764339471842637,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.0036867609126836863
       }
     },
     "Oil/Gas (Production and Exploration)": {
@@ -6543,6 +7515,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05548469797538157,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.43207700406540256,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.6021392630878712,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.5122665026716066,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.48384559964277873
+      },
+      "rd_pct_revenue": {
+        "US": 0.0021944110057939992,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0014740919807452563,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0054526198144616905,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.0028079225952809435
       }
     },
     "Oil/Gas Distribution": {
@@ -6662,6 +7652,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04344900968986749,
         "China": 0.03165311610560407,
         "India": 0.08236930892319996
+      },
+      "ebitda_margin": {
+        "US": 0.32743461269567453,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.34697833599186206,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.1352659809273604,
+        "China": 0.1851415010014703,
+        "India": 0.17091958989130068,
+        "Global": 0.23834372794884243
+      },
+      "rd_pct_revenue": {
+        "US": 5.82979405024871e-05,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0034462067624328016,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.001941557136053371,
+        "China": 0.005971243756772238,
+        "India": 0.0,
+        "Global": 0.00099251074933639
       }
     },
     "Oilfield Svcs/Equip.": {
@@ -6781,6 +7789,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05315180069282734,
         "China": 0.03654135882055337,
         "India": 0.061865671957391954
+      },
+      "ebitda_margin": {
+        "US": 0.07756713853626425,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.09054583196918202,
+        "Japan": 0.04507351717110322,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.07834588256846373,
+        "China": 0.0769350843601469,
+        "India": 0.0912192546827354,
+        "Global": 0.0753947446624949
+      },
+      "rd_pct_revenue": {
+        "US": 0.003175894559034927,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0021520046647787454,
+        "Japan": 0.002102387358660974,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0028904362493862206,
+        "China": 0.024814182416146715,
+        "India": 0.00025529410749339904,
+        "Global": 0.0027624141411696037
       }
     },
     "Packaging & Container": {
@@ -6900,6 +7926,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03799232847390816,
         "China": 0.027503690951429384,
         "India": 0.07770260836131206
+      },
+      "ebitda_margin": {
+        "US": 0.14355372821998977,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.11585440972368488,
+        "Japan": 0.09573160506502398,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.10200306324907916,
+        "China": 0.09351920718751636,
+        "India": 0.11650228276521456,
+        "Global": 0.12374138841756735
+      },
+      "rd_pct_revenue": {
+        "US": 0.004183595688223153,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0037689104841789134,
+        "Japan": 0.007932708761122516,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.011541475021743243,
+        "China": 0.025937492407868273,
+        "India": 0.0006294646212203993,
+        "Global": 0.005730319820668847
       }
     },
     "Paper/Forest Products": {
@@ -7019,6 +8063,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0476768363794695,
         "China": 0.032561760072621106,
         "India": 0.08422802890601716
+      },
+      "ebitda_margin": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1383906451531957,
+        "Japan": 0.08438088439005383,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.13701274181981934,
+        "China": 0.10315959812062944,
+        "India": 0.10661734511591996,
+        "Global": 0.12380926707870507
+      },
+      "rd_pct_revenue": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.00466009886828436,
+        "Japan": 0.005691422994927351,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.00810251999191356,
+        "China": 0.017414753366731327,
+        "India": 0.000692880795737324,
+        "Global": 0.005827954582900375
       }
     },
     "Power": {
@@ -7138,6 +8200,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03815968807439753,
         "China": 0.023350030877954422,
         "India": 0.06073027133021781
+      },
+      "ebitda_margin": {
+        "US": 0.3533252879118818,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.19535767231314496,
+        "Japan": 0.1479866992258534,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.22442132540381104,
+        "China": 0.23314911251431822,
+        "India": 0.2814778535106351,
+        "Global": 0.23395833972303418
+      },
+      "rd_pct_revenue": {
+        "US": 0.0011662802009213998,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0015012163571827375,
+        "Japan": 0.0031132920211737695,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0035042314096269764,
+        "China": 0.007187397449753369,
+        "India": 0.00019089467598074723,
+        "Global": 0.002375875256077122
       }
     },
     "Precious Metals": {
@@ -7257,6 +8337,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02808323060980884,
         "China": 0.021770055784096933,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.34620463032278054,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.2899402886177372,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.16107589416670956,
+        "China": 0.12252169849577688,
+        "India": "NA",
+        "Global": 0.24757921857475632
+      },
+      "rd_pct_revenue": {
+        "US": 0.004708886839804084,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0037710844845064906,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.005458138175518979,
+        "China": 0.008330528545565595,
+        "India": "NA",
+        "Global": 0.0037469594120812405
       }
     },
     "Publishing & Newspapers": {
@@ -7376,6 +8474,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0322227039125064,
         "China": 0.017012201305800324,
         "India": 0.071705579687111
+      },
+      "ebitda_margin": {
+        "US": 0.13178635141695227,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.10736429508858679,
+        "Japan": 0.09522832523002453,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.11054871532336213,
+        "China": 0.11254314179841407,
+        "India": 0.13166660344890316,
+        "Global": 0.10966577684142373
+      },
+      "rd_pct_revenue": {
+        "US": 0.01508789319368799,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0099867646861358,
+        "Japan": 0.015039521159617313,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.010102457286421177,
+        "China": 0.012813578544960345,
+        "India": 0.0009730374948425917,
+        "Global": 0.012209117638642684
       }
     },
     "R.E.I.T.": {
@@ -7495,6 +8611,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05809587712174792,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.43793552387209317,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.4457981899118744,
+        "Japan": 0.6693354683746997,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.4324438808069932,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.44543697418286077
+      },
+      "rd_pct_revenue": {
+        "US": 0.00010434717337628785,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.385073327554223e-05,
+        "Japan": 0.0,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0,
+        "China": "NA",
+        "India": "NA",
+        "Global": 8.276412788150753e-05
       }
     },
     "Real Estate (Development)": {
@@ -7614,6 +8748,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03182732044198463,
         "China": 0.03324022135756459,
         "India": 0.07264010402218858
+      },
+      "ebitda_margin": {
+        "US": 0.24945778247175757,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.04529422442555804,
+        "Japan": 0.12699524533111123,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0503079623366511,
+        "China": -0.011012474487765269,
+        "India": 0.18383602465047452,
+        "Global": 0.0523396214344942
+      },
+      "rd_pct_revenue": {
+        "US": 0.0,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0,
+        "Japan": 4.6402954103557025e-05,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0006780403726939492,
+        "China": 0.0010475411141005837,
+        "India": 4.054433983466867e-05,
+        "Global": 0.0006516162911006793
       }
     },
     "Real Estate (General/Diversified)": {
@@ -7733,6 +8885,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04540355606135483,
         "China": 0.044175094956174,
         "India": 0.09861697338041472
+      },
+      "ebitda_margin": {
+        "US": 0.2718928280358599,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.19675900803854546,
+        "Japan": 0.15874909822708547,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.22708346680597888,
+        "China": 0.17501252326945282,
+        "India": 0.29496334234718563,
+        "Global": 0.18778539981805203
+      },
+      "rd_pct_revenue": {
+        "US": 0.0,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.6655187123713655e-05,
+        "Japan": 0.0008363424661158256,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.010862144587561092,
+        "China": 0.0017236730889865644,
+        "India": 3.0655017249195013e-06,
+        "Global": 0.0048680817733299615
       }
     },
     "Real Estate (Operations & Services)": {
@@ -7852,6 +9022,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04675654837472358,
         "China": 0.07753145912728027,
         "India": 0.041922540689518464
+      },
+      "ebitda_margin": {
+        "US": 0.03961527410474971,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.3329719584840142,
+        "Japan": 0.16144104094716813,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.25889358562089093,
+        "China": 0.08853756066427042,
+        "India": 0.2951882456582391,
+        "Global": 0.17552265787097296
+      },
+      "rd_pct_revenue": {
+        "US": 0.01430745570080346,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0002773455086492677,
+        "Japan": 6.962577274302357e-05,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0014447060885296507,
+        "China": 0.0026182546198691443,
+        "India": 0.0,
+        "Global": 0.00619232406135643
       }
     },
     "Recreation": {
@@ -7971,6 +9159,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.047550635124530255,
         "China": 0.04119728759671188,
         "India": 0.08536551652362297
+      },
+      "ebitda_margin": {
+        "US": 0.16636049855141793,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.16341562591780898,
+        "Japan": 0.18749512636102417,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.1145751136091485,
+        "China": 0.08743444865498663,
+        "India": 0.26012225275335044,
+        "Global": 0.16014174418160654
+      },
+      "rd_pct_revenue": {
+        "US": 0.02849985233340399,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.009216826362690524,
+        "Japan": 0.032176695637415396,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.026194344544782682,
+        "China": 0.043125223036008624,
+        "India": 0.0005016180511472849,
+        "Global": 0.02778813935861065
       }
     },
     "Reinsurance": {
@@ -8090,6 +9296,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03723893404915442,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.12727540173968657,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.06665862864013895
+      },
+      "rd_pct_revenue": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.0
       }
     },
     "Restaurant/Dining": {
@@ -8209,6 +9433,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04516380260169331,
         "China": 0.02982045527100919,
         "India": 0.06009250785825331
+      },
+      "ebitda_margin": {
+        "US": 0.19465690901816668,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.06922694879536288,
+        "Japan": 0.10505986309735861,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.10562690731020274,
+        "China": 0.12003028096849234,
+        "India": 0.005477750628931532,
+        "Global": 0.13352212624625848
+      },
+      "rd_pct_revenue": {
+        "US": 0.007388406792134073,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0040989520576258185,
+        "Japan": 0.0002318608241301506,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02745641285196351,
+        "China": 0.04367930596867933,
+        "India": 0.0008789219220780391,
+        "Global": 0.010966908207551102
       }
     },
     "Retail (Automotive)": {
@@ -8328,6 +9570,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.06662842818177994,
         "China": 0.03923159605070282,
         "India": 0.07582647365852556
+      },
+      "ebitda_margin": {
+        "US": 0.07236517188956365,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.03443044580855844,
+        "Japan": 0.07498813507100038,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05958542475532459,
+        "China": 0.03277696811318709,
+        "India": 0.03923226718595779,
+        "Global": 0.06381877868017329
+      },
+      "rd_pct_revenue": {
+        "US": 6.193431698790319e-05,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.00012895184193392292,
+        "Japan": 0.0,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.00012757363594300308,
+        "China": 0.0003561430741825491,
+        "India": 0.0,
+        "Global": 9.117554765909075e-05
       }
     },
     "Retail (Building Supply)": {
@@ -8447,6 +9707,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.12564013981213545,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.14214432444110717,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.06103106909048761,
+        "Japan": 0.11244050353762752,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.09827103692050314,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.1271094001955006
+      },
+      "rd_pct_revenue": {
+        "US": 0.0014127583869993855,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0007013157431765356,
+        "Japan": 1.653955710741524e-05,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0012633309027552675,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.0012156809899043972
       }
     },
     "Retail (Distributors)": {
@@ -8566,6 +9844,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04265838764422212,
         "China": 0.03765094064250017,
         "India": 0.05772399140412571
+      },
+      "ebitda_margin": {
+        "US": 0.11373965239257706,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.10189215101784575,
+        "Japan": 0.051253206083453955,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03817300836883119,
+        "China": 0.028974962049060343,
+        "India": 0.11664150294538199,
+        "Global": 0.0620833579546701
+      },
+      "rd_pct_revenue": {
+        "US": 0.0002429285952986248,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.00038731107491941154,
+        "Japan": 0.00012826754672047987,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0016117008631600092,
+        "China": 0.0019967743308405258,
+        "India": 2.4998818849718287e-05,
+        "Global": 0.0006837297780665406
       }
     },
     "Retail (General)": {
@@ -8685,6 +9981,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.051733531776651194,
         "China": 0.047761871586837576,
         "India": 0.0861030165426784
+      },
+      "ebitda_margin": {
+        "US": 0.10105733105173904,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.055204330277765244,
+        "Japan": 0.07943327143933802,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.08062159595694796,
+        "China": 0.08210046017327753,
+        "India": 0.031618148811689145,
+        "Global": 0.09476194342959583
+      },
+      "rd_pct_revenue": {
+        "US": 0.052295159025648,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0008897355955506282,
+        "Japan": 0.00027611597789926944,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.007978946411421104,
+        "China": 0.0020888799812477936,
+        "India": 6.27960641630353e-05,
+        "Global": 0.039753502062429384
       }
     },
     "Retail (Grocery and Food)": {
@@ -8804,125 +10118,161 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05130327257667812,
         "China": 0.04101708145800813,
         "India": 0.07657250817934658
+      },
+      "ebitda_margin": {
+        "US": 0.05403881160933243,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0487553497088494,
+        "Japan": 0.06740833763593626,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.05721766191255019,
+        "China": 0.020162228969780406,
+        "India": 0.0687575028377809,
+        "Global": 0.05898088145502911
+      },
+      "rd_pct_revenue": {
+        "US": 0.002334598581377701,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0006634955262761246,
+        "Japan": 1.3876129409760603e-05,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.00034729221505565316,
+        "China": 0.002313741450158197,
+        "India": 0.0,
+        "Global": 0.0007368371444142219
       }
     },
     "Retail (Online)": {
       "ev_ebitda_multiple": {
-        "Global": 26.5505431566775,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 19.5339258726429,
-        "Japan": 22.6429495472186,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 19.1262120087461,
-        "China": 20.1418026063975,
-        "India": "NA",
-        "US": 17.4318738613467
+        "Global": 17.096735631135832,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 23.641536693855443,
+        "Japan": 10.403279966528396,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 14.860055402388001,
+        "China": 17.146559644963148,
+        "India": 39.37632097870612,
+        "US": 17.37850333571857
       },
       "cogs_pct_revenue": {
-        "Global": 0.272051254161459,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.308683755048422,
-        "US": 0.223742321945276,
-        "Japan": 0.553163444639719,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.304168923038875,
-        "China": 0.2511124539911,
-        "India": 0
+        "Global": 0.673779362657617,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.7513455532936465,
+        "US": 0.6682355620802106,
+        "Japan": 0.6461639894134568,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.6871733908362261,
+        "China": 0.6860306616742631,
+        "India": 0.5927234564892682
       },
       "sga_pct_revenue": {
-        "Global": 0.0666225736415968,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.101262811060952,
-        "US": 0.0718340186473087,
-        "Japan": 0.00408611599297012,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0389288521425942,
-        "China": 0.0683568642531451,
-        "India": 0
+        "Global": 0.21234487314361802,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.17155753437273252,
+        "US": 0.20879360221344934,
+        "Japan": 0.28744572845206406,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.21900368893741648,
+        "China": 0.2576282885785949,
+        "India": 0.07804889764263576
       },
       "da_pct_revenue": {
-        "Global": 0.0257,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0183,
-        "US": 0.04342,
-        "Japan": 0.011,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0207,
-        "China": 0.01968,
-        "India": 0.0198
+        "Global": 0.030018542879180557,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.012137164937866853,
+        "US": 0.0330339966014883,
+        "Japan": 0.03821557261089834,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.01985879787858745,
+        "China": 0.04404991119787172,
+        "India": 0.03229832933825508
       },
       "acc_receivable_pct_revenue": {
-        "Global": 0.119969520346906,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.155347024915165,
-        "US": 0.162504018816522,
-        "Japan": 0.0116203866432337,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0466137360833358,
-        "China": 0.0166181398670549,
-        "India": 0
+        "Global": 0.07181350964108726,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0840547101975619,
+        "US": 0.03499151333336807,
+        "Japan": 0.5698316277805608,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.06280695062307515,
+        "China": 0.033581945932512826,
+        "India": 0.008803126847388596
       },
       "inventory_pct_revenue": {
-        "Global": 0.0178464193629723,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0499666265033249,
-        "US": 0.00392151885882532,
-        "Japan": 0,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.000307435155060741,
-        "China": 0,
-        "India": 0
+        "Global": 0.09317371409425049,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.09551810625423622,
+        "US": 0.08666309043980253,
+        "Japan": 0.06891434398834678,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.13340499310832601,
+        "China": 0.2332715697877782,
+        "India": 0.13896879167813334
       },
       "acc_payable_pct_revenue": {
-        "Global": 0.145556649440528,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.136460491925216,
-        "US": 0.183341370966377,
-        "Japan": 0.0528031634446397,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.121346915628025,
-        "China": 0.00664725594682195,
-        "India": 0
+        "Global": 0.12375751349840197,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.14300486329707723,
+        "US": 0.11891944590305908,
+        "Japan": 0.13495484858898144,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.13852195603368186,
+        "China": 0.1830959453123075,
+        "India": 0.20000832874114152
       },
       "beta": {
-        "Global": 0.947202117637149,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.960746998690458,
-        "US": 1.12086776603139,
-        "Japan": 0.752325821178844,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.81153027590153,
-        "China": 1.66156976810389,
-        "India": 0
+        "Global": 0.9825458040668552,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.975838803908616,
+        "US": 0.8052405395912856,
+        "Japan": 0.9468939470396178,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.0343608955406234,
+        "China": 1.2410032752559959,
+        "India": 1.0984252543553326
       },
       "cost_of_equity": {
-        "Global": 0.0995156557405413,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.095387998222868,
-        "US": 0.0903599172374441,
-        "Japan": 0.0811559437323689,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.102748585741041,
-        "China": 0.132346377944249,
-        "India": 0
+        "Global": 0.09481732876896395,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.09092670496598407,
+        "US": 0.07541372806577135,
+        "Japan": 0.08817034887783635,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.10797469128478926,
+        "China": 0.10328756834815819,
+        "India": 0.11726850800835756
       },
       "equity_pct_capital": {
-        "Global": 0.563997563903907,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.409559426834977,
-        "US": 0.629576234911394,
-        "Japan": 0.600105196846541,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.592585503819392,
-        "China": 0.629699541293576,
-        "India": 0.832088296655226
+        "Global": 0.8846070208619928,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.7659294088275248,
+        "US": 0.9264089952191082,
+        "Japan": 0.5698694914064067,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.7318060585348555,
+        "China": 0.6833880291154527,
+        "India": 0.9473672414570729
       },
       "cost_of_debt": {
-        "Global": 0.058543,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.054643,
-        "US": 0.045043,
-        "Japan": 0.052743,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.069443,
-        "China": 0.052743,
-        "India": 0
+        "Global": 0.057772,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.055172,
+        "US": 0.050671999999999995,
+        "Japan": 0.051006,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.06407199999999999,
+        "China": 0.056613,
+        "India": 0.06707199999999999
       },
       "debt_pct_capital": {
-        "Global": 0.436002436096093,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.590440573165023,
-        "US": 0.370423765088606,
-        "Japan": 0.399894803153459,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.407414496180608,
-        "China": 0.370300458706424,
-        "India": 0.167911703344774
+        "Global": 0.11539297913800717,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.2340705911724752,
+        "US": 0.07359100478089176,
+        "Japan": 0.43013050859359325,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.2681939414651445,
+        "China": 0.3166119708845473,
+        "India": 0.05263275854292715
       },
       "book_interest_rate": {
-        "Global": 0.0353396902816949,
-        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0282321869687705,
-        "US": 0.0383040318676713,
-        "Japan": 0.00610546922794568,
-        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0419581552411458,
-        "China": 0.034807870920362,
-        "India": 0.000683366733466934
+        "Global": 0.03082912753823364,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0440258566561468,
+        "US": 0.02322147448250308,
+        "Japan": 0.013124880814200839,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.051733531776651194,
+        "China": 0.047761871586837576,
+        "India": 0.0861030165426784
+      },
+      "ebitda_margin": {
+        "US": 0.10105733105173904,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.055204330277765244,
+        "Japan": 0.07943327143933802,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.08062159595694796,
+        "China": 0.08210046017327753,
+        "India": 0.031618148811689145,
+        "Global": 0.09476194342959583
+      },
+      "rd_pct_revenue": {
+        "US": 0.052295159025648,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0008897355955506282,
+        "Japan": 0.00027611597789926944,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.007978946411421104,
+        "China": 0.0020888799812477936,
+        "India": 6.27960641630353e-05,
+        "Global": 0.039753502062429384
       }
     },
     "Retail (Special Lines)": {
@@ -9042,6 +10392,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.069811306918886,
         "China": 0.06712509180367632,
         "India": 0.07975946722677606
+      },
+      "ebitda_margin": {
+        "US": 0.09853245477448722,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.09078130779498543,
+        "Japan": 0.08727647802500967,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.07198753400879139,
+        "China": 0.054268268108409005,
+        "India": 0.06937989754534078,
+        "Global": 0.08841102598243243
+      },
+      "rd_pct_revenue": {
+        "US": 0.0008389949058999544,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0016923734267433415,
+        "Japan": 0.00047358455962203316,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0022652578270914697,
+        "China": 0.005688362488031979,
+        "India": 0.0001865420965505365,
+        "Global": 0.0013148088232457422
       }
     },
     "Rubber& Tires": {
@@ -9161,6 +10529,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0427264986820177,
         "China": 0.030450014240956995,
         "India": 0.08295846714953851
+      },
+      "ebitda_margin": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.12177234546132122,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.12874872829334985,
+        "China": 0.13919328724345456,
+        "India": 0.13115174847609878,
+        "Global": 0.13115920430913297
+      },
+      "rd_pct_revenue": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0693692361643209,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02206035680215817,
+        "China": 0.03391837405538479,
+        "India": 0.007597272072806653,
+        "Global": 0.03967079747345476
       }
     },
     "Semiconductor": {
@@ -9280,6 +10666,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.026471085459166575,
         "China": 0.030091539166153328,
         "India": 0.0810296766446522
+      },
+      "ebitda_margin": {
+        "US": 0.3677016381020859,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.2787716071046121,
+        "Japan": 0.29257034016126904,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.257926598862734,
+        "China": 0.08729735661868146,
+        "India": 0.16842794935641234,
+        "Global": 0.3120440616141742
+      },
+      "rd_pct_revenue": {
+        "US": 0.15360132103292468,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.18281057083993485,
+        "Japan": 0.14227563865619797,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0838042143283624,
+        "China": 0.07827360928807825,
+        "India": 0.00011704989438529919,
+        "Global": 0.12349409101970968
       }
     },
     "Semiconductor Equip": {
@@ -9399,6 +10803,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02091852958667405,
         "China": 0.02482985143483655,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.29056303254659493,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.26069165545323947,
+        "Japan": 0.2758776353643511,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.10616788692268653,
+        "China": 0.10710395017857463,
+        "India": "NA",
+        "Global": 0.2242312892718631
+      },
+      "rd_pct_revenue": {
+        "US": 0.10720405371180282,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1364608304032259,
+        "Japan": 0.06614761594730516,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.06568092632408093,
+        "China": 0.0713724223334949,
+        "India": "NA",
+        "Global": 0.09202381703026515
       }
     },
     "Shipbuilding & Marine": {
@@ -9518,6 +10940,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.044139074073698714,
         "China": 0.03173343769074275,
         "India": 0.056687305476984154
+      },
+      "ebitda_margin": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.1601215533521644,
+        "Japan": 0.14987019398551274,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.29575260165050227,
+        "China": 0.26143350096014095,
+        "India": 0.45044137415479757,
+        "Global": 0.2247640087481451
+      },
+      "rd_pct_revenue": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0011110933717500184,
+        "Japan": 0.0012718435858805098,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.002362401392529016,
+        "China": 0.005750023870906141,
+        "India": 0.0,
+        "Global": 0.0016905211765254936
       }
     },
     "Shoe": {
@@ -9637,6 +11077,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.050121256591706145,
         "China": 0.038200209277990935,
         "India": 0.0910480607331699
+      },
+      "ebitda_margin": {
+        "US": 0.11874274171527453,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.1096907899823634,
+        "China": 0.14789617444877767,
+        "India": 0.12173743599039287,
+        "Global": 0.11562408964364963
+      },
+      "rd_pct_revenue": {
+        "US": 0.0013537831907172912,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.01783550287960184,
+        "China": 0.023403997025751522,
+        "India": 0.0009534599175239044,
+        "Global": 0.007503871902170105
       }
     },
     "Software (Entertainment)": {
@@ -9756,6 +11214,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03293896057601163,
         "China": 0.03300881412201008,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.3489515462716775,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.24851948448100886,
+        "Japan": 0.2104079506530264,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.2590595716295277,
+        "China": 0.2679636444928245,
+        "India": "NA",
+        "Global": 0.32821860945140574
+      },
+      "rd_pct_revenue": {
+        "US": 0.18606862024867823,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.023695422534977376,
+        "Japan": 0.017002348969553802,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.09760226661014462,
+        "China": 0.10963312835016566,
+        "India": "NA",
+        "Global": 0.1638549555572791
       }
     },
     "Software (Internet)": {
@@ -9875,6 +11351,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02446124092044238,
         "China": 0.02525003135288815,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.09518583462265771,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.2168504141955257,
+        "Japan": 0.13776000139803316,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.06558105269460593,
+        "China": 0.05115510655213199,
+        "India": "NA",
+        "Global": 0.09710659618990972
+      },
+      "rd_pct_revenue": {
+        "US": 0.1975542031975245,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.04322759107919246,
+        "Japan": 0.002554905567230103,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.034834282987606095,
+        "China": 0.01589071377324465,
+        "India": "NA",
+        "Global": 0.1133367708464233
       }
     },
     "Software (System & Application)": {
@@ -9994,6 +11488,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03131781206983667,
         "China": 0.026806414947359247,
         "India": 0.07619347708547108
+      },
+      "ebitda_margin": {
+        "US": 0.35930450706077793,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.17230745519262428,
+        "Japan": 0.18018631648595496,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02680422502349226,
+        "China": -0.02640838606070134,
+        "India": 0.17725346392085836,
+        "Global": 0.29843848370960196
+      },
+      "rd_pct_revenue": {
+        "US": 0.15978434052233426,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.15862922929675077,
+        "Japan": 0.01584721711260282,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.16254005818073852,
+        "China": 0.20277623606260514,
+        "India": 0.019530230550232192,
+        "Global": 0.1607115176730652
       }
     },
     "Steel": {
@@ -10113,6 +11625,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04655226693297079,
         "China": 0.029772105463475976,
         "India": 0.0735820260458315
+      },
+      "ebitda_margin": {
+        "US": 0.10581335831596377,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.056475854357049396,
+        "Japan": 0.09295850949350795,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.09134559645455095,
+        "China": 0.052203346097734735,
+        "India": 0.12520044246992845,
+        "Global": 0.09240539782517121
+      },
+      "rd_pct_revenue": {
+        "US": 4.074460064747882e-06,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.008941784314320463,
+        "Japan": 0.009090407930583728,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.011079040101283199,
+        "China": 0.019429476493437226,
+        "India": 0.0016646104583470998,
+        "Global": 0.009550365985905836
       }
     },
     "Telecom (Wireless)": {
@@ -10232,6 +11762,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0730480717175778,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.3457016445317238,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.24343918032866144,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.283266675104417,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.28342508924290627
+      },
+      "rd_pct_revenue": {
+        "US": 0.0007233459541371528,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.0004816998123484699,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.01364614733789792,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.013471825072391481
       }
     },
     "Telecom. Equipment": {
@@ -10351,6 +11899,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03373833426949412,
         "China": 0.03011283177588802,
         "India": 0.052054088014649585
+      },
+      "ebitda_margin": {
+        "US": 0.23952770874311258,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.08597923509223622,
+        "Japan": 0.08054280066899804,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.06632171357009739,
+        "China": 0.06983762438463918,
+        "India": 0.11504114756228132,
+        "Global": 0.133704809194717
+      },
+      "rd_pct_revenue": {
+        "US": 0.14357539777816294,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.21095783743156837,
+        "Japan": 0.07237950433328265,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.073653411166655,
+        "China": 0.08531346954891653,
+        "India": 0.013257713207986703,
+        "Global": 0.12517174588544105
       }
     },
     "Telecom. Services": {
@@ -10470,6 +12036,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.059906866182238186,
         "China": "NA",
         "India": 0.08586732829508019
+      },
+      "ebitda_margin": {
+        "US": 0.3469946062412255,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.27331769042134807,
+        "Japan": 0.2334205460012849,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.26813678760782644,
+        "China": "NA",
+        "India": 0.3738376704657751,
+        "Global": 0.28836924705995104
+      },
+      "rd_pct_revenue": {
+        "US": 0.004567332153822104,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.007093608780629275,
+        "Japan": 0.01809708269449358,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0101376488055942,
+        "China": "NA",
+        "India": 9.051979708808223e-05,
+        "Global": 0.008254681421567213
       }
     },
     "Tobacco": {
@@ -10589,6 +12173,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.02797634397008004,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.42220082127197295,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.22385349438341431,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.32035151385383176
+      },
+      "rd_pct_revenue": {
+        "US": 0.014772712830180685,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.01036307708418963,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.012193307224581514
       }
     },
     "Transportation": {
@@ -10708,6 +12310,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.045975061365836865,
         "China": 0.03113380095405194,
         "India": 0.09266509579165436
+      },
+      "ebitda_margin": {
+        "US": 0.09827119969732138,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.08392499559131363,
+        "Japan": 0.07769880241687468,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.10549402870659225,
+        "China": 0.08445236913642112,
+        "India": 0.05182695889230677,
+        "Global": 0.0965812976911191
+      },
+      "rd_pct_revenue": {
+        "US": 0.012456650526641945,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.000969854122464054,
+        "Japan": 0.00038525272260212006,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.005444383206777032,
+        "China": 0.006306370640685481,
+        "India": 0.00033037770520600137,
+        "Global": 0.006174789368900739
       }
     },
     "Transportation (Railroads)": {
@@ -10827,6 +12447,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.044103573826276436,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.23630516197405907,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.31511147310050386,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.32281399780489783
+      },
+      "rd_pct_revenue": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.004262964316117082,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0012406662003296635,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.002187898575533001
       }
     },
     "Trucking": {
@@ -10946,6 +12584,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.11312940158160655,
         "China": "NA",
         "India": 0.09210884662520998
+      },
+      "ebitda_margin": {
+        "US": 0.15578441491850015,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.09197260273972603,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.16575475740299497,
+        "China": "NA",
+        "India": 0.10756394106960039,
+        "Global": 0.14315956622859194
+      },
+      "rd_pct_revenue": {
+        "US": 0.00139708426259121,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.0,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0005510142641701155,
+        "China": "NA",
+        "India": 0.0,
+        "Global": 0.0009353599176520953
       }
     },
     "Utility (General)": {
@@ -11065,6 +12721,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.04640788486909984,
         "China": "NA",
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.3491971969520865,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.15866954879627537,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.3276139947380344,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.21830528057118892
+      },
+      "rd_pct_revenue": {
+        "US": 0.0,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.001739039452259639,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.0007371107974840139,
+        "China": "NA",
+        "India": "NA",
+        "Global": 0.0012028603194360788
       }
     },
     "Utility (Water)": {
@@ -11184,6 +12858,24 @@
         "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.03555492291556,
         "China": 0.029493365564915986,
         "India": "NA"
+      },
+      "ebitda_margin": {
+        "US": 0.4572626164451616,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.3521681096701102,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.35814495535189994,
+        "China": 0.30775721098544434,
+        "India": "NA",
+        "Global": 0.374104787215101
+      },
+      "rd_pct_revenue": {
+        "US": 0.00019733626693810944,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.004581492032103384,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.004549963958200355,
+        "China": 0.010749109313502992,
+        "India": "NA",
+        "Global": 0.003796254293779274
       }
     }
   },
@@ -12761,62 +14453,68 @@
   },
   "stage_parameters": {
     "Idea stage": {
-      "risk_multiplier": 0.35,
-      "hurdle_rate": 0.35,
+      "vc_target_return": 0.6,
+      "private_company_discount": 0.4,
+      "survival_probability": 0.35,
       "method_weights": {
         "scorecard": 0.4,
         "venture_capital": 0.4,
-        "dcf_multiples": 0.1,
+        "comparables": 0.1,
         "dcf": 0.1
       }
     },
     "Development stage": {
-      "risk_multiplier": 0.45,
-      "hurdle_rate": 0.45,
+      "vc_target_return": 0.5,
+      "private_company_discount": 0.35,
+      "survival_probability": 0.45,
       "method_weights": {
         "scorecard": 0.3,
         "venture_capital": 0.3,
-        "dcf_multiples": 0.2,
+        "comparables": 0.2,
         "dcf": 0.2
       }
     },
     "Startup stage": {
-      "risk_multiplier": 0.55,
-      "hurdle_rate": 0.55,
+      "vc_target_return": 0.4,
+      "private_company_discount": 0.3,
+      "survival_probability": 0.5,
       "method_weights": {
         "scorecard": 0.15,
         "venture_capital": 0.25,
-        "dcf_multiples": 0.3,
+        "comparables": 0.3,
         "dcf": 0.3
       }
     },
     "Expansion stage": {
-      "risk_multiplier": 0.7,
-      "hurdle_rate": 0.7,
+      "vc_target_return": 0.3,
+      "private_company_discount": 0.25,
+      "survival_probability": 0.65,
       "method_weights": {
         "scorecard": 0.05,
         "venture_capital": 0.15,
-        "dcf_multiples": 0.4,
+        "comparables": 0.4,
         "dcf": 0.4
       }
     },
     "Growth Stage": {
-      "risk_multiplier": 0.8,
-      "hurdle_rate": 0.8,
+      "vc_target_return": 0.25,
+      "private_company_discount": 0.2,
+      "survival_probability": 0.8,
       "method_weights": {
         "scorecard": 0,
         "venture_capital": 0.2,
-        "dcf_multiples": 0.4,
+        "comparables": 0.4,
         "dcf": 0.4
       }
     },
     "Maturity stage": {
-      "risk_multiplier": 0.85,
-      "hurdle_rate": 0.85,
+      "vc_target_return": 0.2,
+      "private_company_discount": 0.2,
+      "survival_probability": 0.95,
       "method_weights": {
         "scorecard": 0,
         "venture_capital": 0,
-        "dcf_multiples": 0.5,
+        "comparables": 0.5,
         "dcf": 0.5
       }
     }
@@ -12891,13 +14589,13 @@
     },
     "management_team_experience": {
       "Demonstrated experience as a CEO": 1.2,
-      "Demonstrated experience as a COO,CFO,CTO": 1.1,
-      "Demostrated experience as a product manager": 1,
+      "Demonstrated experience as a COO, CFO or CTO": 1.1,
+      "Demonstrated experience as a product manager": 1,
       "Experience in the business sector": 0.9,
       "No experience": 0.7
     },
     "product_compelling_to_customers": {
-      "This product is a not a necessity/Alternatives exist": 0.7,
+      "This product is not a necessity / alternatives exist": 0.7,
       "This product is novel and sought after": 1,
       "This product will be a necessity": 1.2
     },
@@ -12908,7 +14606,7 @@
       "Solid patent protections": 1.1
     },
     "willingness_to_step_aside_for_ceo": {
-      "Unwilling (*Deal braker)": 0,
+      "Unwilling (deal breaker)": 0,
       "Neutral": 1,
       "Willing": 1.05
     },
@@ -12925,23 +14623,25 @@
       "Competent team in place": 1.1
     },
     "marketing_partners": {
-      "No  partners identified": 0.7,
+      "No partners identified": 0.7,
       "Key partners in place": 1
     },
     "target_market_size": {
-      "< $50 million ": 0.8,
-      "$100 million": 1,
+      "< $50 million": 0.8,
+      "$50 to $100 million": 0.9,
+      "About $100 million": 1,
       "> $100 million": 1.1
     },
     "product_development_stage": {
       "Not well defined": 0.7,
-      "Well definied, working prototype": 0.95,
+      "Well defined, working prototype": 0.95,
       "Good feedback from potential customers": 1.1,
       "Orders or early sales from customers": 1.3
     },
     "revenue_potential_in_5_years": {
       "< $20 Million": 0.8,
       "$20 to $50 Million": 1,
+      "$50 to $100 Million": 1.05,
       "> $100 Million (may require significant additional funding)": 1.1
     },
     "need_for_additional_funding_rounds": {
@@ -12949,16 +14649,6 @@
       "Another angel round": 1,
       "Need venture capital": 0.85
     }
-  },
-  "survival_rate_by_years_since_incorporation": {
-    "1": 0.8699,
-    "2": 0.8064,
-    "3": 0.7492,
-    "4": 0.7025,
-    "5": 0.6631,
-    "6": 0.6289,
-    "7": 0.5987,
-    "8": 0.5717
   },
   "categorical_options": {
     "country": [
@@ -13233,5 +14923,43 @@
       "Growth Stage",
       "Maturity stage"
     ]
+  },
+  "scorecard_option_aliases": {
+    "management_team_experience": {
+      "Demonstrated experience as a COO,CFO,CTO": "Demonstrated experience as a COO, CFO or CTO",
+      "Demostrated experience as a product manager": "Demonstrated experience as a product manager"
+    },
+    "willingness_to_step_aside_for_ceo": {
+      "Unwilling (*Deal braker)": "Unwilling (deal breaker)"
+    },
+    "marketing_partners": {
+      "No  partners identified": "No partners identified"
+    },
+    "product_development_stage": {
+      "Well definied, working prototype": "Well defined, working prototype"
+    },
+    "product_compelling_to_customers": {
+      "This product is a not a necessity/Alternatives exist": "This product is not a necessity / alternatives exist"
+    },
+    "target_market_size": {
+      "< $50 million ": "< $50 million",
+      "$100 million": "About $100 million"
+    }
+  },
+  "market_parameters": {
+    "risk_free_rate": 0.0395,
+    "perpetual_growth_rate": 0.02
+  },
+  "sources": {
+    "data_as_of": "2026-01-05",
+    "industry_benchmarks": "Aswath Damodaran, NYU Stern (Damodaran Online), regional industry datasets vebitda, wacc, margin, wcdata and dbtfund, updated 5 January 2026. Regional figures based on fewer than 10 companies are replaced by the industry's Global figure. D&A % and the book interest rate are derived from Damodaran's margin and debt ratios. 'Retail (Online)' is no longer published separately; Damodaran's 'Retail (General)' figures are used.",
+    "country_data": "Aswath Damodaran, NYU Stern (Damodaran Online), country risk premiums (ctryprem), January 2026.",
+    "risk_free_rate": "Long-term US Treasury bond rate used in Damodaran's January 2026 cost-of-capital spreadsheets (3.95%).",
+    "perpetual_growth_rate": "App assumption: 2% nominal long-run growth, below the risk-free rate.",
+    "vc_target_return": "App assumption per stage, within the venture-capital target-return ranges reported in the literature (roughly 50-70% for start-up/seed financing falling to 25-35% for bridge/pre-IPO rounds; see Damodaran, 'Valuing Young, Start-up and Growth Companies', 2009, citing Sahlman). Used only by the Venture Capital method.",
+    "private_company_discount": "App assumption per stage, applied only to the Comparables method: public-company multiples are reduced for illiquidity and size (restricted-stock and pre-IPO studies commonly find 20-35%), with larger discounts for earlier stages.",
+    "survival_probability": "App assumption per stage, applied only to the DCF method, anchored on US BLS Business Employment Dynamics data (about 78% of new establishments survive one year and about 49% survive five years).",
+    "stage_region_pre_money_benchmarks": "Internal estimate carried over from the original workbook. Not taken from a published survey; users can replace it with their own benchmark in the wizard.",
+    "scorecard": "Scorecard method (Bill Payne / Ohio TechAngels): criterion weights 30/25/15/10/10/10 (Payne's 'need for additional investment' and 'other' 5% each are combined into 'funding required')."
   }
 }

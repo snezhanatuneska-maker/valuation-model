@@ -1,24 +1,22 @@
 """
 Branded PDF valuation report generator.
 
-Rebuilds the same report the browser's "Download PDF" button already
-assembles on screen (see index.html's buildFullReportHTML / the .pr-*
-print stylesheet) as a real, standalone PDF file generated server-side
-with reportlab - so the download is an actual one-click file instead of
-going through the browser's print dialog.
+The only report renderer: the wizard's "Download PDF" and History both
+call the API, which builds the PDF here with reportlab.
 
-Sections (in order), matching the on-screen version:
+Sections (in order):
   1. Cover page
   2. Company summary (general info, business profile, market potential,
      team & product, latest operating performance)
-  3. Projected financials & valuation inputs (revenue/EBITDA charts,
-     industry benchmarks, planned capex, use of funds, ownership)
+  3. Projected financials & valuation inputs (projection table and charts,
+     benchmarks actually used with their sources, capex, use of funds,
+     ownership)
   4. Valuation summary (all four methods, blended value, pre/post-money)
-  5. Scorecard method detail
-  6. Venture Capital method detail
-  7. Comparables / DCF Multiples method detail (with sensitivity table)
-  8. DCF method detail
-  9. Methodology & disclaimer
+  5. Checks on your inputs (warnings raised by the engine)
+  6. Scenario & sensitivity
+  7-10. One page per method, each starting with a plain-language
+     "how this number was reached"
+  11. Methods, data sources & disclaimer
 
 `build_pdf_bytes()` is the single entry point app.py calls. It takes
 plain dicts (the same shapes already persisted to SQLite: a
@@ -167,7 +165,7 @@ def money(n: Any) -> str:
         n = float(n)
     except (TypeError, ValueError):
         return "\u2014"
-    sign = "-" if n < 0 else ""
+    sign = "-" if round(n) < 0 else ""  # never "-€0"
     return f"{sign}\u20ac{abs(n):,.0f}"
 
 
@@ -179,6 +177,28 @@ def pct(n: Any) -> str:
     except (TypeError, ValueError):
         return "\u2014"
     return f"{n * 100:.1f}%"
+
+
+def money2(n: Any) -> str:
+    """Money with cents, for small amounts like a price per share."""
+    if n is None or n == "":
+        return "\u2014"
+    n = float(n)
+    sign = "-" if n < 0 else ""
+    return f"{sign}\u20ac{abs(n):,.2f}"
+
+
+def pct2(n: Any) -> str:
+    """Percent with 2 decimals, for rates (WACC, cost of equity, ...)."""
+    if n is None or n == "":
+        return "\u2014"
+    return f"{float(n) * 100:.2f}%"
+
+
+def multiple(n: Any) -> str:
+    if n is None or n == "":
+        return "\u2014"
+    return f"{float(n):.2f}\u00d7"
 
 
 def safe(v: Any) -> str:
@@ -242,6 +262,7 @@ def data_table(
     total_label_span: int = 1,
     col_widths=None,
     first_col_align_left: bool = True,
+    text_table: bool = False,
 ) -> Table:
     """
     Multi-column table with an optional header row and an optional bold
@@ -253,14 +274,14 @@ def data_table(
     def fmt_row(cells, value_style=VALUE_STYLE, label_style=LABEL_STYLE):
         out = []
         for i, c in enumerate(cells):
-            if i == 0 and first_col_align_left:
+            if text_table or (i == 0 and first_col_align_left):
                 out.append(P(safe(c), label_style))
             else:
                 out.append(P(safe(c), value_style))
         return out
 
     if headers:
-        data.append([P(h, STYLES["th"] if i == 0 else STYLES["th_right"]) for i, h in enumerate(headers)])
+        data.append([P(h, STYLES["th"] if i == 0 or text_table else STYLES["th_right"]) for i, h in enumerate(headers)])
     for r in rows:
         data.append(fmt_row(r))
     total_idx = None
@@ -304,19 +325,26 @@ def data_table(
 def bar_chart(categories: list[str], values: list[float], color=NAVY_LINE, width=CONTENT_W / 2 - 8, height=110) -> Drawing:
     d = Drawing(width, height)
     pad_bottom, pad_top, pad_side = 20, 16, 4
-    max_v = max([abs(v) for v in values] + [1]) * 1.18
+    values = [v or 0 for v in values]
+    hi = max(values + [0])
+    lo = min(values + [0])
+    span = (hi - lo) * 1.18 or 1
+    plot_h = height - pad_bottom - pad_top
+    base_y = pad_bottom + plot_h * (-lo / span) if lo < 0 else pad_bottom
     n = max(len(categories), 1)
     gap = (width - pad_side * 2) / n
     bar_w = min(gap * 0.55, 40)
-    d.add(Line(pad_side, pad_bottom, width - pad_side, pad_bottom, strokeColor=colors.HexColor("#d5dbe3")))
+    d.add(Line(pad_side, base_y, width - pad_side, base_y, strokeColor=colors.HexColor("#d5dbe3")))
     for i, (cat, v) in enumerate(zip(categories, values)):
-        h = (v / max_v) * (height - pad_bottom - pad_top) if max_v else 0
+        h = v / span * plot_h
         x = pad_side + i * gap + (gap - bar_w) / 2
-        d.add(Rect(x, pad_bottom, bar_w, max(h, 0), fillColor=color, strokeColor=None))
+        y0 = base_y if h >= 0 else base_y + h
+        d.add(Rect(x, y0, bar_w, abs(h), fillColor=color if v >= 0 else colors.HexColor("#a3623f"), strokeColor=None))
         label = f"\u20ac{v / 1000:,.0f}k" if abs(v) >= 1000 else money(v)
-        d.add(String(x + bar_w / 2, pad_bottom + h + 4, label, fontName="Helvetica-Bold", fontSize=6.5,
+        label_y = base_y + h + 4 if h >= 0 else base_y + h - 9
+        d.add(String(x + bar_w / 2, label_y, label, fontName="Helvetica-Bold", fontSize=6.5,
                       fillColor=MUTED, textAnchor="middle"))
-        d.add(String(x + bar_w / 2, pad_bottom - 11, str(cat), fontName="Helvetica", fontSize=6.5,
+        d.add(String(x + bar_w / 2, 6, str(cat), fontName="Helvetica", fontSize=6.5,
                       fillColor=MUTED_LIGHT, textAnchor="middle"))
     return d
 
@@ -350,6 +378,7 @@ def legend_table(entries: list[tuple[str, float]], fmt=money) -> Table:
         ("TOPPADDING", (0, 0), (-1, -1), 2),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
     ]))
     return t
 
@@ -363,7 +392,7 @@ def side_by_side(left, right, gap=16) -> Table:
 
 
 # ============================================================================
-# Labels (mirrors index.html's SCORECARD_LABELS / CRITERIA_LABELS / METHOD_LABELS)
+# Labels (mirror index.html's SCORECARD_LABELS / CRITERIA_LABELS / METHOD_LABELS)
 # ============================================================================
 
 SCORECARD_LABELS = {
@@ -395,26 +424,41 @@ TEAM_PRODUCT_KEYS = [
 CRITERIA_LABELS = {
     "strength_of_the_team": "Strength of the team",
     "size_of_the_opportunity": "Size of the opportunity",
-    "competitive_environment": "Competitive Environment",
-    "strength_and_protection_of_product": "Strength & Protection of Product",
-    "strategic_relationships_with_partners": "Strategic Relationships with partners",
-    "funding_required": "Funding Required",
+    "competitive_environment": "Competitive environment",
+    "strength_and_protection_of_product": "Strength & protection of product",
+    "strategic_relationships_with_partners": "Strategic relationships with partners",
+    "funding_required": "Funding required",
 }
 METHOD_LABELS = {
-    "scorecard": "Scorecard method",
-    "venture_capital": "Venture Capital method",
-    "dcf_multiples": "DCF Multiples method",
-    "dcf": "DCF method",
+    "scorecard": "Scorecard",
+    "venture_capital": "Venture Capital",
+    "comparables": "Comparables (EV/EBITDA multiple)",
+    "dcf": "Discounted cash flow (DCF)",
 }
-METHOD_CHART_LABELS = {"scorecard": "Scorecard", "venture_capital": "VC", "dcf_multiples": "DCF Multiples", "dcf": "DCF"}
-BENCHMARK_LABELS = [
-    ("cogs_pct_revenue", "COGS (% of revenue)"),
-    ("sga_pct_revenue", "SG&A (% of revenue)"),
-    ("da_pct_revenue", "D&A (% of revenue)"),
-    ("acc_receivable_pct_revenue", "Accounts receivable (% of revenue)"),
-    ("inventory_pct_revenue", "Inventory (% of revenue)"),
-    ("acc_payable_pct_revenue", "Accounts payable (% of revenue)"),
-]
+METHOD_CHART_LABELS = {"scorecard": "Scorecard", "venture_capital": "VC", "comparables": "Comparables", "dcf": "DCF"}
+SOURCE_NOTES = {
+    "region": "",
+    "industry_global": "global figure*",
+    "cross_industry": "all-industry median*",
+    "user_override": "your input",
+}
+REGION_SHORT = {
+    "Europe (EU, UK, Switzerland & Scandinavia)": "Europe",
+    "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": "Emerging Markets",
+}
+
+
+def short_region(region: Optional[str]) -> str:
+    return REGION_SHORT.get(region or "", region or "—")
+
+
+def format_date(iso: Optional[str]) -> str:
+    if not iso:
+        return "—"
+    try:
+        return datetime.strptime(iso[:10], "%Y-%m-%d").strftime("%d %B %Y").lstrip("0")
+    except ValueError:
+        return iso
 
 
 # ============================================================================
@@ -448,7 +492,7 @@ def _fit_image(logo_bytes: bytes, max_w: float, max_h: float) -> Image:
 # ============================================================================
 
 
-def _make_page_decorator(company_name: str, today_str: str, logo_bytes: Optional[bytes]):
+def _make_page_decorator(company_name: str, date_str: str, logo_bytes: Optional[bytes]):
     def _draw(canvas, doc):
         canvas.saveState()
         header_y = PAGE_H - MARGIN_TOP + 9 * mm
@@ -478,7 +522,8 @@ def _make_page_decorator(company_name: str, today_str: str, logo_bytes: Optional
         canvas.setFillColor(colors.HexColor("#a7b0bc"))
         canvas.drawCentredString(
             PAGE_W / 2, MARGIN_BOTTOM - 10 * mm,
-            f"Startup Valuation Tool \u00b7 Generated {today_str} \u00b7 Informational estimate, not a certified appraisal",
+            f"Valuation as of {date_str} · Page {doc.page} · "
+            "Informational estimate, not a certified appraisal",
         )
         canvas.restoreState()
 
@@ -489,12 +534,31 @@ def _draw_nothing(canvas, doc):
     pass
 
 
+def _how(text: str) -> list:
+    """A shaded 'How this number was reached' box."""
+    box = Table([[P(f"<b>How this number was reached.</b> {esc(text)}", STYLES["td_label"], raw=True)]],
+                colWidths=[CONTENT_W])
+    box.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), DISCLAIMER_BG),
+        ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
+        ("TOPPADDING", (0, 0), (-1, -1), 9), ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    return [box, Spacer(1, 10)]
+
+
+def _not_meaningful(reason: Optional[str]) -> list:
+    if not reason:
+        return []
+    return [P(f"<b>Not used in the blend:</b> {esc(reason)}", STYLES["td_label"], raw=True), Spacer(1, 8)]
+
+
 # ============================================================================
 # Page builders - each returns a list of flowables
 # ============================================================================
 
 
-def _cover_page(company_name: str, today_str: str, logo_bytes: Optional[bytes]) -> list:
+def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Optional[bytes]) -> list:
     story = [Spacer(1, 55 * mm)]
     band = Table([[""]], colWidths=[35 * mm], rowHeights=[2.5])
     band.setStyle(TableStyle([("BACKGROUND", (0, 0), (0, 0), NAVY_LINE)]))
@@ -510,8 +574,11 @@ def _cover_page(company_name: str, today_str: str, logo_bytes: Optional[bytes]) 
     story.append(P(company_name, STYLES["h1"]))
     meta_rows = [
         [P("Prepared for", STYLES["cover_meta_label"]), P(company_name, STYLES["cover_meta_value"])],
-        [P("Prepared with", STYLES["cover_meta_label"]), P("Startup Valuation Tool", STYLES["cover_meta_value"])],
-        [P("As of", STYLES["cover_meta_label"]), P(today_str, STYLES["cover_meta_value"])],
+        [P("Valuation date", STYLES["cover_meta_label"]), P(date_str, STYLES["cover_meta_value"])],
+        [P("Market data", STYLES["cover_meta_label"]),
+         P(f"Damodaran Online (NYU Stern), {data_date}", STYLES["cover_meta_value"])],
+        [P("Report generated", STYLES["cover_meta_label"]),
+         P(datetime.now().strftime("%d %B %Y").lstrip("0"), STYLES["cover_meta_value"])],
     ]
     meta = Table(meta_rows, colWidths=[35 * mm, CONTENT_W - 35 * mm])
     meta.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 2),
@@ -521,15 +588,17 @@ def _cover_page(company_name: str, today_str: str, logo_bytes: Optional[bytes]) 
     story.append(Spacer(1, 40))
     story.append(P(
         "This report is an automated, informational estimate blending four standard valuation "
-        "methodologies. It is not a certified appraisal, and should not be relied on as financial, "
+        "methods. It is not a certified appraisal, and should not be relied on as financial, "
         "investment, or legal advice.",
         STYLES["cover_disclaimer"],
     ))
     return story
 
 
-def _company_summary_page(cp: dict, mkt: dict, ops: dict) -> list:
+def _company_summary_page(cp: dict, mkt: dict, ops: dict, output: dict) -> list:
     story = [P("Company summary", STYLES["h2"])]
+    proj = g(output, "projections", {})
+    tax_note = "your input" if g(cp, "dcf_tax_rate_override") is not None else "country statutory rate"
 
     general = info_table([
         ("Company name", g(cp, "company_name")),
@@ -546,122 +615,158 @@ def _company_summary_page(cp: dict, mkt: dict, ops: dict) -> list:
     business = info_table([
         ("Business activity", g(cp, "business_activity")),
         ("Industry", g(cp, "industry")),
-        ("Business territory", g(cp, "business_territory_region")),
+        ("Business territory", short_region(g(cp, "business_territory_region"))),
         ("Business model", g(cp, "business_model")),
         ("Committed capital", money(g(cp, "committed_capital", 0))),
         ("Exit strategy", g(cp, "exit_strategy")),
-        ("Planned time to exit (yrs)", g(cp, "planned_time_to_exit_years")),
-        ("Tax rate assumption", pct(g(cp, "dcf_tax_rate_override", 0))),
+        ("Planned time to exit", f"{g(cp, 'planned_time_to_exit_years')} years"),
+        ("Tax rate", f"{pct(g(proj, 'tax_rate'))} ({tax_note})"),
     ], col_widths=[HALF_W * 0.4, HALF_W * 0.6])
 
-    left_block = [P("General info", STYLES["h3"]), general]
-    right_block = [P("Business profile", STYLES["h3"]), business]
-    story.append(side_by_side(left_block, right_block))
+    story.append(side_by_side([P("General info", STYLES["h3"]), general],
+                              [P("Business profile", STYLES["h3"]), business]))
     story.append(Spacer(1, 10))
 
-    competitors = [g(mkt, "key_competitor_1"), g(mkt, "key_competitor_2"), g(mkt, "key_competitor_3")]
-    competitors = [c for c in competitors if c]
+    competitors = [c for c in (g(mkt, "key_competitor_1"), g(mkt, "key_competitor_2"), g(mkt, "key_competitor_3")) if c]
     market_rows = [(SCORECARD_LABELS.get(k, k), g(mkt, k)) for k in MARKET_POTENTIAL_KEYS]
     market_rows.append(("Key competitors", ", ".join(competitors) if competitors else None))
     market_table = info_table(market_rows, col_widths=[HALF_W * 0.4, HALF_W * 0.6])
 
     team_rows = [(SCORECARD_LABELS.get(k, k), g(mkt, k)) for k in TEAM_PRODUCT_KEYS]
     team_table = info_table(team_rows, col_widths=[HALF_W * 0.4, HALF_W * 0.6])
+    rev = g(ops, "current_revenue_last_12_months") or 0
+    margin = (g(ops, "current_ebitda") or 0) / rev if rev else None
     perf_table = info_table([
-        ("Current revenue", money(g(ops, "current_revenue_last_12_months"))),
-        ("Current EBITDA", money(g(ops, "current_ebitda"))),
-        ("Cash currently available", money(g(ops, "cash_available"))),
-        ("Current PP&E value", money(g(ops, "current_ppe_value"))),
+        ("Revenue, last 12 months", money(rev)),
+        ("EBITDA, last 12 months", money(g(ops, "current_ebitda"))),
+        ("EBITDA margin", pct(margin)),
+        ("Cash available", money(g(ops, "cash_available"))),
+        ("PP&E (current value)", money(g(ops, "current_ppe_value"))),
     ], col_widths=[HALF_W * 0.4, HALF_W * 0.6])
 
-    left_block2 = [P("Market potential", STYLES["h3"]), market_table]
-    right_block2 = [P("Team & product", STYLES["h3"]), team_table, P("Latest operating performance", STYLES["h3"]), perf_table]
-    story.append(side_by_side(left_block2, right_block2))
+    story.append(side_by_side(
+        [P("Market potential", STYLES["h3"]), market_table, P("Latest operating performance", STYLES["h3"]), perf_table],
+        [P("Team & product", STYLES["h3"]), team_table],
+    ))
     return story
 
 
 def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, output: dict, benchmark: dict) -> list:
     story = [P("Projected financials & valuation inputs", STYLES["h2"])]
-    years = g(output, "projections", {}).get("years", [])
-    year_labels = [y.get("year_label", "") for y in years]
-    revenue_vals = [y.get("revenue", 0) for y in years]
-    ebitda_vals = [y.get("ebitda", 0) for y in years]
+    proj = g(output, "projections", {})
+    years = proj.get("years", [])
+    labels = [y.get("year_label", "") for y in years]
+    story.append(P(
+        f"Year 1 is the 12 months after the valuation date ({format_date(proj.get('valuation_date'))}). "
+        f"The EBITDA margin starts from "
+        f"{'your last-12-month margin' if proj.get('starting_margin_source') == 'company' else 'the industry margin'} "
+        f"({pct(proj.get('starting_ebitda_margin'))}) and moves in equal steps to "
+        f"{'your target margin' if proj.get('target_margin_source') == 'user_override' else 'the industry margin'} "
+        f"({pct(proj.get('target_ebitda_margin'))}) by Year 5.", STYLES["sub"]))
 
-    rev_block = [P("Revenue by year", STYLES["h3"]), bar_chart(year_labels, revenue_vals, color=NAVY_LINE)]
-    ebitda_block = [P("EBITDA by year", STYLES["h3"]), bar_chart(year_labels, ebitda_vals, color=BLUE_MID)]
-    story.append(side_by_side(rev_block, ebitda_block))
+    headers = [""] + [f"{y.get('year_label')} ({y.get('period_label', '').replace('to ', '')})" for y in years]
+    rows = [
+        ["Revenue"] + [money(y.get("revenue")) for y in years],
+        ["EBITDA margin"] + [pct(y.get("ebitda_margin")) for y in years],
+        ["EBITDA"] + [money(y.get("ebitda")) for y in years],
+        ["Capital expenditure"] + [money(y.get("capex")) for y in years],
+        ["Free cash flow"] + [money(y.get("unlevered_fcf")) for y in years],
+    ]
+    n = max(len(years), 1)
+    story.append(data_table(headers, rows, col_widths=[CONTENT_W * 0.25] + [CONTENT_W * 0.75 / n] * n))
     story.append(Spacer(1, 8))
+    story.append(side_by_side(
+        [P("Revenue by year", STYLES["h3"]), bar_chart(labels, [y.get("revenue", 0) for y in years], color=NAVY_LINE)],
+        [P("EBITDA by year", STYLES["h3"]), bar_chart(labels, [y.get("ebitda", 0) for y in years], color=BLUE_MID)],
+    ))
 
     region = g(cp, "business_territory_region")
+    used = g(output, "benchmarks_used", {})
+    wacc = g(output, "wacc", {})
 
-    def bm_pct(key):
-        table = g(benchmark, key)
-        if table and region in table:
-            return pct(table[region])
-        return "\u2014"
+    def bm(metric, fmt=pct):
+        b = used.get(metric)
+        if not b:
+            return "—"
+        note = SOURCE_NOTES.get(b.get("source"), "")
+        return f"{fmt(b.get('value'))}" + (f" ({note})" if note else "")
 
-    dcf = g(output, "dcf", {})
-    scorecard = g(output, "scorecard", {})
-    dm = g(output, "dcf_multiples", {})
-    industry = g(cp, "industry")
-    story.append(P(f"Industry benchmarks \u2014 {safe(industry)} / {safe(region)}", STYLES["h3"]))
-    story.append(info_table([
-        ("Hurdle rate / risk multiplier", pct(g(dcf, "hurdle_rate"))),
-        ("Benchmark average pre-money valuation (stage)", money(g(scorecard, "benchmark_pre_money_valuation"))),
-        ("EV/EBITDA multiple", f"{g(dm, 'ev_ebitda_multiple', 0):.2f}x"),
-        *[(label, bm_pct(key)) for key, label in BENCHMARK_LABELS],
-    ]))
+    def info_only(metric):
+        table = g(benchmark, metric) or {}
+        v = table.get(region)
+        return pct(v) if v is not None else "—"
 
-    story.append(P("Planned capital expenditures", STYLES["h3"]))
-    capex = g(fin, "capex_by_year", [0, 0, 0, 0, 0])[1:]
-    story.append(data_table(["Y2", "Y3", "Y4", "Y5"], [[money(c) for c in capex]], first_col_align_left=False))
-    story.append(Spacer(1, 10))
+    story.append(P(f"Benchmarks used — {safe(g(cp, 'industry'))} / {short_region(region)}", STYLES["h3"]))
+    rows = [
+        ("Industry EBITDA margin (Year-5 target)", bm("ebitda_margin")),
+        ("  of which: COGS / SG&A / R&D (% of revenue, for reference)",
+         f"{info_only('cogs_pct_revenue')} / {info_only('sga_pct_revenue')} / {info_only('rd_pct_revenue')}"),
+        ("D&A (% of revenue)", bm("da_pct_revenue")),
+        ("Accounts receivable / inventory / payable (% of revenue)",
+         f"{bm('acc_receivable_pct_revenue')} / {bm('inventory_pct_revenue')} / {bm('acc_payable_pct_revenue')}"),
+        ("EV/EBITDA multiple (trailing, profitable public companies)", bm("ev_ebitda_multiple", multiple)),
+        ("Beta", bm("beta", lambda v: f"{float(v):.2f}")),
+        ("Cost of equity / WACC", f"{pct2(g(wacc, 'cost_of_equity'))} / {pct2(g(wacc, 'wacc'))}"),
+    ]
+    story.append(info_table(rows, col_widths=[CONTENT_W * 0.62, CONTENT_W * 0.38]))
+    if any(b.get("source") in ("industry_global", "cross_industry") for b in used.values()):
+        story.append(P("* Damodaran has no usable figure for this region, so the industry's global figure "
+                       "(or the median across all industries) is used.", STYLES["sub"]))
+
+    story.append(Spacer(1, 6))
 
     funds_entries = [(k, v) for k, v in (g(funding, "use_of_funds") or {}).items() if v]
     ownership_entries = [(o.get("name"), o.get("ownership_pct")) for o in (ownership or []) if o.get("ownership_pct", 0) > 0]
     allocated = sum(v for _, v in ownership_entries)
-    if allocated < 0.999:
-        ownership_entries.append(("Unallocated", 1 - allocated))
+    if ownership_entries and allocated < 0.995:
+        ownership_entries.append(("Not specified", 1 - allocated))
 
     funds_block = [P("Use of funds", STYLES["h3"])]
     if funds_entries:
-        funds_block.append(pie_chart([v for _, v in funds_entries]))
-        funds_block.append(Spacer(1, 4))
-        funds_block.append(legend_table(funds_entries, fmt=money))
+        funds_block += [pie_chart([v for _, v in funds_entries]), Spacer(1, 4), legend_table(funds_entries, fmt=money)]
     else:
-        funds_block.append(P("\u2014", STYLES["td_label"]))
-
-    own_block = [P("Ownership structure", STYLES["h3"])]
+        funds_block.append(P("—", STYLES["td_label"]))
+    own_block = [P("Ownership structure (before this round)", STYLES["h3"])]
     if ownership_entries:
-        own_block.append(pie_chart([v for _, v in ownership_entries]))
-        own_block.append(Spacer(1, 4))
-        own_block.append(legend_table(ownership_entries, fmt=pct))
+        own_block += [pie_chart([v for _, v in ownership_entries]), Spacer(1, 4), legend_table(ownership_entries, fmt=pct)]
     else:
-        own_block.append(P("\u2014", STYLES["td_label"]))
-
+        own_block.append(P("—", STYLES["td_label"]))
     story.append(side_by_side(funds_block, own_block))
     return story
 
 
 def _valuation_summary_page(output: dict) -> list:
     story = [P("Valuation", STYLES["h2"])]
-    story.append(P("Blended average of four valuation methodologies, weighted by company stage.", STYLES["sub"]))
+    story.append(P(
+        "Each method estimates the company's equity value before the new investment (pre-money). "
+        "They are blended using weights for the company's stage; a method that can't give a meaningful "
+        "value for this company is left out and the other weights are scaled up.", STYLES["sub"]))
 
     method_values = g(output, "method_values", {})
-    rows = []
-    cats, vals = [], []
+    rows, cats, vals = [], [], []
     for key, mv in method_values.items():
-        rows.append([METHOD_LABELS.get(key, key), pct(mv.get("weight")), money(mv.get("pre_money_value")), money(mv.get("weighted_value"))])
-        cats.append(METHOD_CHART_LABELS.get(key, key))
-        vals.append(mv.get("pre_money_value", 0))
+        status = mv.get("status")
+        if status == "ok":
+            value, weighted = money(mv.get("pre_money_value")), money(mv.get("weighted_value"))
+            cats.append(METHOD_CHART_LABELS.get(key, key))
+            vals.append(mv.get("pre_money_value") or 0)
+        elif status == "not_used":
+            value, weighted = "not used at this stage", "—"
+        else:
+            value, weighted = "not meaningful", "—"
+        rows.append([METHOD_LABELS.get(key, key), pct(mv.get("weight")), pct(mv.get("weight_used")), value, weighted])
     cats.append("Blended")
-    vals.append(g(output, "blended_pre_money_valuation"))
+    vals.append(g(output, "blended_pre_money_valuation") or 0)
 
-    total_row = ["Blended pre-money valuation", "", "", money(g(output, "blended_pre_money_valuation"))]
+    total_row = ["Blended pre-money valuation", "", "", "", money(g(output, "blended_pre_money_valuation"))]
     story.append(data_table(
-        ["Method", "Weight", "Pre-money value", "Weighted value"], rows, total_row=total_row, total_label_span=3,
-        col_widths=[CONTENT_W * 0.34, CONTENT_W * 0.18, CONTENT_W * 0.24, CONTENT_W * 0.24],
+        ["Method", "Stage weight", "Weight used", "Pre-money value", "Weighted value"], rows,
+        total_row=total_row, total_label_span=4,
+        col_widths=[CONTENT_W * 0.32, CONTENT_W * 0.13, CONTENT_W * 0.13, CONTENT_W * 0.22, CONTENT_W * 0.20],
     ))
+    for key, mv in method_values.items():
+        if mv.get("status") == "not_meaningful":
+            story.append(P(f"{METHOD_LABELS.get(key, key)}: {mv.get('note')}", STYLES["sub"]))
     story.append(Spacer(1, 12))
     story.append(bar_chart(cats, vals, color=NAVY_LINE, width=CONTENT_W, height=130))
     story.append(Spacer(1, 12))
@@ -669,9 +774,8 @@ def _valuation_summary_page(output: dict) -> list:
     def callout(label, value, emphasize=False):
         t = Table([[P(label, STYLES["callout_label"]), P(value, STYLES["callout_value"])]],
                   colWidths=[CONTENT_W * 0.6, CONTENT_W * 0.4])
-        bg = TOTAL_BG if emphasize else ROW_STRIPE
         t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), bg),
+            ("BACKGROUND", (0, 0), (-1, -1), TOTAL_BG if emphasize else ROW_STRIPE),
             ("TOPPADDING", (0, 0), (-1, -1), 9), ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
             ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -680,9 +784,79 @@ def _valuation_summary_page(output: dict) -> list:
 
     story.append(callout("Pre-money valuation", money(g(output, "blended_pre_money_valuation"))))
     story.append(Spacer(1, 6))
-    story.append(callout("Capital needed", money(g(output, "capital_needed"))))
+    story.append(callout("Capital being raised", money(g(output, "capital_needed"))))
     story.append(Spacer(1, 6))
     story.append(callout("Post-money valuation", money(g(output, "post_money_valuation")), emphasize=True))
+    return story
+
+
+def _warnings_page(output: dict) -> list:
+    warnings = g(output, "warnings", []) or []
+    story = [P("Checks on your inputs", STYLES["h2"])]
+    if not warnings:
+        story.append(P("No issues were found in the inputs.", STYLES["td_label"]))
+        return story
+    story.append(P("The calculation ran, but these points deserve a second look before the numbers are "
+                   "shared. Warnings may change the result; notes explain how the data was used.", STYLES["sub"]))
+    rows = [["Warning" if w.get("severity") == "warning" else "Note", w.get("message")] for w in warnings]
+    t = data_table(["Type", "Detail"], rows, col_widths=[CONTENT_W * 0.14, CONTENT_W * 0.86], text_table=True)
+    story.append(t)
+    return story
+
+
+def _scenario_sensitivity_page(scenarios: dict) -> list:
+    story = [P("Scenario & sensitivity", STYLES["h2"])]
+    story.append(P(
+        "How the valuation shifts if Year-1 revenue comes in above or below plan (later years scale with "
+        "it). Scorecard and Comparables don't move: they use your questionnaire answers and last-12-month "
+        "EBITDA, not projected revenue.", STYLES["sub"],
+    ))
+    if not scenarios:
+        story.append(P("Scenario data wasn't available when this report was generated.", STYLES["td_label"]))
+        return story
+
+    labels = list(scenarios.keys())
+    n = len(labels)
+
+    def val(label, key):
+        mv = scenarios[label].get("method_values", {}).get(key, {})
+        return money(mv.get("pre_money_value")) if mv.get("status") == "ok" else "n/m"
+
+    rows = [[METHOD_CHART_LABELS[k]] + [val(l, k) for l in labels]
+            for k in ("scorecard", "venture_capital", "comparables", "dcf")]
+    total_row = ["Blended pre-money"] + [money(scenarios[l].get("blended_pre_money_valuation")) for l in labels]
+    col_w = [CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n
+    story.append(data_table(["Method"] + labels, rows, total_row=total_row, col_widths=col_w))
+    story.append(P("n/m = not meaningful in that scenario (left out of the blend).", STYLES["sub"]))
+    story.append(Spacer(1, 10))
+    story.append(P("Blended pre-money valuation across scenarios", STYLES["h3"]))
+    story.append(bar_chart(labels, [scenarios[l].get("blended_pre_money_valuation") or 0 for l in labels],
+                           color=NAVY_LINE, width=CONTENT_W, height=140))
+    return story
+
+
+def _scorecard_page(sc: dict, cp: dict) -> list:
+    story = [P("Scorecard method", STYLES["h2"])]
+    story += _method_value_header("Pre-money valuation", money(g(sc, "pre_money_valuation")))
+    bench = g(sc, "benchmark_pre_money_valuation")
+    factor = g(sc, "total_factor")
+    bench_src = ("your own benchmark" if g(sc, "benchmark_source") == "user_override"
+                 else "the tool's internal estimate (not from a published survey)")
+    story += _how(
+        f"A typical {safe(g(cp, 'company_stage')).lower()} company in {short_region(g(cp, 'business_territory_region'))} "
+        f"is valued at about {money(bench)} before investment ({bench_src}). Your answers score this company at "
+        f"{pct(factor)} of that typical company overall, so {money(bench)} × {pct(factor)} = "
+        f"{money(g(sc, 'pre_money_valuation'))}.")
+    criteria = g(sc, "criteria", {})
+    rows = [[CRITERIA_LABELS.get(k, k), pct(c.get("weight")), pct(c.get("score")), money(c.get("amount_assigned"))]
+            for k, c in criteria.items()]
+    total_row = ["Pre-money valuation", "", pct(factor), money(g(sc, "pre_money_valuation"))]
+    story.append(data_table(
+        ["Criterion", "Weight", "Score vs typical", "Benchmark × weight × score"], rows,
+        total_row=total_row, col_widths=[CONTENT_W * 0.38, CONTENT_W * 0.14, CONTENT_W * 0.2, CONTENT_W * 0.28],
+    ))
+    story.append(P("Method: Bill Payne's Scorecard (Ohio TechAngels). A score above 100% means stronger than "
+                   "the typical company on that criterion.", STYLES["sub"]))
     return story
 
 
@@ -690,213 +864,188 @@ def _method_value_header(label: str, value: str) -> list:
     return [P(label, STYLES["metric_label"]), P(value, STYLES["metric_value"])]
 
 
-def _scorecard_page(sc: dict) -> list:
-    story = [P("Scorecard method", STYLES["h2"])]
-    story += _method_value_header("Pre-money valuation", money(g(sc, "pre_money_valuation")))
-    story.append(P(
-        "Compares the company's qualitative traits against a benchmark average company for the same "
-        "stage/region, scoring each of six weighted criteria above or below 100%.", STYLES["sub"],
-    ))
-    criteria = g(sc, "criteria", {})
-    rows = [[CRITERIA_LABELS.get(k, k), pct(c.get("weight")), pct(c.get("score")), money(c.get("amount_assigned"))]
-            for k, c in criteria.items()]
-    total_row = ["Pre-money valuation", "", "", money(g(sc, "pre_money_valuation"))]
-    story.append(data_table(
-        ["Criterion", "Weight", "Score", "Amount assigned"], rows, total_row=total_row, total_label_span=3,
-        col_widths=[CONTENT_W * 0.4, CONTENT_W * 0.18, CONTENT_W * 0.18, CONTENT_W * 0.24],
-    ))
-    story.append(Spacer(1, 10))
-    story.append(info_table([
-        ("Benchmark average pre-money valuation", money(g(sc, "benchmark_pre_money_valuation"))),
-        ("Risk multiplier", g(sc, "risk_multiplier")),
-    ]))
-    return story
-
-
 def _benchmark_source_note(source: str, label: str = "EV/EBITDA multiple") -> Optional[str]:
-    """A short, honest note when a benchmark value had to fall back from the
-    requested industry+region, because Damodaran's raw source data for that
-    exact combination was missing or unusable (common for EV/EBITDA in
-    financial-sector industries, where EBITDA isn't a meaningful metric)."""
     if source == "industry_global":
-        return f"Note: no {label} data for this region \u2014 using this industry's global average instead."
+        return f"Note: no usable regional {label} — this industry's global figure is used."
     if source == "cross_industry":
-        return f"Note: no {label} data for this industry/region \u2014 using a broader cross-industry benchmark instead."
+        return f"Note: no usable {label} for this industry — the median across all industries is used."
     return None
 
 
 def _vc_page(vc: dict) -> list:
     story = [P("Venture Capital method", STYLES["h2"])]
     story += _method_value_header("Pre-money valuation", money(g(vc, "pre_money_valuation")))
-    story.append(P(
-        "Values the company by discounting a projected exit value (at the planned exit year) back to "
-        "today, using a hurdle rate that compensates investors for early-stage risk.", STYLES["sub"],
-    ))
-    story.append(P("Exit-year base model", STYLES["h3"]))
+    T = g(vc, "time_to_exit")
+    r = g(vc, "target_return")
+    story += _not_meaningful(g(vc, "not_meaningful_reason"))
+    if g(vc, "post_money_valuation") is not None:
+        story += _how(
+            f"Projected EBITDA in the exit year ({g(vc, 'exit_year_label')}) of {money(g(vc, 'exit_year_ebitda'))} "
+            f"× the industry EV/EBITDA multiple of {multiple(g(vc, 'ev_ebitda_multiple'))} gives an exit value of "
+            f"{money(g(vc, 'exit_value'))}. An investor who needs a {pct(r)} annual return values that today at "
+            f"{money(g(vc, 'exit_value'))} ÷ (1 + {pct(r)})^{T} = {money(g(vc, 'post_money_valuation'))} "
+            f"after the investment. Minus the {money(g(vc, 'investment_amount'))} being raised = "
+            f"{money(g(vc, 'pre_money_valuation'))} before it.")
+    story.append(P("Exit value", STYLES["h3"]))
     story.append(info_table([
-        ("Exit-year revenue", money(g(vc, "exit_year_revenue"))),
-        ("Exit-year EBITDA", money(g(vc, "exit_year_ebitda"))),
-        ("EV/EBITDA multiple", f"{g(vc, 'ev_ebitda_multiple', 0):.2f}x"),
-        ("Exit value", money(g(vc, "exit_value"))),
+        (f"Exit-year ({g(vc, 'exit_year_label')}) revenue", money(g(vc, "exit_year_revenue"))),
+        (f"Exit-year ({g(vc, 'exit_year_label')}) EBITDA", money(g(vc, "exit_year_ebitda"))),
+        ("EV/EBITDA multiple", multiple(g(vc, "ev_ebitda_multiple"))),
+        ("Exit value (enterprise value)", money(g(vc, "exit_value"))),
+        ("Less: debt (assumed still outstanding at exit)", money(-(g(vc, "debt") or 0))),
+        ("Exit value for shareholders", money(g(vc, "exit_equity_value"))),
     ]))
     note = _benchmark_source_note(g(vc, "ev_ebitda_multiple_source"))
     if note:
         story.append(P(note, STYLES["sub"]))
-    story.append(P("Discounting to present value", STYLES["h3"]))
+    story.append(P("Value today and the new investor's stake", STYLES["h3"]))
     story.append(info_table([
-        ("Time to exit (years)", g(vc, "time_to_exit")),
-        ("Hurdle rate / risk multiplier", pct(g(vc, "hurdle_rate"))),
-        ("Investment amount", money(g(vc, "investment_amount"))),
-        ("Number of existing shares", f"{g(vc, 'number_of_existing_shares', 0):,.0f}"),
+        ("Years to exit", T),
+        ("Investor's target annual return (for this stage)", pct(r)),
         ("Post-money valuation", money(g(vc, "post_money_valuation"))),
+        ("Investment", money(g(vc, "investment_amount"))),
         ("Pre-money valuation", money(g(vc, "pre_money_valuation"))),
-        ("Ownership fraction \u2014 investors", pct(g(vc, "ownership_fraction_investors"))),
-        ("Ownership fraction \u2014 entrepreneurs", pct(g(vc, "ownership_fraction_entrepreneurs"))),
-        ("Number of new shares", f"{round(g(vc, 'number_of_new_shares', 0)):,}"),
-        ("Price per share", money(g(vc, "price_per_share"))),
-        ("Final wealth \u2014 investors (at exit)", money(g(vc, "final_wealth_investors"))),
-        ("Final wealth \u2014 entrepreneurs (at exit)", money(g(vc, "final_wealth_entrepreneurs"))),
+        ("Investor ownership after the round", pct(g(vc, "ownership_fraction_investors"))),
+        ("Existing shareholders after the round", pct(g(vc, "ownership_fraction_entrepreneurs"))),
+        ("Existing shares (count)", f"{g(vc, 'number_of_existing_shares', 0):,.0f}"),
+        ("New shares to issue (count)",
+         f"{round(g(vc, 'number_of_new_shares')):,}" if g(vc, "number_of_new_shares") is not None else "—"),
+        ("Price per new share", money2(g(vc, "price_per_share"))),
     ]))
     return story
 
 
-def _dcf_multiples_page(dm: dict) -> list:
-    story = [P("Comparables (DCF Multiples) method", STYLES["h2"])]
-    story += _method_value_header("Pre-money valuation", money(g(dm, "pre_money_valuation")))
-    story.append(P(
-        "Applies an industry EV/EBITDA multiple to Year 1 EBITDA, then discounts by the stage risk "
-        "multiplier \u2014 the market-multiples counterpart to the VC method.", STYLES["sub"],
-    ))
+def _comparables_page(cm: dict, cp: dict) -> list:
+    story = [P("Comparables method (EV/EBITDA multiple)", STYLES["h2"])]
+    story += _method_value_header("Pre-money valuation", money(g(cm, "pre_money_valuation")))
+    story += _not_meaningful(g(cm, "not_meaningful_reason"))
+    if g(cm, "pre_money_valuation") is not None:
+        story += _how(
+            f"Profitable public {safe(g(cp, 'industry'))} companies are valued at about "
+            f"{multiple(g(cm, 'ev_ebitda_multiple'))} their last-12-month EBITDA. Your last-12-month EBITDA of "
+            f"{money(g(cm, 'trailing_ebitda'))} × {multiple(g(cm, 'ev_ebitda_multiple'))} = "
+            f"{money(g(cm, 'public_company_ev'))}. A private company of this stage is harder to sell than a listed "
+            f"one, so a {pct(g(cm, 'private_company_discount'))} discount gives an enterprise value of "
+            f"{money(g(cm, 'enterprise_value'))}; minus debt and plus cash gives the equity value.")
     story.append(info_table([
-        ("Year 1 revenue", money(g(dm, "revenue"))),
-        ("Year 1 EBITDA", money(g(dm, "ebitda"))),
-        ("EV/EBITDA multiple", f"{g(dm, 'ev_ebitda_multiple', 0):.2f}x"),
-        ("Exit value", money(g(dm, "exit_value"))),
-        ("Risk multiplier", g(dm, "risk_multiplier")),
-        ("Pre-money valuation", money(g(dm, "pre_money_valuation"))),
+        ("EBITDA, last 12 months", money(g(cm, "trailing_ebitda"))),
+        ("EV/EBITDA multiple (trailing)", multiple(g(cm, "ev_ebitda_multiple"))),
+        ("Value at the public-company multiple", money(g(cm, "public_company_ev"))),
+        ("Private-company discount (for this stage)", f"−{pct(g(cm, 'private_company_discount'))}"),
+        ("Enterprise value", money(g(cm, "enterprise_value"))),
+        ("Less: debt", money(-(g(cm, "debt") or 0))),
+        ("Plus: cash", money(g(cm, "cash"))),
+        ("Equity value (pre-money)", money(g(cm, "equity_value"))),
     ]))
-    note = _benchmark_source_note(g(dm, "ev_ebitda_multiple_source"))
+    note = _benchmark_source_note(g(cm, "ev_ebitda_multiple_source"))
     if note:
         story.append(P(note, STYLES["sub"]))
-    story.append(P(
-        "See \u201cScenario & sensitivity\u201d for how this method's value shifts across a range of "
-        "Year 1 revenue outcomes.", STYLES["sub"],
-    ))
     return story
 
 
-def _scenario_sensitivity_page(scenarios: dict) -> list:
-    story = [P("Scenario & sensitivity", STYLES["h2"])]
-    story.append(P(
-        "How the valuation shifts if Year 1 revenue comes in above or below plan (with the rest of "
-        "the growth trajectory scaling proportionally). Scorecard doesn't move \u2014 it scores "
-        "qualitative traits, not revenue \u2014 while Venture Capital, DCF Multiples, and DCF each "
-        "move through their own full projection.", STYLES["sub"],
-    ))
-    if not scenarios:
-        story.append(P(
-            "Scenario data wasn't available when this report was generated.", STYLES["td_label"],
-        ))
-        return story
+def _dcf_page(dcf: dict, wacc: dict, years: list) -> list:
+    story = [P("Discounted cash flow (DCF) method", STYLES["h2"])]
+    story += _method_value_header("Pre-money valuation", money(g(dcf, "pre_money_valuation")))
+    story += _not_meaningful(g(dcf, "not_meaningful_reason"))
+    r = g(dcf, "discount_rate")
+    if g(dcf, "pre_money_valuation") is not None:
+        story += _how(
+            f"Five years of projected free cash flow plus a terminal value for the years after, discounted at the "
+            f"company's cost of capital ({pct2(r)}), are worth {money(g(dcf, 'enterprise_value'))} if the business "
+            f"keeps going. About {pct(g(dcf, 'survival_probability'))} of companies at this stage survive, so the "
+            f"expected value is {money(g(dcf, 'risk_adjusted_enterprise_value'))}; minus debt and plus cash gives "
+            f"{money(g(dcf, 'pre_money_valuation'))}.")
 
-    labels = list(scenarios.keys())
-    n = len(labels)
-
-    def val(label, *path):
-        d = scenarios[label]
-        for key in path:
-            d = d.get(key, {}) if isinstance(d, dict) else {}
-        return d if not isinstance(d, dict) else None
-
+    headers = [""] + [y.get("year_label", "") for y in years]
     rows = [
-        ["Scorecard"] + [money(val(l, "scorecard", "pre_money_valuation")) for l in labels],
-        ["Venture Capital"] + [money(val(l, "venture_capital", "pre_money_valuation")) for l in labels],
-        ["DCF Multiples"] + [money(val(l, "dcf_multiples", "pre_money_valuation")) for l in labels],
-        ["DCF"] + [money(val(l, "dcf", "hurdle_adjusted", "enterprise_value")) for l in labels],
+        ["EBIT"] + [money(y.get("ebit")) for y in years],
+        ["Tax on EBIT"] + [money(-y.get("tax_on_ebit", 0)) for y in years],
+        ["Add back D&A"] + [money(y.get("da")) for y in years],
+        ["Capital expenditure"] + [money(-y.get("capex", 0)) for y in years],
+        ["Change in working capital"] + [money(-y.get("change_in_working_capital", 0)) for y in years],
     ]
-    total_row = ["Blended pre-money"] + [money(val(l, "blended_pre_money_valuation")) for l in labels]
-    headers = ["Method"] + labels
-    col_w = [CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n
-    story.append(data_table(headers, rows, total_row=total_row, col_widths=col_w))
-    story.append(Spacer(1, 14))
-
-    story.append(P("Blended pre-money valuation across scenarios", STYLES["h3"]))
-    blended_vals = [val(l, "blended_pre_money_valuation") or 0 for l in labels]
-    story.append(bar_chart(labels, blended_vals, color=NAVY_LINE, width=CONTENT_W, height=140))
-    return story
-
-
-def _dcf_page(dcf: dict, years: list) -> list:
-    story = [P("DCF method", STYLES["h2"])]
-    hurdle = g(dcf, "hurdle_adjusted", {})
-    story += _method_value_header("Enterprise value (risk-adjusted)", money(g(hurdle, "enterprise_value")))
-    story.append(P(
-        "Discounts five years of unlevered free cash flow plus a terminal value back to present, then "
-        "applies the same stage risk multiplier used across the other methods.", STYLES["sub"],
-    ))
-    story.append(info_table([
-        ("Tax rate", pct(g(dcf, "tax_rate"))),
-        ("Discount rate (WACC)", pct(g(dcf, "discount_rate"))),
-        ("Perpetual growth rate", pct(g(dcf, "perpetual_growth_rate"))),
-        ("Hurdle rate / risk multiplier", pct(g(dcf, "hurdle_rate"))),
-    ]))
-
-    story.append(P("Unlevered free cash flow", STYLES["h3"]))
-    year_labels = [y.get("year_label", "") for y in years]
-    headers = [""] + year_labels
-
-    def yr_row(label, field):
-        return [label] + [money(y.get(field)) for y in years]
-
-    rows = [
-        yr_row("EBIT", "ebit"),
-        yr_row("Less: taxes", "tax_amount"),
-        yr_row("Plus: D&A", "da"),
-        yr_row("Less: capex", "capex"),
-        yr_row("Less: change in NWC", "change_in_working_capital"),
-    ]
-    fcf = g(dcf, "unlevered_fcf_by_year", [])
-    total_row = ["Unlevered FCF"] + [money(v) for v in fcf]
+    total_row = ["Free cash flow"] + [money(v) for v in g(dcf, "unlevered_fcf_by_year", [])]
     n = max(len(years), 1)
-    col_w = [CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n
-    story.append(data_table(headers, rows, total_row=total_row, col_widths=col_w))
-    story.append(Spacer(1, 10))
+    story.append(P("Unlevered free cash flow (negative numbers reduce cash)", STYLES["h3"]))
+    story.append(data_table(headers, rows, total_row=total_row,
+                            col_widths=[CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n))
+    story.append(Spacer(1, 8))
 
-    base = g(dcf, "base", {})
-    ev_col_widths = [HALF_W * 0.65, HALF_W * 0.35]
-    left = [P("Enterprise value (unadjusted)", STYLES["h3"]), info_table([
-        ("PV of FCF", money(g(base, "pv_of_fcf"))),
-        ("PV of terminal value", money(g(base, "pv_of_terminal_value"))),
-    ], col_widths=ev_col_widths), info_table(
-        [("Enterprise value", money(g(base, "enterprise_value")))], col_widths=ev_col_widths,
-    )]
-    right = [P("Enterprise value (risk-adjusted)", STYLES["h3"]), info_table([
-        ("PV of FCF", money(g(hurdle, "pv_of_fcf"))),
-        ("PV of terminal value", money(g(hurdle, "pv_of_terminal_value"))),
-    ], col_widths=ev_col_widths), info_table(
-        [("Enterprise value", money(g(hurdle, "enterprise_value")))], col_widths=ev_col_widths,
-    )]
-    story.append(side_by_side(left, right))
+    tv_share = g(dcf, "terminal_value_share")
+    value_rows = info_table([
+        ("PV of 5 years of free cash flow", money(g(dcf, "pv_of_fcf"))),
+        ("PV of terminal value", money(g(dcf, "pv_of_terminal_value"))),
+        ("Enterprise value (if the business survives)", money(g(dcf, "enterprise_value"))),
+        ("Terminal value share of that value", pct(tv_share)),
+        ("Probability of survival (for this stage)", pct(g(dcf, "survival_probability"))),
+        ("Risk-adjusted enterprise value", money(g(dcf, "risk_adjusted_enterprise_value"))),
+        ("Less: debt", money(-(g(dcf, "debt") or 0))),
+        ("Plus: cash", money(g(dcf, "cash"))),
+        ("Equity value (pre-money)", money(g(dcf, "equity_value"))),
+    ], col_widths=[HALF_W * 0.68, HALF_W * 0.32])
+    rate_rows = info_table([
+        ("Risk-free rate", pct2(g(wacc, "risk_free_rate"))),
+        ("Beta (industry)", f"{g(wacc, 'beta', 0):.2f}"),
+        ("Country equity risk premium", pct2(g(wacc, "country_equity_risk_premium"))),
+        ("Cost of equity", pct2(g(wacc, "cost_of_equity"))),
+        ("Cost of debt after tax", pct2(g(wacc, "after_tax_cost_of_debt"))),
+        ("Equity / debt weights", f"{pct(g(wacc, 'equity_pct_capital'))} / {pct(g(wacc, 'debt_pct_capital'))}"),
+        ("Discount rate (WACC)", pct2(r)),
+        ("Long-run growth after Year 5", pct2(g(dcf, "perpetual_growth_rate"))),
+        ("Tax rate", pct2(g(dcf, "tax_rate"))),
+    ], col_widths=[HALF_W * 0.62, HALF_W * 0.38])
+    story.append(side_by_side([P("From cash flows to equity value", STYLES["h3"]), value_rows],
+                              [P("Discount rate", STYLES["h3"]), rate_rows]))
+    if g(dcf, "terminal_value_floor_applied"):
+        story.append(P("Note: the discount rate is close to the long-run growth rate, so the terminal value uses "
+                       "a minimum 2-point gap between them.", STYLES["sub"]))
     return story
 
 
-def _methodology_page() -> list:
-    story = [P("Valuation approach: methods, data & disclaimer", STYLES["h2"])]
-    story.append(P("Methodologies used", STYLES["h3"]))
-    story.append(P(
-        "This report blends four widely used valuation methods \u2014 Scorecard, Venture Capital, "
-        "Comparables (Market Multiples), and Discounted Cash Flow \u2014 weighted by the development "
-        "stage of the company, so early-stage qualitative methods carry more weight for younger "
-        "companies and cash-flow-based methods carry more weight as a company matures.",
-        STYLES["td_label"],
-    ))
+def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Optional[str]) -> list:
+    story = [P("Methods, data sources & disclaimer", STYLES["h2"])]
+    story.append(P("Methods", STYLES["h3"]))
+    for text in (
+        "<b>Scorecard</b> (Bill Payne): compares the company with a typical pre-money valuation for its stage "
+        "and region on six weighted criteria.",
+        "<b>Venture Capital</b>: values a projected exit and discounts it at the annual return an investor at "
+        "this stage targets. This is the only place a target return is used.",
+        "<b>Comparables</b>: applies public-company EV/EBITDA multiples to the last 12 months' EBITDA, with a "
+        "private-company discount, then subtracts debt and adds cash.",
+        "<b>Discounted cash flow</b>: discounts projected free cash flow and a terminal value at the cost of "
+        "capital (WACC), weights the result by the probability of survival, then subtracts debt and adds cash.",
+        "The four results are blended with weights for the company's stage. Methods that can't give a "
+        "meaningful value (for example, no positive EBITDA) are left out and the other weights are scaled up.",
+    ):
+        story.append(P(text, STYLES["td_label"], raw=True))
+        story.append(Spacer(1, 3))
+
+    if stage_params:
+        story.append(P(f"Assumptions for the {safe(stage).lower()}", STYLES["h3"]))
+        story.append(info_table([
+            ("Investor's target annual return (VC method)", pct(stage_params.get("vc_target_return"))),
+            ("Private-company discount (Comparables)", pct(stage_params.get("private_company_discount"))),
+            ("Probability of survival (DCF)", pct(stage_params.get("survival_probability"))),
+        ]))
+
     story.append(P("Data sources", STYLES["h3"]))
-    story.append(P(
-        "Industry and regional benchmarks (cost structure ratios, EV/EBITDA multiples, risk premiums) "
-        "are drawn from the dataset maintained by Prof. Aswath Damodaran at NYU Stern School of "
-        "Business, updated annually.", STYLES["td_label"],
-    ))
-    story.append(Spacer(1, 12))
+    labels = [
+        ("industry_benchmarks", "Industry benchmarks"),
+        ("country_data", "Country risk and tax"),
+        ("risk_free_rate", "Risk-free rate"),
+        ("perpetual_growth_rate", "Long-run growth"),
+        ("vc_target_return", "VC target returns"),
+        ("private_company_discount", "Private-company discount"),
+        ("survival_probability", "Survival probability"),
+        ("stage_region_pre_money_benchmarks", "Scorecard pre-money benchmark"),
+        ("scorecard", "Scorecard weights"),
+    ]
+    for key, label in labels:
+        if sources.get(key):
+            story.append(P(f"<b>{esc(label)}:</b> {esc(sources[key])}", STYLES["td_label"], raw=True))
+            story.append(Spacer(1, 3))
+
+    story.append(Spacer(1, 10))
     disclaimer_box = Table([[P(
         "<b>Disclaimer:</b> This tool is not a licensed financial advisor, investment advisor, or "
         "legal entity authorized to provide financial, investment, or legal advice. This report is "
@@ -924,15 +1073,15 @@ def _methodology_page() -> list:
 
 def build_pdf_bytes(
     payload: dict, output: dict, benchmark: Optional[dict] = None, scenarios: Optional[dict] = None,
+    sources: Optional[dict] = None, stage_params: Optional[dict] = None,
 ) -> bytes:
     """
-    payload: a ValuationInput.model_dump() dict.
-    output:  a dataclasses.asdict(ValuationOutput) dict.
-    benchmark: optional industry-benchmark dict (ve.industry_benchmarks()[industry]),
-               used for the % of revenue benchmark rows. Safe to omit.
-    scenarios: optional {"80%": <asdict ValuationOutput>, "90%": ..., ...} from
-               ve.run_valuation_scenarios(), used for the Scenario & sensitivity
-               page. Safe to omit (that page just notes the data wasn't available).
+    payload:   a ValuationInput.model_dump(mode="json") dict.
+    output:    a dataclasses.asdict(ValuationOutput) dict.
+    benchmark: optional resolved industry-benchmark dict, for the reference-only cost lines.
+    scenarios: optional {"80%": <asdict ValuationOutput>, ...} for the Scenario page.
+    sources:   optional data-source notes (reference_data.json "sources").
+    stage_params: optional stage parameters for the company's stage.
     """
     cp = g(payload, "company_profile", {}) or {}
     mkt = g(payload, "market_and_team_assessment", {}) or {}
@@ -940,9 +1089,11 @@ def build_pdf_bytes(
     fin = g(payload, "financial_assumptions", {}) or {}
     funding = g(payload, "funding", {}) or {}
     ownership = g(payload, "ownership", []) or []
+    sources = sources or {}
 
     company_name = g(cp, "company_name") or "Untitled company"
-    today_str = datetime.now().strftime("%B %d, %Y")
+    date_str = format_date(g(output, "valuation_date"))
+    data_date = format_date(sources.get("data_as_of")) if sources.get("data_as_of") else "January 2026"
     logo_bytes = _decode_logo(g(cp, "logo_base64"))
 
     buffer = io.BytesIO()
@@ -956,30 +1107,33 @@ def build_pdf_bytes(
     content_frame = Frame(MARGIN_SIDE, MARGIN_BOTTOM, CONTENT_W, PAGE_H - MARGIN_TOP - MARGIN_BOTTOM, id="content")
     doc.addPageTemplates([
         PageTemplate(id="Cover", frames=[cover_frame], onPage=_draw_nothing),
-        PageTemplate(id="Content", frames=[content_frame], onPage=_make_page_decorator(company_name, today_str, logo_bytes)),
+        PageTemplate(id="Content", frames=[content_frame], onPage=_make_page_decorator(company_name, date_str, logo_bytes)),
     ])
 
+    years = g(output, "projections", {}).get("years", [])
     story: list = []
-    story += _cover_page(company_name, today_str, logo_bytes)
+    story += _cover_page(company_name, date_str, data_date, logo_bytes)
     story.append(NextPageTemplate("Content"))
     story.append(PageBreak())
-    story += _company_summary_page(cp, mkt, ops)
+    story += _company_summary_page(cp, mkt, ops, output)
     story.append(PageBreak())
     story += _projections_page(cp, fin, funding, ownership, output, benchmark or {})
     story.append(PageBreak())
     story += _valuation_summary_page(output)
     story.append(PageBreak())
+    story += _warnings_page(output)
+    story.append(PageBreak())
     story += _scenario_sensitivity_page(scenarios or {})
     story.append(PageBreak())
-    story += _scorecard_page(g(output, "scorecard", {}))
+    story += _scorecard_page(g(output, "scorecard", {}), cp)
     story.append(PageBreak())
     story += _vc_page(g(output, "venture_capital", {}))
     story.append(PageBreak())
-    story += _dcf_multiples_page(g(output, "dcf_multiples", {}))
+    story += _comparables_page(g(output, "comparables", {}), cp)
     story.append(PageBreak())
-    story += _dcf_page(g(output, "dcf", {}), g(output, "projections", {}).get("years", []))
+    story += _dcf_page(g(output, "dcf", {}), g(output, "wacc", {}), years)
     story.append(PageBreak())
-    story += _methodology_page()
+    story += _methodology_page(sources, stage_params, g(cp, "company_stage"))
 
     doc.build(story)
     return buffer.getvalue()

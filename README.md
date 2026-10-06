@@ -4,11 +4,12 @@ A blended startup valuation tool (Scorecard, Venture Capital, DCF Multiples,
 and DCF methods) — originally an Excel workbook, rebuilt into a Python
 calculation engine, a FastAPI backend, and a web frontend.
 
-Given a company's industry, country, stage, financial projections, and a
-short qualitative questionnaire, it computes a blended pre-money and
-post-money valuation, and can generate a polished, branded PDF report of
-the result — with three formula bugs and one data-entry error found and
-fixed along the way versus the original workbook.
+Given a company's industry, country, stage, last-12-month results, financial
+projections, and a short qualitative questionnaire, it computes a blended
+pre-money and post-money valuation, flags implausible inputs, and generates a
+branded PDF report that explains how each number was reached.
+
+See `AUDIT_REPORT.md` for the October 2026 accuracy audit and what changed.
 
 This version is deliberately consolidated to a handful of files to make
 manual upload/download easy — each major piece lives in a single file
@@ -23,6 +24,8 @@ rather than being split across many modules.
 | `report.py` | Builds the branded PDF report (reportlab) from a valuation's input/output |
 | `index.html` | The web wizard — one file with CSS and JS inlined |
 | `refresh_industry_benchmarks.py` | Offline tool (not used by the app) that rebuilds the industry benchmarks in `reference_data.json` from Damodaran's regional spreadsheets |
+| `tests/` | Automated tests (run on every push by GitHub Actions) |
+| `audit/` | Independent recomputation of every figure (`recompute.py`), benchmark check against Damodaran's files (`check_benchmarks.py`), API smoke test |
 
 ## How to run it
 
@@ -99,25 +102,47 @@ Saved valuations (History tab) can also have their PDF re-downloaded
 at any time, even after closing and reopening the app, since the
 report is rebuilt fresh from the saved inputs each time.
 
+## How the valuation works
+
+| Method | What it does | Stage assumption it uses (only here) |
+|---|---|---|
+| Scorecard (Payne) | Typical pre-money for the stage/region × your weighted questionnaire score | — |
+| Venture Capital | Exit-year EBITDA × EV/EBITDA multiple, minus debt, discounted at the investor's target return; minus the raise | Target return: 60% (Idea) falling to 20% (Maturity) |
+| Comparables | Last-12-month EBITDA × EV/EBITDA multiple, less a private-company discount, minus debt plus cash | Private-company discount: 40% → 20% |
+| DCF | 5 years of free cash flow + Gordon terminal value at WACC, × probability of survival, minus debt plus cash | Survival: 35% → 95% |
+
+- Projected EBITDA margin starts from the company's own last-12-month margin and moves in equal steps to the industry EBITDA margin (Damodaran EBITDA/Sales, which includes R&D) by Year 5, unless the user sets a target.
+- One tax rate for everything: the user's, else the country's statutory rate. Losses are carried forward.
+- A method that can't give a meaningful value (e.g. no positive EBITDA, banks and insurers) is left out and the other stage weights are scaled up; every such case is explained in the results and the PDF.
+- Inputs that can't be valued are rejected with a plain-language message; implausible ones (revenue jumps, PP&E out of scale, ownership ≠ 100%, use of funds ≠ raise, …) produce warnings.
+
 ## Verified numbers (Valuativa DOO example)
 
-Tanzania, Software (Entertainment), Emerging Markets, Startup stage,
-Year-1 revenue 1,000,000 € growing 10% a year, capex 30,000 € in Years
-2–5, capital needed 300,000 €, DCF tax rate 10%.
+Valuation date 6 October 2026. Tanzania, Software (Entertainment), Emerging
+Markets, Startup stage. Last 12 months: revenue €300,000, EBITDA €50,000,
+cash €20,000, no debt. Year-1 revenue €1,000,000 growing 10% a year, capex
+€30,000 in Years 2–5, capital raised €300,000, tax rate 10%. Full inputs:
+`REFERENCE_CASE` in `audit/recompute.py`.
 
 | Method | Value |
 |---|---|
-| Scorecard | 1,023,000.00 € |
-| Venture Capital | 1,422,481.00 € |
-| DCF Multiples | 2,915,592.70 € |
-| DCF | 367,591.19 € |
-| **Blended pre-money** | **1,494,025.42 €** |
-| **Post-money** | **1,794,025.42 €** |
+| Scorecard | 1,860,000 € |
+| Venture Capital | 1,597,004 € |
+| Comparables | 697,925 € |
+| DCF | 813,856 € |
+| **Blended pre-money** | **1,131,786 €** |
+| **Post-money** | **1,431,786 €** |
 
-The Scorecard (and therefore the blend) depends on the questionnaire
-answers; 1,023,000 € is for answers that score 93% of the benchmark
-company. The other three reflect Damodaran's January 2026 data (country
-risk and industry benchmarks) and the WACC fix.
+These are pinned in `tests/test_engine.py` and recomputed independently by
+`audit/recompute.py`.
+
+## Running the tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest -q
+python audit/recompute.py      # prints every figure next to its independent recomputation
+```
 
 ## Benchmark data
 
@@ -133,13 +158,22 @@ python refresh_industry_benchmarks.py path/to/folder valuation_engine/reference_
 python refresh_industry_benchmarks.py path/to/folder valuation_engine/reference_data.json --write  # apply
 ```
 
+Then check the result against the same files and run the tests:
+
+```bash
+python audit/check_benchmarks.py path/to/folder
+DAMODARAN_DIR=path/to/folder python -m pytest -q
+```
+
 Rules the refresh applies:
 - A regional figure based on fewer than 10 companies is not used; the
   engine falls back to that industry's global figure.
 - D&A (% of revenue) and the interest rate on debt aren't published
   directly, so they are derived from Damodaran's margin and debt ratios;
   implausible results fall back the same way.
-- "Retail (Online)" is not in Damodaran's files and keeps its earlier values.
+- "Retail (Online)" is no longer published by Damodaran; it uses his "Retail (General)" figures.
+- Country risk data (`country_data`) is not covered by this tool; update it from Damodaran's `ctryprem` file.
+- The Scorecard's "average pre-money by stage and region" table is an internal estimate with no published source. Users can replace it in the wizard; replace the table itself if you get a cited source.
 
 ## License
 

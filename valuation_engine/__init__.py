@@ -2,31 +2,44 @@
 valuation_engine - a pure-Python startup valuation calculation engine.
 
 Everything lives in this one module (input models, reference-data loading,
-financial projections, WACC, and all four valuation methods) so the whole
-engine is a single file to read, copy, or upload - the logic underneath is
-still organized into clearly separated sections below.
+financial projections, WACC, the four valuation methods, the blend and the
+input sanity checks) so the whole engine is a single file to read, copy, or
+upload - the logic underneath is still organized into clearly separated
+sections below.
 
-Computes a blended pre-money / post-money valuation from the Scorecard,
-Venture Capital, DCF Multiples, and DCF methods, exactly reproducing the
-corrected version of the original Excel workbook (three formula bugs and
-one data-entry error were found and fixed along the way - see docs/ at the
-repo root for the full write-up).
+Methodology (see AUDIT_REPORT.md for why each choice was made):
+
+- Each stage parameter has exactly one meaning and is used by exactly one
+  method: the VC target return (Venture Capital method only), the
+  private-company discount (Comparables only) and the survival probability
+  (DCF only). The Scorecard applies no haircut, as in Payne's original.
+- Projected EBITDA starts from the company's own last-12-month margin and
+  moves in equal steps to the industry EBITDA margin (Damodaran EBITDA/Sales,
+  which already includes R&D) by Year 5.
+- Comparables uses trailing (last-12-month) EBITDA with Damodaran's trailing
+  EV/EBITDA multiple.
+- DCF discounts at WACC only (no stacked hurdle), then weights the result by
+  the probability that the business survives.
+- Comparables and DCF produce enterprise value; debt is subtracted and cash
+  added to get equity value. The VC method already produces equity value.
+- A method whose value isn't meaningful (e.g. negative EBITDA) is left out
+  of the blend and the remaining stage weights are rescaled.
 """
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ============================================================================
 # SECTION 1 — Reference data (industry benchmarks, country data, stage
-# parameters, scorecard lookup tables). Generic to any valuation - doesn't
-# depend on the company being valued. Bundled as a single JSON file
-# alongside this module.
+# parameters, scorecard lookup tables, sources). Bundled as a single JSON
+# file alongside this module.
 # ============================================================================
 
 _DATA_PATH = Path(__file__).parent / "reference_data.json"
@@ -44,12 +57,12 @@ def industry_benchmarks() -> dict:
 
 
 def country_data() -> dict:
-    """country -> {gdp, moodys_rating, ..., corporate_tax_rate, region_grouping}"""
+    """country -> {moodys_rating, equity_risk_premium, corporate_tax_rate, region_grouping, ...}"""
     return _all_reference_data()["country_data"]
 
 
 def stage_parameters() -> dict:
-    """stage -> {hurdle_rate, risk_multiplier, method_weights: {...}}"""
+    """stage -> {vc_target_return, private_company_discount, survival_probability, method_weights}"""
     return _all_reference_data()["stage_parameters"]
 
 
@@ -63,9 +76,17 @@ def scorecard_qualitative_lookup() -> dict:
     return _all_reference_data()["scorecard_qualitative_lookup"]
 
 
-def survival_rate_by_years_since_incorporation() -> dict:
-    """year (str) -> survival_rate. Not currently used by any method."""
-    return _all_reference_data()["survival_rate_by_years_since_incorporation"]
+def scorecard_option_aliases() -> dict:
+    """criterion -> {old option text: current option text} (old saved valuations keep working)."""
+    return _all_reference_data().get("scorecard_option_aliases", {})
+
+
+def market_parameters() -> dict:
+    return _all_reference_data()["market_parameters"]
+
+
+def data_sources() -> dict:
+    return _all_reference_data()["sources"]
 
 
 def categorical_options() -> dict:
@@ -74,7 +95,7 @@ def categorical_options() -> dict:
 
 
 def _is_usable_number(v: Any, min_valid: Optional[float] = None) -> bool:
-    """True for a real, finite number that's above min_valid (if given).
+    """True for a real, finite number that's at or above min_valid (if given).
     False for Damodaran's raw source artifacts - "NA", "#N/A", "#VALUE!",
     None, etc. - which are strings, not numbers, in the underlying data."""
     if not isinstance(v, (int, float)) or isinstance(v, bool):
@@ -101,37 +122,32 @@ def _cross_industry_fallback(metric: str, min_valid: Optional[float] = None) -> 
     return pool[mid] if len(pool) % 2 else (pool[mid - 1] + pool[mid]) / 2
 
 
-def get_industry_metric(
-    industry: str, metric: str, region: str, *, min_valid: Optional[float] = None
-) -> float:
+# Lowest acceptable value per metric. Margins can legitimately be negative
+# (None = any number); multiples, betas and capital weights must be positive.
+_INDUSTRY_METRIC_MIN_VALID = {
+    "beta": 0.01,
+    "equity_pct_capital": 0.01,
+    "ev_ebitda_multiple": 0.01,
+    "ebitda_margin": None,
+}
+
+
+def _min_valid(metric: str) -> Optional[float]:
+    return _INDUSTRY_METRIC_MIN_VALID.get(metric, 0.0)
+
+
+def get_industry_metric_with_source(industry: str, metric: str, region: str) -> tuple[float, str]:
     """
     Resilient accessor for an industry benchmark. Damodaran's raw tables contain
-    literal "NA"/"#N/A"/"#VALUE!" text and, for a handful of industries and
-    metrics (mostly EV/EBITDA for banks and insurers, where EBITDA isn't a
-    meaningful metric in the source data), nonsensical negative values.
+    literal "NA" text where a region has too few companies or the figure isn't
+    meaningful (e.g. EV/EBITDA for banks).
 
     Falls back in order: the requested region -> that industry's own "Global"
     figure -> the median "Global" figure across all industries for this metric.
-    Only raises if the industry/metric itself is unrecognized, or if literally
-    no usable number exists anywhere for this metric (which doesn't currently
-    happen for any metric this engine uses).
-
-    `min_valid`: pass e.g. 0 for metrics that can never legitimately be
-    negative or zero (a valuation multiple, a cost of debt). Leave as None
-    (the default) for metrics like beta where a small negative value is
-    unusual but can be genuinely real - only non-numeric artifacts get
-    filtered out in that case.
+    Returns (value, source) with source "region", "industry_global" or
+    "cross_industry", so every fallback can be disclosed in the report.
     """
-    value, _source = get_industry_metric_with_source(industry, metric, region, min_valid=min_valid)
-    return value
-
-
-def get_industry_metric_with_source(
-    industry: str, metric: str, region: str, *, min_valid: Optional[float] = None
-) -> tuple[float, str]:
-    """Same as get_industry_metric(), but also returns where the number came from:
-    "region" (used as entered), "industry_global" (that industry's Global value),
-    or "cross_industry" (median Global across all industries - rare)."""
+    min_valid = _min_valid(metric)
     try:
         table = industry_benchmarks()[industry][metric]
     except KeyError as e:
@@ -152,14 +168,12 @@ def get_industry_metric_with_source(
         return fallback, "cross_industry"
 
     raise KeyError(
-        f"No usable benchmark for industry={industry!r}, metric={metric!r}, region={region!r} "
-        "(source data and all fallbacks were missing/invalid)"
+        f"No usable benchmark for industry={industry!r}, metric={metric!r}, region={region!r}"
     )
 
 
-# min_valid per metric, matching the lookups in build_projections / compute_wacc /
-# the EV/EBITDA methods (every other metric uses 0).
-_INDUSTRY_METRIC_MIN_VALID = {"beta": 0.01, "equity_pct_capital": 0.01}
+def get_industry_metric(industry: str, metric: str, region: str) -> float:
+    return get_industry_metric_with_source(industry, metric, region)[0]
 
 
 def resolved_industry_benchmarks(industry: str) -> dict:
@@ -168,11 +182,10 @@ def resolved_industry_benchmarks(industry: str) -> dict:
     Shape: {metric: {region: value}}; value is None only if nothing resolves."""
     resolved = {}
     for metric, table in industry_benchmarks()[industry].items():
-        min_valid = _INDUSTRY_METRIC_MIN_VALID.get(metric, 0)
         resolved[metric] = {}
         for region in table:
             try:
-                resolved[metric][region] = get_industry_metric(industry, metric, region, min_valid=min_valid)
+                resolved[metric][region] = get_industry_metric(industry, metric, region)
             except KeyError:
                 resolved[metric][region] = None
     return resolved
@@ -192,60 +205,107 @@ def get_stage_params(stage: str) -> dict:
         raise KeyError(f"No stage parameters for {stage!r}") from e
 
 
+def canonical_option(criterion: str, option_text: str) -> str:
+    """Maps an old (misspelled) option text to its current wording."""
+    return scorecard_option_aliases().get(criterion, {}).get(option_text, option_text)
+
+
 def get_scorecard_score(criterion: str, option_text: str) -> float:
-    try:
-        return scorecard_qualitative_lookup()[criterion][option_text]
-    except KeyError as e:
-        raise KeyError(
-            f"No score for criterion={criterion!r}, option={option_text!r}"
-        ) from e
+    table = scorecard_qualitative_lookup()[criterion]
+    text = canonical_option(criterion, option_text)
+    if text not in table:
+        raise KeyError(f"Unknown answer {option_text!r} for {criterion!r}")
+    return table[text]
+
+
+# Industries where EBITDA, EV/EBITDA and free cash flow aren't meaningful
+# (debt is raw material, not financing), so the VC, Comparables and DCF
+# methods are not applied.
+FINANCIAL_SECTOR_INDUSTRIES = {
+    "Bank (Money Center)",
+    "Banks (Regional)",
+    "Brokerage & Investment Banking",
+    "Financial Svcs. (Non-bank & Insurance)",
+    "Insurance (General)",
+    "Insurance (Life)",
+    "Insurance (Prop/Cas.)",
+    "Investments & Asset Management",
+    "Reinsurance",
+}
+
+# Which business region a country's companies are usually benchmarked in.
+_COUNTRY_DEFAULT_REGION = {
+    "United States": "US",
+    "Japan": "Japan",
+    "China": "China",
+    "India": "India",
+}
+_EUROPE_GROUPINGS = {"Western Europe"}
+EUROPE_REGION = "Europe (EU, UK, Switzerland & Scandinavia)"
+EMERGING_REGION = "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)"
+
+
+def default_region_for_country(country: str) -> str:
+    if country in _COUNTRY_DEFAULT_REGION:
+        return _COUNTRY_DEFAULT_REGION[country]
+    grouping = get_country(country).get("region_grouping")
+    if grouping in _EUROPE_GROUPINGS:
+        return EUROPE_REGION
+    if grouping in ("North America", "Australia & New Zealand"):
+        return "Global"
+    return EMERGING_REGION
 
 
 # ============================================================================
 # SECTION 2 — Input models
 #
-# These map field-for-field onto the sheets of `main_file_structured.xlsx`
-# (Company_Profile, Market_And_Team_Assessment, Operating_Performance,
-# Financial_Projections assumptions, Ownership_And_Funding), so that
-# workbook can be used directly as a source of truth / regression fixture.
+# Validation here is the single source of truth for what the API accepts;
+# out-of-range values are rejected with a readable message instead of
+# crashing a calculation later.
 # ============================================================================
 
 
 class CompanyProfile(BaseModel):
-    company_name: str
+    company_name: str = Field(min_length=1)
     contact_name: Optional[str] = None
     contact_email: Optional[str] = None
     address: Optional[str] = None
     country: str
     website: Optional[str] = None
-    num_founders: Optional[int] = None
-    num_employees: Optional[int] = None
-    year_of_incorporation: Optional[int] = None
+    num_founders: Optional[int] = Field(default=None, ge=0)
+    num_employees: Optional[int] = Field(default=None, ge=0)
+    year_of_incorporation: Optional[int] = Field(default=None, ge=1800, le=2100)
     company_stage: str  # must match a key in stage_parameters
-    committed_capital: float = 0.0
+    committed_capital: float = Field(default=0.0, ge=0)
     business_activity: Optional[str] = None
     industry: str  # must match a key in industry_benchmarks
     business_territory_region: str  # must match a region key, e.g. "Emerging Markets (...)"
     business_model: Optional[str] = None
     exit_strategy: Optional[str] = None
-    planned_time_to_exit_years: int = 3
+    planned_time_to_exit_years: int = Field(default=3, ge=1, le=5)
 
-    # DCF's own tax-rate assumption. In the source workbook this is a
-    # separately user-entered field (NOT the same as the country's
-    # statutory corporate tax rate used elsewhere) - kept distinct here
-    # to faithfully reproduce the original model's behavior.
-    dcf_tax_rate_override: float = 0.10
+    # Date the valuation is made as of; Year 1 is the 12 months after it.
+    # Defaults to today.
+    valuation_date: Optional[date] = None
+
+    # Tax rate used for the free cash flows AND the WACC. Leave empty to use
+    # the country's statutory corporate tax rate. (Name kept for saved data.)
+    dcf_tax_rate_override: Optional[float] = Field(default=None, ge=0, le=0.6)
+
+    # Optional replacement for the stage/region "average pre-money" benchmark
+    # used by the Scorecard method (the built-in table is an internal estimate).
+    benchmark_pre_money_override: Optional[float] = Field(default=None, gt=0)
 
     # Optional company logo for the PDF report cover page/header. Either a
     # plain base64 string or a data URL (e.g. "data:image/png;base64,....").
-    # Not used in any valuation math - purely cosmetic for report.py.
     logo_base64: Optional[str] = None
 
 
 class MarketAndTeamAssessment(BaseModel):
     """
-    Each field's value must be an exact option string present in
-    scorecard_qualitative_lookup() under the matching key.
+    Each field's value must be an option string present in
+    scorecard_qualitative_lookup() under the matching key (or an old
+    spelling listed in scorecard_option_aliases).
     """
     management_team_experience: str
     willingness_to_step_aside_for_ceo: str
@@ -260,29 +320,44 @@ class MarketAndTeamAssessment(BaseModel):
     sales_channels_partners: str
     marketing_partners: str
     need_for_additional_funding_rounds: str
+    key_competitor_1: Optional[str] = None
+    key_competitor_2: Optional[str] = None
+    key_competitor_3: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _current_wording(self):
+        """Old saved answers with misspelled option text are mapped to today's wording."""
+        for criterion in scorecard_qualitative_lookup():
+            if hasattr(self, criterion):
+                object.__setattr__(self, criterion, canonical_option(criterion, getattr(self, criterion)))
+        return self
 
 
 class OperatingPerformance(BaseModel):
-    current_revenue_last_12_months: float
+    current_revenue_last_12_months: float = Field(ge=0)
     current_ebitda: float
-    cash_available: float
-    current_ppe_value: float = 0.0
+    cash_available: float = Field(default=0.0, ge=0)
+    current_ppe_value: float = Field(default=0.0, ge=0)
 
 
 class FinancialAssumptions(BaseModel):
-    revenue_year1: float
+    revenue_year1: float = Field(gt=0)
     # growth rate applied to get Y2, Y3, Y4, Y5 from the prior year (as fractions, e.g. 0.10)
     revenue_growth_rates: list[float] = Field(default_factory=lambda: [0.10, 0.10, 0.10, 0.10])
-    # capex for Y1..Y5 (5 values). Source workbook default: [0, 30000, 30000, 30000, 30000]
+    # capex for Y1..Y5 (5 values)
     capex_by_year: list[float] = Field(default_factory=lambda: [0, 30000, 30000, 30000, 30000])
-    # outstanding interest-bearing debt balance (constant across years unless overridden)
-    existing_debt_balance: float = 0.0
+    # outstanding interest-bearing debt today (subtracted to get equity value)
+    existing_debt_balance: float = Field(default=0.0, ge=0)
+    # Optional Year-5 EBITDA margin to use instead of the industry's.
+    target_ebitda_margin_override: Optional[float] = Field(default=None, ge=-1, le=0.9)
 
     @field_validator("revenue_growth_rates")
     @classmethod
     def _four_growth_rates(cls, v):
         if len(v) != 4:
             raise ValueError("revenue_growth_rates must have exactly 4 values (for Y2, Y3, Y4, Y5)")
+        if any(g <= -1 or g > 10 for g in v):
+            raise ValueError("each growth rate must be above -100% and at most 1000%")
         return v
 
     @field_validator("capex_by_year")
@@ -290,22 +365,31 @@ class FinancialAssumptions(BaseModel):
     def _five_capex_years(cls, v):
         if len(v) != 5:
             raise ValueError("capex_by_year must have exactly 5 values (for Y1..Y5)")
+        if any(c < 0 for c in v):
+            raise ValueError("capex can't be negative")
         return v
 
 
 class Shareholder(BaseModel):
     name: str
-    ownership_pct: float
+    ownership_pct: float = Field(ge=0, le=1)
 
 
 class FundingRequirement(BaseModel):
-    capital_needed: float
+    capital_needed: float = Field(gt=0)
     use_of_funds: dict[str, float] = Field(default_factory=dict)
+
+    @field_validator("use_of_funds")
+    @classmethod
+    def _non_negative(cls, v):
+        if any(x < 0 for x in v.values()):
+            raise ValueError("use-of-funds amounts can't be negative")
+        return v
 
 
 class VCMethodAssumptions(BaseModel):
     """Assumptions specific to the Venture Capital method."""
-    number_of_existing_shares: float = 1_000_000.0
+    number_of_existing_shares: float = Field(default=1_000_000.0, ge=1)
 
 
 class ValuationInput(BaseModel):
@@ -320,37 +404,81 @@ class ValuationInput(BaseModel):
 
 
 # ============================================================================
-# SECTION 3 — Financial projections
-#
-# Builds the 5-year financial projection (P&L + working capital) from a
-# revenue trajectory and industry benchmarks - equivalent to
-# INPUTS Questionnaire rows 71-102 in the original workbook.
+# SECTION 3 — Shared helpers: tax rate, dates, benchmark lookups with sources
+# ============================================================================
+
+
+def effective_tax_rate(company: CompanyProfile) -> float:
+    """One tax rate for the whole valuation: the user's, else the country's statutory rate."""
+    if company.dcf_tax_rate_override is not None:
+        return company.dcf_tax_rate_override
+    return get_country(company.country)["corporate_tax_rate"]
+
+
+def _add_years(d: date, years: int) -> date:
+    try:
+        return d.replace(year=d.year + years)
+    except ValueError:  # 29 February
+        return d.replace(year=d.year + years, day=28)
+
+
+def valuation_date_of(company: CompanyProfile) -> date:
+    return company.valuation_date or date.today()
+
+
+@dataclass
+class BenchmarkUsed:
+    metric: str
+    value: float
+    source: str  # "region" | "industry_global" | "cross_industry" | "user_override"
+
+
+class _BenchmarkRecorder:
+    """Looks up benchmarks and remembers where each one came from."""
+
+    def __init__(self, industry: str, region: str):
+        self.industry, self.region = industry, region
+        self.used: dict[str, BenchmarkUsed] = {}
+
+    def get(self, metric: str) -> float:
+        value, source = get_industry_metric_with_source(self.industry, metric, self.region)
+        self.used[metric] = BenchmarkUsed(metric, value, source)
+        return value
+
+
+# ============================================================================
+# SECTION 4 — Financial projections
 # ============================================================================
 
 
 @dataclass
 class YearProjection:
     year_label: str
+    period_label: str  # e.g. "to Sep 2027"
     revenue: float
-    cogs: float
-    sga: float
-    other_opex: float
+    ebitda_margin: float
     ebitda: float
     da: float
     ebit: float
-    interest_on_debt: float
-    tax_amount: float
-    net_profit: float
+    tax_on_ebit: float
     accounts_receivable: float
     inventory: float
     accounts_payable: float
     working_capital: float
     change_in_working_capital: float
     capex: float
+    unlevered_fcf: float
 
 
 @dataclass
 class FinancialProjections:
+    valuation_date: str
+    starting_ebitda_margin: float
+    starting_margin_source: str  # "company" | "industry" (no revenue history)
+    target_ebitda_margin: float
+    target_margin_source: str  # "industry" | "user_override"
+    tax_rate: float
+    opening_working_capital: float
     years: list[YearProjection] = field(default_factory=list)
 
     def revenue(self) -> list[float]:
@@ -359,109 +487,106 @@ class FinancialProjections:
     def ebitda(self) -> list[float]:
         return [y.ebitda for y in self.years]
 
-    def ebit(self) -> list[float]:
-        return [y.ebit for y in self.years]
-
-    def capex(self) -> list[float]:
-        return [y.capex for y in self.years]
-
-    def change_in_working_capital(self) -> list[float]:
-        return [y.change_in_working_capital for y in self.years]
-
-    def da(self) -> list[float]:
-        return [y.da for y in self.years]
+    def fcf(self) -> list[float]:
+        return [y.unlevered_fcf for y in self.years]
 
 
 def build_projections(
     company: CompanyProfile,
     assumptions: FinancialAssumptions,
+    operating: OperatingPerformance,
+    bench: Optional[_BenchmarkRecorder] = None,
 ) -> FinancialProjections:
-    industry = company.industry
-    region = company.business_territory_region
+    bench = bench or _BenchmarkRecorder(company.industry, company.business_territory_region)
 
-    cogs_pct = get_industry_metric(industry, "cogs_pct_revenue", region, min_valid=0)
-    sga_pct = get_industry_metric(industry, "sga_pct_revenue", region, min_valid=0)
-    da_pct = get_industry_metric(industry, "da_pct_revenue", region, min_valid=0)
-    ar_pct = get_industry_metric(industry, "acc_receivable_pct_revenue", region, min_valid=0)
-    inv_pct = get_industry_metric(industry, "inventory_pct_revenue", region, min_valid=0)
-    ap_pct = get_industry_metric(industry, "acc_payable_pct_revenue", region, min_valid=0)
-    book_interest_rate = get_industry_metric(industry, "book_interest_rate", region, min_valid=0)
+    if assumptions.target_ebitda_margin_override is not None:
+        target_margin, target_src = assumptions.target_ebitda_margin_override, "user_override"
+    else:
+        target_margin, target_src = bench.get("ebitda_margin"), "industry"
 
-    # "Other operational expenses" in the source workbook is a flat 1.5%
-    # of Year-1 revenue, held constant in € terms across all 5 years
-    # (not re-derived from a benchmark each year) - reproduced as-is.
-    other_opex_pct_of_y1_revenue = 0.015
+    # Start from the company's own margin (if it has revenue) and move in equal
+    # steps to the target margin, reached in Year 5.
+    if operating.current_revenue_last_12_months > 0:
+        start_margin = operating.current_ebitda / operating.current_revenue_last_12_months
+        start_margin = max(-1.0, min(start_margin, 0.9))
+        start_src = "company"
+    else:
+        start_margin, start_src = target_margin, "industry"
 
-    # NOTE on tax rates (reproducing an inconsistency present in the source
-    # workbook - see docs/ at the repo root): the P&L's Net Profit line and
-    # the DCF Method's cash-flow taxes both use the user-entered
-    # `dcf_tax_rate_override` (10% for Valuativa DOO) - NOT the country's
-    # actual statutory corporate tax rate. The country's real corporate tax
-    # rate (30% for Tanzania, from country_data) is only used later, in the
-    # WACC build's after-tax cost of debt.
-    tax_rate_for_pl_and_dcf = company.dcf_tax_rate_override
+    da_pct = bench.get("da_pct_revenue")
+    wc_pct = (bench.get("acc_receivable_pct_revenue") + bench.get("inventory_pct_revenue")
+              - bench.get("acc_payable_pct_revenue"))
+    ar_pct = bench.used["acc_receivable_pct_revenue"].value
+    inv_pct = bench.used["inventory_pct_revenue"].value
+    ap_pct = bench.used["acc_payable_pct_revenue"].value
+
+    tax_rate = effective_tax_rate(company)
+    vdate = valuation_date_of(company)
 
     revenues = [assumptions.revenue_year1]
     for g in assumptions.revenue_growth_rates:
         revenues.append(revenues[-1] * (1 + g))
 
-    other_opex_y1 = other_opex_pct_of_y1_revenue * revenues[0]
-
-    prior_working_capital = None
+    opening_wc = operating.current_revenue_last_12_months * wc_pct
+    prior_wc = opening_wc
+    loss_carryforward = 0.0
     years: list[YearProjection] = []
+    n = len(revenues)
     for i, revenue in enumerate(revenues):
-        cogs = cogs_pct * revenue
-        sga = sga_pct * revenue
-        other_opex = other_opex_y1 * ((1 + 0.10) ** i)  # grows with the same 10% used for the illustrative other-opex line in the source
-        ebitda = revenue - cogs - sga - other_opex
+        margin = start_margin + (target_margin - start_margin) * (i + 1) / n
+        ebitda = revenue * margin
         da = da_pct * revenue
         ebit = ebitda - da
 
-        interest_on_debt = book_interest_rate * assumptions.existing_debt_balance
-        tax_amount = ebit * tax_rate_for_pl_and_dcf
-        net_profit = ebit - interest_on_debt - tax_amount
+        # Unlevered tax on EBIT; losses are carried forward against later profits.
+        if ebit <= 0:
+            tax = 0.0
+            loss_carryforward += -ebit
+        else:
+            used = min(loss_carryforward, ebit)
+            loss_carryforward -= used
+            tax = (ebit - used) * tax_rate
 
-        ar = ar_pct * revenue
-        inventory = inv_pct * revenue
-        ap = ap_pct * revenue
-        working_capital = ar + inventory - ap
-        change_in_wc = 0.0 if prior_working_capital is None else working_capital - prior_working_capital
-        prior_working_capital = working_capital
+        working_capital = revenue * wc_pct
+        change_in_wc = working_capital - prior_wc
+        prior_wc = working_capital
+        capex = assumptions.capex_by_year[i]
+        fcf = ebit - tax + da - capex - change_in_wc
 
+        period_end = _add_years(vdate, i + 1) - timedelta(days=1)
         years.append(YearProjection(
-            year_label=f"Y{i+1}",
+            year_label=f"Y{i + 1}",
+            period_label=f"to {period_end:%b %Y}",
             revenue=revenue,
-            cogs=cogs,
-            sga=sga,
-            other_opex=other_opex,
+            ebitda_margin=margin,
             ebitda=ebitda,
             da=da,
             ebit=ebit,
-            interest_on_debt=interest_on_debt,
-            tax_amount=tax_amount,
-            net_profit=net_profit,
-            accounts_receivable=ar,
-            inventory=inventory,
-            accounts_payable=ap,
+            tax_on_ebit=tax,
+            accounts_receivable=ar_pct * revenue,
+            inventory=inv_pct * revenue,
+            accounts_payable=ap_pct * revenue,
             working_capital=working_capital,
             change_in_working_capital=change_in_wc,
-            capex=assumptions.capex_by_year[i],
+            capex=capex,
+            unlevered_fcf=fcf,
         ))
 
-    return FinancialProjections(years=years)
+    return FinancialProjections(
+        valuation_date=vdate.isoformat(),
+        starting_ebitda_margin=start_margin,
+        starting_margin_source=start_src,
+        target_ebitda_margin=target_margin,
+        target_margin_source=target_src,
+        tax_rate=tax_rate,
+        opening_working_capital=opening_wc,
+        years=years,
+    )
 
 
 # ============================================================================
-# SECTION 4 — WACC (discount rate)
-#
-# Matches the 'Low' scenario column of the original 'WACC Calculation'
-# sheet (the column actually used by the DCF Method - the 'High' column
-# pulled a different data-derived estimate and was never wired into any of
-# the four valuation methods).
+# SECTION 5 — WACC (discount rate for the DCF)
 # ============================================================================
-
-RISK_FREE_RATE = 0.04
-ADDITIONAL_RISK_ADJUSTMENT = 0.0
 
 
 def _mround(value: float, multiple: float) -> float:
@@ -472,87 +597,59 @@ def _mround(value: float, multiple: float) -> float:
 @dataclass
 class WaccResult:
     beta: float
-    country_market_risk_premium: float
-    adjusted_market_risk_premium: float
+    country_equity_risk_premium: float
     risk_free_rate: float
     cost_of_equity: float
-    long_term_debt_rate: float
-    country_corporate_tax_rate: float
+    pre_tax_cost_of_debt: float
+    tax_rate: float
     after_tax_cost_of_debt: float
     equity_pct_capital: float
     debt_pct_capital: float
     wacc: float
 
 
-def compute_wacc(company: CompanyProfile) -> WaccResult:
-    industry = company.industry
-    region = company.business_territory_region
+def compute_wacc(company: CompanyProfile, bench: Optional[_BenchmarkRecorder] = None) -> WaccResult:
+    bench = bench or _BenchmarkRecorder(company.industry, company.business_territory_region)
     country = get_country(company.country)
+    rf = market_parameters()["risk_free_rate"]
 
-    beta = get_industry_metric(industry, "beta", region, min_valid=0.01)
-    # "equity_risk_premium" is the TOTAL market risk premium (mature-market baseline
-    # + this country's incremental risk on top of it) - "country_risk_premium" alone
-    # is only that incremental slice, and is 0 for the safest countries (US, Germany,
-    # Switzerland, etc.), which would otherwise zero out the entire risk premium and
-    # leave cost of equity equal to the bare risk-free rate regardless of company risk.
-    country_market_risk_premium = country["equity_risk_premium"]
-    adjusted_market_risk_premium = beta * country_market_risk_premium
+    beta = bench.get("beta")
+    # Total equity risk premium for the country (mature-market premium plus the
+    # country's own premium), so cost of equity = rf + beta x ERP (CAPM).
+    erp = country["equity_risk_premium"]
+    cost_of_equity = _mround(rf + beta * erp, 0.0025)
 
-    cost_of_equity = _mround(
-        adjusted_market_risk_premium + RISK_FREE_RATE + ADDITIONAL_RISK_ADJUSTMENT,
-        0.0025,
-    )
+    kd = bench.get("cost_of_debt")
+    tax_rate = effective_tax_rate(company)
+    after_tax_kd = (1 - tax_rate) * kd
 
-    long_term_debt_rate = get_industry_metric(industry, "book_interest_rate", region, min_valid=0)
-    country_corporate_tax_rate = country["corporate_tax_rate"]
-    after_tax_cost_of_debt = (1 - country_corporate_tax_rate) * long_term_debt_rate
+    we = bench.get("equity_pct_capital")
+    wd = bench.get("debt_pct_capital")
+    total = we + wd
+    we, wd = we / total, wd / total  # Damodaran's weights sum to 1; normalize defensively
 
-    equity_pct_capital = get_industry_metric(industry, "equity_pct_capital", region, min_valid=0.01)
-    debt_pct_capital = get_industry_metric(industry, "debt_pct_capital", region, min_valid=0)
-
-    wacc = _mround(
-        debt_pct_capital * after_tax_cost_of_debt + equity_pct_capital * cost_of_equity,
-        0.0025,
-    )
+    wacc = _mround(wd * after_tax_kd + we * cost_of_equity, 0.0025)
 
     return WaccResult(
         beta=beta,
-        country_market_risk_premium=country_market_risk_premium,
-        adjusted_market_risk_premium=adjusted_market_risk_premium,
-        risk_free_rate=RISK_FREE_RATE,
+        country_equity_risk_premium=erp,
+        risk_free_rate=rf,
         cost_of_equity=cost_of_equity,
-        long_term_debt_rate=long_term_debt_rate,
-        country_corporate_tax_rate=country_corporate_tax_rate,
-        after_tax_cost_of_debt=after_tax_cost_of_debt,
-        equity_pct_capital=equity_pct_capital,
-        debt_pct_capital=debt_pct_capital,
+        pre_tax_cost_of_debt=kd,
+        tax_rate=tax_rate,
+        after_tax_cost_of_debt=after_tax_kd,
+        equity_pct_capital=we,
+        debt_pct_capital=wd,
         wacc=wacc,
     )
 
 
 # ============================================================================
-# SECTION 5 — Scorecard method (Payne / Ohio TechAngels)
+# SECTION 6 — Scorecard method (Bill Payne / Ohio TechAngels)
 #
-# Each of 6 criteria has a fixed weight and a score derived from 1-3
-# qualitative questionnaire answers (averaged when there's more than one).
-# Pre-money value = sum(weight_i * score_i * benchmark_valuation) * risk_multiplier.
-#
-# This reproduces the CORRECTED formulas:
-#   - each criterion uses its own weight (bug 1 - the original had every
-#     criterion using criterion 1's 30% weight)
-#   - "Strategic Relationships with Partners" now checks the actual
-#     Marketing Partners answer (bug 2 - the original compared the "Need
-#     for additional funding rounds" answer against the Marketing Partners
-#     lookup table by mistake, so a user's real Marketing Partners answer
-#     never mattered)
-#
-# Both fixes are also applied in docs/main_file_corrected.xlsx.
-#
-# Faithful "no match" behavior: in the source spreadsheet, every
-# criterion's IF-chain falls back to 0 when a stored answer's text doesn't
-# exactly match any option in its dropdown lookup table - EXCEPT the first
-# half of "Size of the Opportunity" (target market size), which falls back
-# to 90%. `_score_or_default` reproduces that per-criterion.
+# Pre-money = benchmark pre-money for the stage/region x sum(weight x score).
+# No extra haircut: the benchmark is already a typical pre-money for a
+# company at this stage.
 # ============================================================================
 
 SCORECARD_CRITERIA_WEIGHTS = {
@@ -564,8 +661,15 @@ SCORECARD_CRITERIA_WEIGHTS = {
     "funding_required": 0.10,
 }
 
-_SCORECARD_FALLBACKS = {
-    "target_market_size": 0.90,
+SCORECARD_CRITERIA_QUESTIONS = {
+    "strength_of_the_team": ["management_team_experience", "willingness_to_step_aside_for_ceo",
+                             "management_team_completeness"],
+    "size_of_the_opportunity": ["target_market_size", "revenue_potential_in_5_years"],
+    "competitive_environment": ["strength_of_competitors_in_market", "strength_of_competitive_products"],
+    "strength_and_protection_of_product": ["product_development_stage", "product_compelling_to_customers",
+                                           "product_can_be_duplicated"],
+    "strategic_relationships_with_partners": ["sales_channels_partners", "marketing_partners"],
+    "funding_required": ["need_for_additional_funding_rounds"],
 }
 
 
@@ -580,101 +684,72 @@ class ScorecardCriterionResult:
 class ScorecardResult:
     criteria: dict[str, ScorecardCriterionResult]
     benchmark_pre_money_valuation: float
-    risk_multiplier: float
+    benchmark_source: str  # "table" | "user_override"
+    total_factor: float
     pre_money_valuation: float
 
 
-def _score_or_default(criterion_key: str, option_text: str) -> float:
-    default = _SCORECARD_FALLBACKS.get(criterion_key, 0.0)
-    return scorecard_qualitative_lookup()[criterion_key].get(option_text, default)
-
-
-def compute_scorecard(
-    company: CompanyProfile,
-    market: MarketAndTeamAssessment,
-) -> ScorecardResult:
-    stage_params = get_stage_params(company.company_stage)
-    risk_multiplier = stage_params["risk_multiplier"]
-
-    benchmark_pre_money_valuation = stage_region_pre_money_benchmarks()[
-        company.company_stage
-    ][company.business_territory_region]
-
-    scores = {
-        "strength_of_the_team": (
-            _score_or_default("management_team_experience", market.management_team_experience)
-            + _score_or_default("willingness_to_step_aside_for_ceo", market.willingness_to_step_aside_for_ceo)
-            + _score_or_default("management_team_completeness", market.management_team_completeness)
-        ) / 3,
-        "size_of_the_opportunity": (
-            _score_or_default("target_market_size", market.target_market_size)
-            + _score_or_default("revenue_potential_in_5_years", market.revenue_potential_in_5_years)
-        ) / 2,
-        "competitive_environment": (
-            _score_or_default("strength_of_competitors_in_market", market.strength_of_competitors_in_market)
-            + _score_or_default("strength_of_competitive_products", market.strength_of_competitive_products)
-        ) / 2,
-        "strength_and_protection_of_product": (
-            _score_or_default("product_development_stage", market.product_development_stage)
-            + _score_or_default("product_compelling_to_customers", market.product_compelling_to_customers)
-            + _score_or_default("product_can_be_duplicated", market.product_can_be_duplicated)
-        ) / 3,
-        # BUG 2, FIXED: now checks the real Marketing Partners answer.
-        "strategic_relationships_with_partners": (
-            _score_or_default("sales_channels_partners", market.sales_channels_partners)
-            + _score_or_default("marketing_partners", market.marketing_partners)
-        ) / 2,
-        "funding_required": _score_or_default(
-            "need_for_additional_funding_rounds", market.need_for_additional_funding_rounds
-        ),
-    }
+def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) -> ScorecardResult:
+    if company.benchmark_pre_money_override is not None:
+        benchmark, source = company.benchmark_pre_money_override, "user_override"
+    else:
+        try:
+            benchmark = stage_region_pre_money_benchmarks()[company.company_stage][company.business_territory_region]
+        except KeyError as e:
+            raise KeyError(f"No pre-money benchmark for {company.company_stage!r} / "
+                           f"{company.business_territory_region!r}") from e
+        source = "table"
 
     criteria_results = {}
-    total = 0.0
+    total_factor = 0.0
     for key, weight in SCORECARD_CRITERIA_WEIGHTS.items():
-        score = scores[key]
-        amount = benchmark_pre_money_valuation * weight * score
-        criteria_results[key] = ScorecardCriterionResult(weight=weight, score=score, amount_assigned=amount)
-        total += amount
-
-    pre_money_valuation = total * risk_multiplier
+        questions = SCORECARD_CRITERIA_QUESTIONS[key]
+        score = sum(get_scorecard_score(q, getattr(market, q)) for q in questions) / len(questions)
+        criteria_results[key] = ScorecardCriterionResult(
+            weight=weight, score=score, amount_assigned=benchmark * weight * score)
+        total_factor += weight * score
 
     return ScorecardResult(
         criteria=criteria_results,
-        benchmark_pre_money_valuation=benchmark_pre_money_valuation,
-        risk_multiplier=risk_multiplier,
-        pre_money_valuation=pre_money_valuation,
+        benchmark_pre_money_valuation=benchmark,
+        benchmark_source=source,
+        total_factor=total_factor,
+        pre_money_valuation=benchmark * total_factor,
     )
 
 
 # ============================================================================
-# SECTION 6 — Venture Capital method
+# SECTION 7 — Venture Capital method
 #
-# Exit value (revenue at the exit year x EBITDA margin x EV/EBITDA
-# multiple) is discounted back to today using (1 + hurdle_rate)^time_to_exit
-# to get post-money, then pre-money = post-money - investment.
+# Exit value = exit-year EBITDA x EV/EBITDA multiple; today's debt is assumed
+# still outstanding at exit, so exit equity = exit value - debt. Post-money
+# today = exit equity / (1 + target return)^years. Pre-money = post - investment.
 # ============================================================================
 
 
 @dataclass
 class VCMethodResult:
+    exit_year_label: str
     exit_year_revenue: float
     exit_year_ebitda: float
     ev_ebitda_multiple: float
-    ev_ebitda_multiple_source: str  # "region" | "industry_global" | "cross_industry" - see get_industry_metric_with_source
+    ev_ebitda_multiple_source: str
     exit_value: float
+    debt: float
+    exit_equity_value: float
     time_to_exit: int
-    hurdle_rate: float
+    target_return: float
     investment_amount: float
     number_of_existing_shares: float
-    post_money_valuation: float
-    pre_money_valuation: float
-    ownership_fraction_investors: float
-    ownership_fraction_entrepreneurs: float
-    number_of_new_shares: float
-    price_per_share: float
-    final_wealth_investors: float
-    final_wealth_entrepreneurs: float
+    post_money_valuation: Optional[float]
+    pre_money_valuation: Optional[float]
+    ownership_fraction_investors: Optional[float]
+    ownership_fraction_entrepreneurs: Optional[float]
+    number_of_new_shares: Optional[float]
+    price_per_share: Optional[float]
+    final_wealth_investors: Optional[float]
+    final_wealth_entrepreneurs: Optional[float]
+    not_meaningful_reason: Optional[str]
 
 
 def compute_venture_capital(
@@ -682,127 +757,145 @@ def compute_venture_capital(
     projections: FinancialProjections,
     funding: FundingRequirement,
     vc_assumptions: VCMethodAssumptions,
+    bench: Optional[_BenchmarkRecorder] = None,
+    debt: float = 0.0,
 ) -> VCMethodResult:
-    stage_params = get_stage_params(company.company_stage)
-    hurdle_rate = stage_params["hurdle_rate"]
+    bench = bench or _BenchmarkRecorder(company.industry, company.business_territory_region)
+    target_return = get_stage_params(company.company_stage)["vc_target_return"]
+    T = company.planned_time_to_exit_years
+    exit_year = projections.years[T - 1]
 
-    time_to_exit = company.planned_time_to_exit_years
-    exit_year_index = time_to_exit - 1  # Y1 = index 0
-    exit_year = projections.years[exit_year_index]
+    multiple = bench.get("ev_ebitda_multiple")
+    multiple_source = bench.used["ev_ebitda_multiple"].source
+    exit_value = exit_year.ebitda * multiple
+    exit_equity = exit_value - debt
+    I = funding.capital_needed
+    x = vc_assumptions.number_of_existing_shares
 
-    ev_ebitda_multiple, ev_ebitda_multiple_source = get_industry_metric_with_source(
-        company.industry, "ev_ebitda_multiple", company.business_territory_region, min_valid=0
+    result = dict(
+        exit_year_label=exit_year.year_label, exit_year_revenue=exit_year.revenue,
+        exit_year_ebitda=exit_year.ebitda, ev_ebitda_multiple=multiple,
+        ev_ebitda_multiple_source=multiple_source, exit_value=exit_value, debt=debt,
+        exit_equity_value=exit_equity, time_to_exit=T,
+        target_return=target_return, investment_amount=I, number_of_existing_shares=x,
+        post_money_valuation=None, pre_money_valuation=None, ownership_fraction_investors=None,
+        ownership_fraction_entrepreneurs=None, number_of_new_shares=None, price_per_share=None,
+        final_wealth_investors=None, final_wealth_entrepreneurs=None, not_meaningful_reason=None,
     )
-    exit_value = exit_year.ebitda * ev_ebitda_multiple
 
-    investment_amount = funding.capital_needed
-    number_of_existing_shares = vc_assumptions.number_of_existing_shares
+    if company.industry in FINANCIAL_SECTOR_INDUSTRIES:
+        result["not_meaningful_reason"] = "EBITDA-based exit values don't apply to banks and insurers."
+        return VCMethodResult(**result)
+    if exit_value <= 0:
+        result["not_meaningful_reason"] = (
+            f"Projected EBITDA in the exit year ({exit_year.year_label}) is not positive, "
+            "so there is no exit value to discount.")
+        return VCMethodResult(**result)
+    if exit_equity <= 0:
+        result["not_meaningful_reason"] = "Debt is larger than the projected exit value."
+        return VCMethodResult(**result)
 
-    post_money_valuation = exit_value / ((1 + hurdle_rate) ** time_to_exit)
-    pre_money_valuation = post_money_valuation - investment_amount
+    post = exit_equity / (1 + target_return) ** T
+    result["post_money_valuation"] = post
+    if post <= I:
+        result["not_meaningful_reason"] = (
+            "The capital being raised is larger than the value the exit supports today, "
+            "so the pre-money value would be negative.")
+        return VCMethodResult(**result)
 
-    ownership_fraction_investors = investment_amount / post_money_valuation
-    ownership_fraction_entrepreneurs = 1 - ownership_fraction_investors
-
-    number_of_new_shares = number_of_existing_shares * (
-        ownership_fraction_investors / (1 - ownership_fraction_investors)
+    F = I / post
+    y = x * F / (1 - F)
+    result.update(
+        pre_money_valuation=post - I,
+        ownership_fraction_investors=F,
+        ownership_fraction_entrepreneurs=1 - F,
+        number_of_new_shares=y,
+        price_per_share=I / y,
+        final_wealth_investors=exit_equity * F,
+        final_wealth_entrepreneurs=exit_equity * (1 - F),
     )
-    price_per_share = investment_amount / number_of_new_shares
-
-    final_wealth_investors = exit_value * ownership_fraction_investors
-    final_wealth_entrepreneurs = exit_value * ownership_fraction_entrepreneurs
-
-    return VCMethodResult(
-        exit_year_revenue=exit_year.revenue,
-        exit_year_ebitda=exit_year.ebitda,
-        ev_ebitda_multiple=ev_ebitda_multiple,
-        ev_ebitda_multiple_source=ev_ebitda_multiple_source,
-        exit_value=exit_value,
-        time_to_exit=time_to_exit,
-        hurdle_rate=hurdle_rate,
-        investment_amount=investment_amount,
-        number_of_existing_shares=number_of_existing_shares,
-        post_money_valuation=post_money_valuation,
-        pre_money_valuation=pre_money_valuation,
-        ownership_fraction_investors=ownership_fraction_investors,
-        ownership_fraction_entrepreneurs=ownership_fraction_entrepreneurs,
-        number_of_new_shares=number_of_new_shares,
-        price_per_share=price_per_share,
-        final_wealth_investors=final_wealth_investors,
-        final_wealth_entrepreneurs=final_wealth_entrepreneurs,
-    )
+    return VCMethodResult(**result)
 
 
 # ============================================================================
-# SECTION 7 — DCF Multiples method (a.k.a. Comparables method)
+# SECTION 8 — Comparables method (EV/EBITDA multiple)
 #
-# Uses Year-1 revenue and EBITDA (not a future exit year) x the industry
-# EV/EBITDA multiple, then applies the stage risk multiplier as a haircut
-# (no time discounting - this method is a snapshot, not a multi-year DCF).
+# Trailing (last-12-month) EBITDA x Damodaran's trailing EV/EBITDA multiple,
+# reduced by a private-company discount, then converted from enterprise
+# value to equity value (minus debt, plus cash).
 # ============================================================================
 
 
 @dataclass
-class DCFMultiplesResult:
-    revenue: float
-    ebitda: float
+class ComparablesResult:
+    trailing_ebitda: float
     ev_ebitda_multiple: float
-    ev_ebitda_multiple_source: str  # "region" | "industry_global" | "cross_industry" - see get_industry_metric_with_source
-    exit_value: float
-    risk_multiplier: float
-    pre_money_valuation: float
-
-
-def compute_dcf_multiples(
-    company: CompanyProfile,
-    projections: FinancialProjections,
-) -> DCFMultiplesResult:
-    year1 = projections.years[0]
-
-    ev_ebitda_multiple, ev_ebitda_multiple_source = get_industry_metric_with_source(
-        company.industry, "ev_ebitda_multiple", company.business_territory_region, min_valid=0
-    )
-    exit_value = year1.ebitda * ev_ebitda_multiple
-
-    risk_multiplier = get_stage_params(company.company_stage)["risk_multiplier"]
-    pre_money_valuation = exit_value * risk_multiplier
-
-    return DCFMultiplesResult(
-        revenue=year1.revenue,
-        ebitda=year1.ebitda,
-        ev_ebitda_multiple=ev_ebitda_multiple,
-        ev_ebitda_multiple_source=ev_ebitda_multiple_source,
-        exit_value=exit_value,
-        risk_multiplier=risk_multiplier,
-        pre_money_valuation=pre_money_valuation,
-    )
-
-
-# ============================================================================
-# SECTION 8 — DCF Method
-#
-# 5-year unlevered free cash flow + Gordon Growth terminal value.
-#
-# This is the CORRECTED version: the terminal value is discounted back to
-# present value (both for the base discount-rate-only column and the
-# hurdle-adjusted column). The original workbook computed the terminal
-# value as of the exit date but never divided by (1+r)^5, overstating the
-# DCF Method's enterprise value by roughly 4-8x - see docs/ for the full
-# writeup.
-# ============================================================================
-
-PERPETUAL_GROWTH_RATE = 0.02
-# Minimum required gap between the DCF discount rate and the perpetual growth
-# rate, for the Gordon Growth terminal-value formula to stay mathematically
-# sane (see compute_dcf).
-MIN_DISCOUNT_GROWTH_SPREAD = 0.02
-
-
-@dataclass
-class DCFColumnResult:
-    pv_of_fcf: float
-    pv_of_terminal_value: float
+    ev_ebitda_multiple_source: str
+    public_company_ev: float
+    private_company_discount: float
     enterprise_value: float
+    debt: float
+    cash: float
+    equity_value: Optional[float]
+    pre_money_valuation: Optional[float]
+    debt_exceeds_value: bool
+    not_meaningful_reason: Optional[str]
+
+
+def compute_comparables(
+    company: CompanyProfile,
+    operating: OperatingPerformance,
+    debt: float,
+    bench: Optional[_BenchmarkRecorder] = None,
+) -> ComparablesResult:
+    bench = bench or _BenchmarkRecorder(company.industry, company.business_territory_region)
+    multiple = bench.get("ev_ebitda_multiple")
+    source = bench.used["ev_ebitda_multiple"].source
+    discount = get_stage_params(company.company_stage)["private_company_discount"]
+    ltm = operating.current_ebitda
+    cash = operating.cash_available
+
+    public_ev = ltm * multiple
+    ev = public_ev * (1 - discount)
+    equity = ev - debt + cash
+    reason = None
+    if company.industry in FINANCIAL_SECTOR_INDUSTRIES:
+        reason = "EV/EBITDA multiples don't apply to banks and insurers."
+    elif ltm <= 0:
+        reason = "The company has no positive EBITDA over the last 12 months to apply a multiple to."
+    # Shareholders can't lose more than their shares: if debt exceeds the
+    # enterprise value, this method says the equity is worth (about) nothing.
+    floored = reason is None and equity < 0
+    equity = max(equity, 0.0)
+
+    return ComparablesResult(
+        trailing_ebitda=ltm,
+        ev_ebitda_multiple=multiple,
+        ev_ebitda_multiple_source=source,
+        public_company_ev=public_ev,
+        private_company_discount=discount,
+        enterprise_value=ev,
+        debt=debt,
+        cash=cash,
+        equity_value=None if reason else equity,
+        pre_money_valuation=None if reason else equity,
+        debt_exceeds_value=floored,
+        not_meaningful_reason=reason,
+    )
+
+
+# ============================================================================
+# SECTION 9 — DCF method
+#
+# Five years of unlevered free cash flow + Gordon Growth terminal value,
+# discounted at WACC (end-of-year convention). The going-concern value is
+# then weighted by the stage's probability of survival (failure value
+# assumed to be zero), and converted to equity (minus debt, plus cash).
+# ============================================================================
+
+# Minimum gap between the discount rate and the perpetual growth rate inside
+# the terminal-value formula, so it stays well defined.
+MIN_DISCOUNT_GROWTH_SPREAD = 0.02
 
 
 @dataclass
@@ -810,15 +903,25 @@ class DCFResult:
     tax_rate: float
     discount_rate: float
     perpetual_growth_rate: float
-    hurdle_rate: float
     unlevered_fcf_by_year: list[float]
-    terminal_value_floor_applied: bool  # see MIN_DISCOUNT_GROWTH_SPREAD below
-    base: DCFColumnResult          # discounted at `discount_rate` only
-    hurdle_adjusted: DCFColumnResult  # discounted at `discount_rate + hurdle_rate` - this feeds the blended valuation
+    pv_of_fcf: float
+    terminal_value: float
+    pv_of_terminal_value: float
+    enterprise_value: float
+    terminal_value_share: Optional[float]
+    terminal_value_floor_applied: bool
+    survival_probability: float
+    risk_adjusted_enterprise_value: float
+    debt: float
+    cash: float
+    equity_value: Optional[float]
+    pre_money_valuation: Optional[float]
+    debt_exceeds_value: bool
+    not_meaningful_reason: Optional[str]
 
 
 def _npv(rate: float, cashflows: list[float]) -> float:
-    """Excel NPV() equivalent: discounts cashflows[0] as period 1, cashflows[1] as period 2, etc."""
+    """Discounts cashflows[0] as period 1, cashflows[1] as period 2, etc."""
     return sum(cf / (1 + rate) ** (i + 1) for i, cf in enumerate(cashflows))
 
 
@@ -826,158 +929,336 @@ def compute_dcf(
     company: CompanyProfile,
     projections: FinancialProjections,
     wacc_result: WaccResult,
+    operating: OperatingPerformance,
+    debt: float,
 ) -> DCFResult:
-    tax_rate = company.dcf_tax_rate_override
-    discount_rate = wacc_result.wacc
-    hurdle_rate = get_stage_params(company.company_stage)["hurdle_rate"]
-    g = PERPETUAL_GROWTH_RATE
-    n = len(projections.years)  # 5
+    r = wacc_result.wacc
+    g = market_parameters()["perpetual_growth_rate"]
+    p = get_stage_params(company.company_stage)["survival_probability"]
+    fcf = projections.fcf()
+    n = len(fcf)
 
-    unlevered_fcf = []
-    for y in projections.years:
-        taxes = y.ebit * tax_rate
-        fcf = y.ebit - taxes + y.da - y.capex - y.change_in_working_capital
-        unlevered_fcf.append(fcf)
+    tv_rate = max(r, g + MIN_DISCOUNT_GROWTH_SPREAD)
+    floor_applied = tv_rate != r
+    pv_fcf = _npv(r, fcf)
+    tv = fcf[-1] * (1 + g) / (tv_rate - g)
+    pv_tv = tv / (1 + r) ** n
+    ev = pv_fcf + pv_tv
+    risk_adj_ev = ev * p
+    cash = operating.cash_available
+    equity = risk_adj_ev - debt + cash
 
-    terminal_year_fcf = unlevered_fcf[-1]
-
-    # The Gordon Growth terminal-value formula is only mathematically valid when
-    # the discount rate exceeds the perpetual growth rate - otherwise the
-    # denominator is zero or negative. A handful of industry/region combinations
-    # (mostly banks in very low-rate markets) produce a WACC that rounds to
-    # exactly the 2% perpetual growth rate, which would crash or silently
-    # produce a nonsensical terminal value. This floor keeps the formula
-    # well-defined; it only ever affects the (rare) discount rate used inside
-    # the terminal-value formula itself, never the rate used to discount the
-    # interim years' cash flows.
-    floor_applied = False
-
-    def _tv_rate(rate: float) -> float:
-        nonlocal floor_applied
-        floored = max(rate, g + MIN_DISCOUNT_GROWTH_SPREAD)
-        if floored != rate:
-            floor_applied = True
-        return floored
-
-    # --- base column: discount rate only ---
-    pv_fcf_base = _npv(discount_rate, unlevered_fcf)
-    tv_base_at_exit = terminal_year_fcf * (1 + g) / (_tv_rate(discount_rate) - g)
-    pv_tv_base = tv_base_at_exit / (1 + discount_rate) ** n
-    ev_base = pv_fcf_base + pv_tv_base
-
-    # --- hurdle-adjusted column: discount rate + hurdle rate ---
-    r_adj = discount_rate + hurdle_rate
-    pv_fcf_adj = _npv(r_adj, unlevered_fcf)
-    tv_adj_at_exit = terminal_year_fcf * (1 + g) / (_tv_rate(r_adj) - g)
-    pv_tv_adj = tv_adj_at_exit / (1 + r_adj) ** n
-    ev_adj = pv_fcf_adj + pv_tv_adj
+    reason = None
+    if company.industry in FINANCIAL_SECTOR_INDUSTRIES:
+        reason = "Free-cash-flow DCF doesn't apply to banks and insurers."
+    elif ev <= 0:
+        reason = "Projected free cash flows give a negative enterprise value."
+    floored = reason is None and equity < 0
+    equity = max(equity, 0.0)
 
     return DCFResult(
-        tax_rate=tax_rate,
-        discount_rate=discount_rate,
+        tax_rate=projections.tax_rate,
+        discount_rate=r,
         perpetual_growth_rate=g,
-        hurdle_rate=hurdle_rate,
-        unlevered_fcf_by_year=unlevered_fcf,
+        unlevered_fcf_by_year=fcf,
+        pv_of_fcf=pv_fcf,
+        terminal_value=tv,
+        pv_of_terminal_value=pv_tv,
+        enterprise_value=ev,
+        terminal_value_share=pv_tv / ev if ev > 0 else None,
         terminal_value_floor_applied=floor_applied,
-        base=DCFColumnResult(pv_of_fcf=pv_fcf_base, pv_of_terminal_value=pv_tv_base, enterprise_value=ev_base),
-        hurdle_adjusted=DCFColumnResult(pv_of_fcf=pv_fcf_adj, pv_of_terminal_value=pv_tv_adj, enterprise_value=ev_adj),
+        survival_probability=p,
+        risk_adjusted_enterprise_value=risk_adj_ev,
+        debt=debt,
+        cash=cash,
+        equity_value=None if reason else equity,
+        pre_money_valuation=None if reason else equity,
+        debt_exceeds_value=floored,
+        not_meaningful_reason=reason,
     )
 
 
 # ============================================================================
-# SECTION 9 — Orchestration
-#
-# Builds financial projections, computes WACC, runs all four valuation
-# methods, and blends them by stage-based weights into a final pre-money /
-# post-money valuation.
+# SECTION 10 — Input sanity checks (warnings)
 # ============================================================================
+
+
+@dataclass
+class ValuationWarning:
+    code: str
+    severity: str  # "warning" | "info"
+    message: str
+
+
+_REGION_SHORT = {
+    "US": "US",
+    EUROPE_REGION: "Europe",
+    "Japan": "Japan",
+    EMERGING_REGION: "Emerging Markets",
+    "China": "China",
+    "India": "India",
+    "Global": "Global",
+}
+
+_METRIC_LABELS = {
+    "ebitda_margin": "EBITDA margin",
+    "da_pct_revenue": "D&A (% of revenue)",
+    "acc_receivable_pct_revenue": "accounts receivable (% of revenue)",
+    "inventory_pct_revenue": "inventory (% of revenue)",
+    "acc_payable_pct_revenue": "accounts payable (% of revenue)",
+    "beta": "beta",
+    "cost_of_debt": "cost of debt",
+    "equity_pct_capital": "equity share of capital",
+    "debt_pct_capital": "debt share of capital",
+    "ev_ebitda_multiple": "EV/EBITDA multiple",
+}
+
+
+def _pct(x: float) -> str:
+    return f"{x * 100:.1f}%"
+
+
+def _eur(x: float) -> str:
+    return f"€{x:,.0f}"
+
+
+def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, dcf: DCFResult,
+                     bench: _BenchmarkRecorder, scorecard: ScorecardResult,
+                     method_values: dict) -> list[ValuationWarning]:
+    cp = inputs.company_profile
+    op = inputs.operating_performance
+    fa = inputs.financial_assumptions
+    out: list[ValuationWarning] = []
+
+    def warn(code, msg, severity="warning"):
+        out.append(ValuationWarning(code, severity, msg))
+
+    ltm = op.current_revenue_last_12_months
+    if ltm > 0:
+        jump = fa.revenue_year1 / ltm - 1
+        if jump > 1.0:
+            warn("revenue_jump", f"Year-1 revenue ({_eur(fa.revenue_year1)}) is {jump:.0%} above the last "
+                 f"12 months ({_eur(ltm)}). Check that this growth is realistic; every cash-flow method "
+                 "builds on it.")
+    else:
+        warn("no_revenue_history", "No revenue in the last 12 months: projected margins use the industry "
+             "average from Year 1, and the Comparables method can't be applied.", "info")
+    if any(g > 1.0 for g in fa.revenue_growth_rates):
+        warn("high_growth", "One or more yearly growth rates is above 100%. Check these are realistic.")
+
+    revenue_base = ltm if ltm > 0 else fa.revenue_year1
+    if op.current_ppe_value > 2 * revenue_base:
+        warn("ppe_scale", f"PP&E ({_eur(op.current_ppe_value)}) is {op.current_ppe_value / revenue_base:.1f}× "
+             "revenue, which is unusual for most young companies. Check the figure.")
+    for y in projections.years:
+        if y.capex > 0.3 * y.revenue:
+            warn("capex_scale", f"Capex in {y.year_label} ({_eur(y.capex)}) is more than 30% of revenue.")
+            break
+
+    if projections.starting_margin_source == "company":
+        gap = projections.starting_ebitda_margin - projections.target_ebitda_margin
+        if abs(gap) > 0.10:
+            warn("margin_gap", f"Your current EBITDA margin ({_pct(projections.starting_ebitda_margin)}) "
+                 f"differs from the {'target' if projections.target_margin_source == 'user_override' else 'industry'} "
+                 f"margin ({_pct(projections.target_ebitda_margin)}) by more than 10 points. The projection "
+                 "moves from one to the other over five years; enter your own target margin if that isn't "
+                 "realistic.")
+
+    if inputs.ownership:
+        total = sum(s.ownership_pct for s in inputs.ownership)
+        if abs(total - 1) > 0.005:
+            warn("ownership_sum", f"Ownership adds up to {_pct(total)}, not 100%.")
+
+    uof = inputs.funding.use_of_funds
+    if uof:
+        total_uof = sum(uof.values())
+        cap = inputs.funding.capital_needed
+        if abs(total_uof - cap) > 0.005 * cap:
+            warn("use_of_funds_sum", f"Use of funds adds up to {_eur(total_uof)}, but the capital needed is "
+                 f"{_eur(cap)}.")
+        capex_uof = uof.get("Capital expenditures", 0) or 0
+        if capex_uof > 0 and abs(capex_uof - fa.capex_by_year[0]) > 0.5:
+            warn("capex_mismatch", f"Use of funds includes {_eur(capex_uof)} of capital expenditure, but "
+                 f"planned capex for Year 1 is {_eur(fa.capex_by_year[0])}.")
+
+    try:
+        expected_region = default_region_for_country(cp.country)
+    except KeyError:
+        expected_region = None
+    if expected_region and expected_region != "Global" and expected_region != cp.business_territory_region:
+        warn("region_mismatch", f"Companies in {cp.country} are usually benchmarked against "
+             f"{_REGION_SHORT.get(expected_region, expected_region)}; you chose "
+             f"{_REGION_SHORT.get(cp.business_territory_region, cp.business_territory_region)}. "
+             "Industry benchmarks follow the region you chose.", "info")
+
+    region_name = _REGION_SHORT.get(cp.business_territory_region, cp.business_territory_region)
+    for b in bench.used.values():
+        if b.source == "industry_global":
+            warn(f"fallback_{b.metric}", f"Damodaran has no usable {region_name} figure for "
+                 f"{_METRIC_LABELS.get(b.metric, b.metric)} in this industry, so the industry's global "
+                 "figure is used.", "info")
+        elif b.source == "cross_industry":
+            warn(f"fallback_{b.metric}", f"No figure for {_METRIC_LABELS.get(b.metric, b.metric)} in this "
+                 "industry: the median across all industries is used.", "info")
+
+    if cp.industry in FINANCIAL_SECTOR_INDUSTRIES:
+        warn("financial_sector", "Banks and insurers can't be valued on EBITDA or free cash flow, so only the "
+             "Scorecard method is used.")
+    if dcf.terminal_value_floor_applied:
+        warn("tv_floor", "The discount rate is close to the long-run growth rate, so the terminal value was "
+             f"calculated with a minimum {_pct(MIN_DISCOUNT_GROWTH_SPREAD)} gap between them.")
+    if dcf.terminal_value_share is not None and dcf.terminal_value_share > 0.75:
+        warn("tv_share", f"The terminal value is {_pct(dcf.terminal_value_share)} of the DCF value, so the DCF "
+             "depends mostly on years after the forecast.", "info")
+
+    if scorecard.benchmark_source == "table":
+        warn("benchmark_estimate", "The Scorecard's average pre-money benchmark is an internal estimate, not "
+             "from a published survey. Replace it with a local benchmark if you have one.", "info")
+
+    for key, mv in method_values.items():
+        if mv.status == "not_meaningful" and mv.weight > 0:
+            warn(f"nm_{key}", f"{METHOD_NAMES[key]} left out of the blend: {mv.note}")
+        elif mv.status == "ok" and mv.note:
+            warn(f"zero_{key}", f"{METHOD_NAMES[key]}: {mv.note}")
+    debt = inputs.financial_assumptions.existing_debt_balance
+    if debt > 0 and method_values["scorecard"].status == "ok":
+        warn("scorecard_debt", "The Scorecard compares you with a typical (usually debt-free) company and does "
+             f"not subtract your {_eur(debt)} of debt; the other methods do.", "info")
+
+    return out
+
+
+# ============================================================================
+# SECTION 11 — Orchestration and blend
+# ============================================================================
+
+METHOD_NAMES = {
+    "scorecard": "Scorecard method",
+    "venture_capital": "Venture Capital method",
+    "comparables": "Comparables (EV/EBITDA multiple)",
+    "dcf": "DCF method",
+}
+
+
+class ValuationError(ValueError):
+    """Inputs are valid but no method can produce a meaningful value."""
 
 
 @dataclass
 class MethodValue:
-    pre_money_value: float
-    weight: float
-    weighted_value: float
+    pre_money_value: Optional[float]
+    weight: float  # the stage's standard weight
+    weight_used: float  # after leaving out methods that aren't meaningful
+    weighted_value: Optional[float]
+    status: str  # "ok" | "not_meaningful" | "not_used" (stage weight 0)
+    note: Optional[str]
+
+
+@dataclass
+class EquityBridge:
+    debt: float
+    cash: float
+    net_debt: float
 
 
 @dataclass
 class ValuationOutput:
+    valuation_date: str
     projections: FinancialProjections
     wacc: WaccResult
     scorecard: ScorecardResult
     venture_capital: VCMethodResult
-    dcf_multiples: DCFMultiplesResult
+    comparables: ComparablesResult
     dcf: DCFResult
-
+    equity_bridge: EquityBridge
+    benchmarks_used: dict[str, BenchmarkUsed]
     method_values: dict[str, MethodValue]
-    simple_average_valuation: float
     blended_pre_money_valuation: float
     capital_needed: float
     post_money_valuation: float
+    warnings: list[ValuationWarning]
 
 
 def run_valuation(inputs: ValuationInput) -> ValuationOutput:
     company = inputs.company_profile
+    op = inputs.operating_performance
+    get_country(company.country)  # fail early on an unknown country
+    stage = get_stage_params(company.company_stage)
+    if company.industry not in industry_benchmarks():
+        raise KeyError(f"Unknown industry {company.industry!r}")
+    if company.business_territory_region not in stage_region_pre_money_benchmarks()[company.company_stage]:
+        raise KeyError(f"Unknown region {company.business_territory_region!r}")
 
-    projections = build_projections(company, inputs.financial_assumptions)
-    wacc_result = compute_wacc(company)
+    bench = _BenchmarkRecorder(company.industry, company.business_territory_region)
+    projections = build_projections(company, inputs.financial_assumptions, op, bench)
+    wacc_result = compute_wacc(company, bench)
+    debt = inputs.financial_assumptions.existing_debt_balance
 
     scorecard_result = compute_scorecard(company, inputs.market_and_team_assessment)
-    vc_result = compute_venture_capital(company, projections, inputs.funding, inputs.vc_assumptions)
-    dcf_multiples_result = compute_dcf_multiples(company, projections)
-    dcf_result = compute_dcf(company, projections, wacc_result)
+    vc_result = compute_venture_capital(company, projections, inputs.funding, inputs.vc_assumptions, bench, debt)
+    comparables_result = compute_comparables(company, op, debt, bench)
+    dcf_result = compute_dcf(company, projections, wacc_result, op, debt)
 
-    weights = get_stage_params(company.company_stage)["method_weights"]
-
-    raw_values = {
-        "scorecard": scorecard_result.pre_money_valuation,
-        "venture_capital": vc_result.pre_money_valuation,
-        "dcf_multiples": dcf_multiples_result.pre_money_valuation,
-        "dcf": dcf_result.hurdle_adjusted.enterprise_value,
+    raw = {
+        "scorecard": (scorecard_result.pre_money_valuation, None),
+        "venture_capital": (vc_result.pre_money_valuation, vc_result.not_meaningful_reason),
+        "comparables": (comparables_result.pre_money_valuation, comparables_result.not_meaningful_reason),
+        "dcf": (dcf_result.pre_money_valuation, dcf_result.not_meaningful_reason),
     }
+    weights = stage["method_weights"]
+    usable_weight = sum(weights[k] for k, (v, _) in raw.items() if v is not None and weights[k] > 0)
+    if usable_weight <= 0:
+        reasons = "; ".join(f"{METHOD_NAMES[k]}: {r}" for k, (v, r) in raw.items() if r and weights[k] > 0)
+        raise ValuationError(
+            "None of the methods used for this stage gives a meaningful value for these inputs. " + reasons)
 
     method_values = {}
-    weighted_sum = 0.0
-    weight_sum = 0.0
-    for key, value in raw_values.items():
+    blended = 0.0
+    for key, (value, reason) in raw.items():
         w = weights[key]
-        weighted = value * w
-        method_values[key] = MethodValue(pre_money_value=value, weight=w, weighted_value=weighted)
-        weighted_sum += weighted
-        weight_sum += w
-
-    simple_average_valuation = sum(raw_values.values()) / len(raw_values)
-    blended_pre_money_valuation = weighted_sum / weight_sum
+        if w <= 0:
+            status, note = "not_used", "Not used at this stage."
+        elif value is None:
+            status, note = "not_meaningful", reason
+        elif key in ("comparables", "dcf") and (comparables_result if key == "comparables" else dcf_result).debt_exceeds_value:
+            status, note = "ok", "Debt exceeds the enterprise value, so the equity is worth about zero."
+        else:
+            status, note = "ok", None
+        w_used = w / usable_weight if status == "ok" else 0.0
+        weighted = value * w_used if status == "ok" else None
+        if weighted is not None:
+            blended += weighted
+        method_values[key] = MethodValue(
+            pre_money_value=value, weight=w, weight_used=w_used, weighted_value=weighted,
+            status=status, note=note)
 
     capital_needed = inputs.funding.capital_needed
-    post_money_valuation = blended_pre_money_valuation + capital_needed
+    warnings = collect_warnings(inputs, projections, dcf_result, bench, scorecard_result, method_values)
 
     return ValuationOutput(
+        valuation_date=projections.valuation_date,
         projections=projections,
         wacc=wacc_result,
         scorecard=scorecard_result,
         venture_capital=vc_result,
-        dcf_multiples=dcf_multiples_result,
+        comparables=comparables_result,
         dcf=dcf_result,
+        equity_bridge=EquityBridge(debt=debt, cash=op.cash_available, net_debt=debt - op.cash_available),
+        benchmarks_used=dict(bench.used),
         method_values=method_values,
-        simple_average_valuation=simple_average_valuation,
-        blended_pre_money_valuation=blended_pre_money_valuation,
+        blended_pre_money_valuation=blended,
         capital_needed=capital_needed,
-        post_money_valuation=post_money_valuation,
+        post_money_valuation=blended + capital_needed,
+        warnings=warnings,
     )
 
 
 # ============================================================================
-# SECTION 10 — Scenario / sensitivity analysis
+# SECTION 12 — Scenario / sensitivity analysis
 #
-# Re-runs the full valuation (all four methods, blended) at scaled Year-1
-# revenue levels, so the effect of a revenue scenario is reflected exactly
-# the way each method actually responds to it - Scorecard doesn't move at
-# all (it never looks at revenue), Venture Capital and DCF move through the
-# whole 5-year projection (growth rates, cost ratios, working capital all
-# scale together), and DCF Multiples moves off Year 1 alone. This reuses
-# run_valuation() itself rather than approximating each method separately,
-# so scenario numbers are exactly as accurate as the base valuation.
+# Re-runs the full valuation at scaled Year-1 revenue levels (growth rates
+# kept, so the whole trajectory scales). Scorecard and Comparables don't
+# move: they don't use projected revenue.
 # ============================================================================
 
 SCENARIO_REVENUE_MULTIPLIERS = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3]
@@ -992,9 +1273,8 @@ def run_valuation_scenarios(
     multipliers: Optional[list[float]] = None,
 ) -> dict[str, ValuationOutput]:
     """
-    Returns an ordered dict: scenario label (e.g. "80%") -> full ValuationOutput,
-    for each revenue multiplier applied to Year 1 revenue (growth rates from
-    Year 1 onward are kept as given, so the whole trajectory scales with it).
+    Returns an ordered dict: scenario label (e.g. "80%") -> full ValuationOutput.
+    A scenario in which no method is meaningful is left out.
     """
     multipliers = multipliers if multipliers is not None else SCENARIO_REVENUE_MULTIPLIERS
     base_revenue = inputs.financial_assumptions.revenue_year1
@@ -1003,5 +1283,8 @@ def run_valuation_scenarios(
     for m in multipliers:
         scaled_inputs = inputs.model_copy(deep=True)
         scaled_inputs.financial_assumptions.revenue_year1 = base_revenue * m
-        results[scenario_label(m)] = run_valuation(scaled_inputs)
+        try:
+            results[scenario_label(m)] = run_valuation(scaled_inputs)
+        except ValuationError:
+            continue
     return results
