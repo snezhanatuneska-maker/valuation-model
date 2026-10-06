@@ -495,10 +495,20 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
             <input type="date" id="valuation_date" required>
             <p class="field-hint">Year 1 of the projection is the 12 months after this date.</p>
           </div>
-          <div class="field">
+          <div class="field" id="tax-flat-field">
             <label for="dcf_tax_rate_override">Corporate tax rate (%)</label>
             <input type="number" id="dcf_tax_rate_override" min="0" max="60" step="0.1" placeholder="Country rate">
             <p class="field-hint" id="tax-hint">Leave empty to use the country's statutory rate.</p>
+          </div>
+          <div class="field" id="tax-german-field" hidden>
+            <label>Tax (Germany)</label>
+            <p class="field-hint" id="german-tax-hint">Corporate tax, solidarity surcharge and trade tax, year by year under the enacted cuts.</p>
+            <details>
+              <summary class="field-hint" style="cursor:pointer">Advanced: your municipality's Hebesatz</summary>
+              <label for="trade_tax_hebesatz" style="margin-top:8px">Trade-tax Hebesatz (%)</label>
+              <input type="number" id="trade_tax_hebesatz" min="200" max="1000" step="1" placeholder="National average">
+              <p class="field-hint" id="hebesatz-hint">e.g. 490 for Munich. Leave empty for the national average.</p>
+            </details>
           </div>
         </div>
       </fieldset>
@@ -527,7 +537,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
         <div class="field">
           <label for="benchmark_pre_money_override">Typical pre-money valuation of a pre-revenue startup in your region (&euro;)</label>
           <input type="number" id="benchmark_pre_money_override" min="1" step="1" placeholder="Use the built-in benchmark">
-          <p class="field-hint" id="benchmark-hint">Used only for pre-revenue companies (Idea and Development stages). The built-in figure is the median pre-seed valuation for your region from Equidam's Startup Valuation Delta, H1 2026 (US &euro;4.53M, Europe &euro;2.90M, Emerging Markets &euro;2.37M, elsewhere the all-region median &euro;4.57M). If you know a better local figure, enter it here.</p>
+          <p class="field-hint" id="benchmark-hint">Used only for pre-revenue companies (Idea and Development stages). The built-in figure is the median pre-seed valuation for your region from Equidam's Startup Valuation Delta, H1 2026 (US &euro;4.53M, Europe &euro;2.90M, Emerging Markets &euro;2.37M, elsewhere the all-region median &euro;4.57M). Germany has its own table by stage; until German figures are sourced it uses the Europe figure. If you know a better local figure, enter it here.</p>
         </div>
       </fieldset>
       <fieldset class="field-group">
@@ -687,6 +697,8 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 // ============================================================
 // Point this at wherever the FastAPI app from step 3 is running.
 const API_BASE = window.VALUATION_API_BASE || "https://valuation-model-a1iu.onrender.com";
+const DEFAULT_COUNTRY = "Germany";
+const DEFAULT_REGION = "Europe (EU, UK, Switzerland & Scandinavia)";
 
 // Human-readable labels for the 13 Scorecard questionnaire fields.
 // Keys must match MarketAndTeamAssessment field names exactly (also the
@@ -821,6 +833,11 @@ async function loadReferenceData() {
   fillSelect("industry", industries);
   fillSelect("company_stage", stages);
   fillSelect("business_territory_region", options.business_territory_region);
+  // Germany is the default experience; every other country still works the same way.
+  if (countries.includes(DEFAULT_COUNTRY)) document.getElementById("country").value = DEFAULT_COUNTRY;
+  if (options.business_territory_region.includes(DEFAULT_REGION)) {
+    document.getElementById("business_territory_region").value = DEFAULT_REGION;
+  }
   if (!val("valuation_date")) document.getElementById("valuation_date").value = todayIso();
 
   buildScorecardFields(scorecardLookup);
@@ -880,8 +897,39 @@ async function onCountryChange() {
     document.getElementById("dcf_tax_rate_override").placeholder = `${(tax * 100).toFixed(1)} (country rate)`;
     document.getElementById("tax-hint").textContent =
       `Leave empty to use ${country}'s statutory rate of ${(tax * 100).toFixed(1)}%.`;
+    showGermanTax(info.country_specific && info.country_specific.tax);
   } catch (_) { /* hints only - ignore */ }
 }
+
+// Germany: the tax is a year-by-year schedule (corporate tax cuts 2028-2032)
+// plus trade tax from the municipality's Hebesatz, so the single-rate box is
+// replaced by a short explanation and an optional Hebesatz field.
+let germanTax = null;
+function showGermanTax(tax) {
+  germanTax = tax || null;
+  document.getElementById("tax-flat-field").hidden = !!germanTax;
+  document.getElementById("tax-german-field").hidden = !germanTax;
+  if (!germanTax) return;
+  const avg = Math.round(germanTax.average_hebesatz * 100);
+  document.getElementById("hebesatz-hint").textContent =
+    `e.g. 490 for Munich. Leave empty for the national average of ${avg}% (Destatis, ${germanTax.average_hebesatz_as_of}).`;
+  updateGermanTaxHint();
+}
+function updateGermanTaxHint() {
+  if (!germanTax) return;
+  const years = Object.keys(germanTax.corporate_tax_by_year).sort();
+  const own = Number(val("trade_tax_hebesatz"));
+  const hebesatz = own >= 200 ? own / 100 : germanTax.average_hebesatz;
+  const combined = (y) => germanTax.corporate_tax_by_year[y] * (1 + germanTax.solidarity_surcharge)
+    + germanTax.trade_tax_base_rate * hebesatz;
+  const first = years[0], last = years[years.length - 1];
+  document.getElementById("german-tax-hint").textContent =
+    `Corporate tax (${pct(germanTax.corporate_tax_by_year[first])} until ${first}, falling to ` +
+    `${pct(germanTax.corporate_tax_by_year[last])} from ${last}) + 5.5% solidarity surcharge + trade tax at a ` +
+    `${Math.round(hebesatz * 100)}% Hebesatz: about ${pct(combined(first))} now, ${pct(combined(last))} from ${last}. ` +
+    `Each projection year uses its own rate.`;
+}
+document.getElementById("trade_tax_hebesatz").addEventListener("input", updateGermanTaxHint);
 document.getElementById("country").addEventListener("change", onCountryChange);
 document.getElementById("business_territory_region").addEventListener("change", () => { regionTouched = true; });
 
@@ -929,6 +977,7 @@ async function updateProjectionPreview() {
   const startText = proj.starting_margin_source === "company"
     ? `your last-12-month margin (${pct(proj.starting_ebitda_margin)})`
     : `the industry margin (no revenue history)`;
+  const stepped = proj.tax_schedule && proj.tax_schedule.basis === "germany_schedule";
   const targetText = proj.target_margin_source === "user_override"
     ? `your Year-5 target (${pct(proj.target_ebitda_margin)})`
     : `the ${escapeHtml(val("industry"))} margin (${pct(proj.target_ebitda_margin)})`;
@@ -936,7 +985,7 @@ async function updateProjectionPreview() {
   wrap.innerHTML = `
     <div class="suggested-data-wrap">
       <h3>Projection used in the valuation</h3>
-      <p class="suggested-data-hint">The EBITDA margin starts from ${startText} and moves in equal steps to ${targetText} by Year 5. Tax rate ${pct(proj.tax_rate)}.</p>
+      <p class="suggested-data-hint">The EBITDA margin starts from ${startText} and moves in equal steps to ${targetText} by Year 5. ${stepped ? `Tax steps down year by year under the German schedule (${pct(proj.tax_rate)} after Year 5).` : `Tax rate ${pct(proj.tax_rate)}.`}</p>
       <div style="overflow-x:auto">
       <table class="suggested-table">
         <thead><tr><th>&nbsp;</th>${years.map((y) => `<th>${y.year_label}<br><span style="font-weight:400">${escapeHtml(y.period_label)}</span></th>`).join("")}</tr></thead>
@@ -945,6 +994,7 @@ async function updateProjectionPreview() {
           <tr><td>EBITDA margin</td>${cells((y) => pct(y.ebitda_margin))}</tr>
           <tr class="subtotal-row"><td>EBITDA</td>${cells((y) => money(y.ebitda))}</tr>
           <tr><td>Depreciation &amp; amortisation</td>${cells((y) => money(y.da))}</tr>
+          ${stepped ? `<tr><td>Tax rate</td>${cells((y) => pct(y.tax_rate))}</tr>` : ""}
           <tr><td>Tax on EBIT</td>${cells((y) => money(-y.tax_on_ebit))}</tr>
           <tr><td>Capital expenditure</td>${cells((y) => money(-y.capex))}</tr>
           <tr><td>Change in working capital</td>${cells((y) => money(-y.change_in_working_capital))}</tr>
@@ -1111,7 +1161,8 @@ function buildPayload() {
       exit_strategy: val("exit_strategy") || null,
       planned_time_to_exit_years: Number(val("planned_time_to_exit_years") || 3),
       valuation_date: val("valuation_date") || null,
-      dcf_tax_rate_override: pctOrNull("dcf_tax_rate_override"),
+      dcf_tax_rate_override: germanTax ? null : pctOrNull("dcf_tax_rate_override"),
+      trade_tax_hebesatz: germanTax ? numOrNull("trade_tax_hebesatz") : null,
       benchmark_pre_money_override: numOrNull("benchmark_pre_money_override"),
       logo_base64: companyLogoBase64 || null,
     },
@@ -1194,7 +1245,12 @@ function methodExplanation(key, o) {
   if (key === "scorecard") {
     const sc = o.scorecard;
     if (o.method_values.scorecard.status === "not_used") return "Used only for pre-revenue companies (Idea and Development stages).";
-    return `A typical pre-revenue company in this region is valued at ${money(sc.benchmark_pre_money_valuation)}${sc.benchmark_source === "user_override" ? " (your benchmark)" : " (Equidam H1 2026 median)"}; your answers score ${pct(sc.total_factor)} of that company.`;
+    const where = sc.benchmark_source === "country_table" ? `in ${escapeHtml(val("country"))}` : "in this region";
+    const basis = sc.benchmark_source === "user_override" ? " (your benchmark)"
+      : sc.benchmark_to_be_sourced ? " (placeholder: Europe figure, local benchmark to be sourced)"
+      : sc.benchmark_source === "country_table" ? ` (${escapeHtml(sc.benchmark_basis)})`
+      : " (Equidam H1 2026 median)";
+    return `A typical pre-revenue company ${where} is valued at ${money(sc.benchmark_pre_money_valuation)}${basis}; your answers score ${pct(sc.total_factor)} of that company.`;
   }
   if (key === "venture_capital") {
     const vc = o.venture_capital;

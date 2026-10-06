@@ -113,8 +113,29 @@ report is rebuilt fresh from the saved inputs each time.
 
 - Projected EBITDA margin starts from the company's own last-12-month margin and moves in equal steps to the industry EBITDA margin (Damodaran EBITDA/Sales, which includes R&D) by Year 5, unless the user sets a target.
 - One tax rate for everything: the user's, else the country's statutory rate. Losses are carried forward.
+  Germany is the exception (see below).
 - A method that can't give a meaningful value (e.g. no positive EBITDA, banks and insurers) is left out and the other stage weights are scaled up; every such case is explained in the results and the PDF.
 - Inputs that can't be valued are rejected with a plain-language message; implausible ones (revenue jumps, PP&E out of scale, ownership ≠ 100%, use of funds ≠ raise, …) produce warnings.
+
+## Germany (the default country)
+
+The wizard opens with Germany and Europe selected. Any other country works exactly as before. For German companies:
+
+- **Risk-free rate:** the 10-year Bund yield, not the US Treasury rate. Germany is rated Aaa, so its country risk premium is 0 and only the mature-market equity risk premium (4.2%) applies.
+- **Tax, year by year:** corporate tax (15% until 2027, then 14/13/12/11% and 10% from 2032, as enacted in July 2025) + 5.5% solidarity surcharge + trade tax (3.5% × Hebesatz). A projection year that spans two calendar years blends their rates by days. The value after Year 5 (terminal value) and the WACC use the long-run 2032 rate. The Hebesatz is the national average unless the user enters their municipality's under "Advanced". If a user enters a flat tax rate through the API, it still overrides the schedule.
+- **Scorecard benchmark:** a Germany table by stage. **It is still to be sourced**: until credible German figures are found, it holds the Europe figure as a placeholder, and the results and PDF say so.
+
+All of these figures live in `valuation_engine/reference_data.json` under `country_specific` → `Germany`, each with its source and date. Update them once a year there; no code changes are needed.
+
+German example (`GERMAN_CASE` in `audit/recompute.py`): Beispiel Software GmbH, Software (System & Application), Europe, Startup stage, otherwise the same inputs as the example below, with no tax override. Valuation date 6 October 2026, Bund 3.50%, Hebesatz 409%.
+
+| Method | Value |
+|---|---|
+| Venture Capital | 971,446 € |
+| Comparables | 749,919 € |
+| DCF | 1,289,361 € |
+| **Blended pre-money** | **1,005,182 €** |
+| **Post-money** | **1,305,182 €** |
 
 ## Verified numbers (Valuativa DOO example)
 
@@ -175,7 +196,7 @@ Rules the refresh applies:
 - Country risk data (`country_data`) has its own tool: download `ctryprem.xlsx` from Damodaran's
   [country risk page](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html), then run
   `python refresh_country_data.py ctryprem.xlsx valuation_engine/reference_data.json` (add `--write` to apply).
-- The Scorecard's "average pre-money by stage and region" table is an internal estimate with no published source. Users can replace it in the wizard; replace the table itself if you get a cited source.
+- The Scorecard's regional benchmark is Equidam's H1 2026 median (see `sources.scorecard_benchmark`). Germany's own table by stage (`country_specific.Germany.stage_benchmarks`) is still to be sourced: set `to_be_sourced` to `false` once you replace its figures with cited ones. Users can always enter their own benchmark in the wizard.
 
 ## License
 

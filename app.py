@@ -324,7 +324,8 @@ def _pdf_response(payload: ve.ValuationInput, output_dict: dict) -> Response:
         scenarios_dict = {}
     stage_params = ve.stage_parameters().get(payload.company_profile.company_stage)
     pdf_bytes = pdf_report.build_pdf_bytes(input_dict, output_dict, benchmark, scenarios_dict,
-                                           ve.data_sources(), stage_params)
+                                           ve.data_sources(), stage_params,
+                                           ve.country_specific(payload.company_profile.country))
 
     company_name = payload.company_profile.company_name or "valuation"
     safe_name = "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in company_name).strip() or "valuation"
@@ -408,10 +409,16 @@ def get_industry_detail(industry: str) -> dict:
 
 @reference_router.get("/countries/{country}")
 def get_country_detail(country: str) -> dict:
+    """Country risk and tax data, plus (Germany) the country's own risk-free rate,
+    tax schedule and stage benchmarks under "country_specific"."""
     try:
-        return ve.get_country(country)
+        detail = dict(ve.get_country(country))
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Unknown country {country!r}")
+    specific = ve.country_specific(country)
+    if specific:
+        detail["country_specific"] = specific
+    return detail
 
 
 @reference_router.get("/sources")

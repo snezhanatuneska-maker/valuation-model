@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 import valuation_engine as ve
-from recompute import EDGE_CASES, REFERENCE_CASE, compare, sweep, variant
+from recompute import EDGE_CASES, GERMAN_CASE, REFERENCE_CASE, compare, sweep, variant
 
 
 def run(case):
@@ -200,3 +200,106 @@ def test_scenarios_scale_revenue():
     assert list(s) == ["80%", "90%", "100%", "110%", "120%", "130%"]
     vc = [s[k].method_values["venture_capital"].pre_money_value for k in s]
     assert vc == sorted(vc)
+
+
+# ---------------------------------------------------------------------------
+# Germany: Bund rate, stepped tax schedule, zero country premium, own Scorecard table
+# ---------------------------------------------------------------------------
+GERMAN_TAX = ve.country_specific("Germany")["tax"]
+
+
+def german(**changes):
+    case = copy.deepcopy(GERMAN_CASE)
+    for path, v in changes.items():
+        section, key = path.split("__")
+        case[section][key] = v
+    return case
+
+
+def test_german_example_matches_independent_recompute():
+    assert not [(n, a, b) for n, a, b, ok in compare(GERMAN_CASE) if not ok]
+
+
+def test_german_example_regression_values():
+    """Pinned values for the German example (README); update deliberately if data or method change."""
+    r = run(GERMAN_CASE)
+    got = {k: round(v.pre_money_value) for k, v in r.method_values.items()}
+    assert got == {"scorecard": 2_696_070, "venture_capital": 971_446, "comparables": 749_919, "dcf": 1_289_361}
+    assert round(r.blended_pre_money_valuation) == 1_005_182
+    assert round(r.post_money_valuation) == 1_305_182
+
+
+def test_germany_has_no_country_risk_premium():
+    de = ve.get_country("Germany")
+    assert de["moodys_rating"] == "Aaa" and de["country_risk_premium"] == 0
+    assert de["equity_risk_premium"] == ve.market_parameters()["mature_market_premium"]
+    assert run(GERMAN_CASE).wacc.country_equity_risk_premium == ve.market_parameters()["mature_market_premium"]
+
+
+def test_germany_uses_bund_rate_others_keep_default():
+    bund = ve.country_specific("Germany")["risk_free_rate"]
+    w = run(GERMAN_CASE).wacc
+    assert w.risk_free_rate == bund["value"] and "Bund" in w.risk_free_rate_source
+    assert run(REFERENCE_CASE).wacc.risk_free_rate == ve.market_parameters()["risk_free_rate"]
+
+
+def combined(kst, hebesatz=GERMAN_TAX["average_hebesatz"]):
+    return kst * (1 + GERMAN_TAX["solidarity_surcharge"]) + GERMAN_TAX["trade_tax_base_rate"] * hebesatz
+
+
+def test_german_tax_steps_down_year_by_year():
+    r = run(GERMAN_CASE)  # valuation date 6 Oct 2026
+    rates = [y.tax_rate for y in r.projections.years]
+    assert rates[0] == pytest.approx(combined(0.15))  # Oct 2026 - Oct 2027: 15% throughout
+    assert rates == sorted(rates, reverse=True) and rates[1] < rates[0]
+    assert r.projections.tax_rate == pytest.approx(combined(0.10))  # terminal value and WACC use the 2032+ rate
+    assert r.wacc.tax_rate == r.projections.tax_rate == r.dcf.tax_rate
+    assert r.dcf.terminal_fcf > r.projections.years[-1].unlevered_fcf  # lower long-run tax
+
+
+def test_german_tax_year_aligned_with_calendar_year():
+    r = run(german(company_profile__valuation_date="2028-01-01"))
+    assert [y.tax_rate for y in r.projections.years] == pytest.approx(
+        [combined(k) for k in (0.14, 0.13, 0.12, 0.11, 0.10)])
+
+
+def test_german_hebesatz_input():
+    munich = run(german(company_profile__trade_tax_hebesatz=490))
+    assert munich.projections.tax_rate == pytest.approx(combined(0.10, 4.90))
+    assert munich.projections.tax_schedule.hebesatz_source == "user"
+    with pytest.raises(ValidationError):  # legal minimum is 200%
+        ve.ValuationInput(**german(company_profile__trade_tax_hebesatz=150))
+
+
+def test_user_tax_rate_still_overrides_german_schedule():
+    r = run(german(company_profile__dcf_tax_rate_override=0.25))
+    assert {y.tax_rate for y in r.projections.years} == {0.25} and r.projections.tax_rate == 0.25
+    assert r.dcf.terminal_fcf == r.projections.years[-1].unlevered_fcf
+
+
+def test_hebesatz_ignored_outside_germany():
+    case = copy.deepcopy(REFERENCE_CASE)
+    case["company_profile"]["trade_tax_hebesatz"] = 490
+    assert run(case).blended_pre_money_valuation == run(REFERENCE_CASE).blended_pre_money_valuation
+
+
+def test_german_scorecard_table_with_to_be_sourced_flag():
+    r = run(german(company_profile__company_stage="Idea stage"))
+    row = ve.country_specific("Germany")["stage_benchmarks"]["stages"]["Idea stage"]
+    assert r.scorecard.benchmark_source == "country_table"
+    assert r.scorecard.benchmark_pre_money_valuation == row["eur"]
+    assert r.scorecard.benchmark_to_be_sourced == row["to_be_sourced"]
+    if row["to_be_sourced"]:
+        assert any(w.code == "benchmark_to_be_sourced" for w in r.warnings)
+    # Other European countries keep the regional table
+    fr = run(german(company_profile__company_stage="Idea stage", company_profile__country="France"))
+    assert fr.scorecard.benchmark_source == "table"
+
+
+def test_every_german_figure_has_a_source_and_date():
+    de = ve.country_specific("Germany")
+    assert de["risk_free_rate"]["source"] and de["risk_free_rate"]["as_of"]
+    for key in ("corporate_tax_source", "solidarity_surcharge_source", "trade_tax_base_rate_source",
+                "average_hebesatz_source", "average_hebesatz_as_of"):
+        assert GERMAN_TAX[key], key
+    assert de["stage_benchmarks"]["source"] and de["stage_benchmarks"]["as_of"]
