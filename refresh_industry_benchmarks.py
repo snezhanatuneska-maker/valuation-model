@@ -20,7 +20,8 @@ Expected files (one set per region; Damodaran's own filenames):
 Columns are located by header text, never by position, and the script stops
 with the list of headers it saw if a required one is missing. Non-numeric
 cells ("NA", "#DIV/0!", blanks) are stored as "NA", which the engine's
-fallback chain already handles.
+fallback chain already handles. An industry missing from a file keeps its
+prior values and is listed as UNMATCHED.
 """
 import json
 import re
@@ -41,10 +42,17 @@ REGIONS = {
     "Global": "Global",
 }
 
+# A regional industry average built from fewer firms than this is treated as
+# missing ("NA"), so the engine falls back to that industry's Global figure
+# (every Global average has 30+ firms). Jan 2026 examples it removes: India
+# Precious Metals (1 firm, SG&A = 70x sales), Japan Aerospace/Defense (5 firms,
+# EBITDA margin -170%) - both produced large negative valuations.
+MIN_FIRMS = 10
+
 # metric -> (file stem, header matcher, which occurrence if the header repeats)
 # vebitda.xls repeats its headers: first block = positive-EBITDA firms only,
-# second block = all firms. The occurrence used is confirmed against the
-# prior data by the report below before writing.
+# second block = all firms. The first block is the one the prior data used
+# (checked Jan 2026: new/old median ratio ~1.0 vs ~1.2 for all firms).
 METRICS = {
     "ev_ebitda_multiple": ("vebitda", r"^ev/ebitda$", 0),
     "beta": ("wacc", r"^beta$", 0),
@@ -57,15 +65,34 @@ METRICS = {
     "acc_receivable_pct_revenue": ("wcdata", r"^acc rec/sales$", 0),
     "inventory_pct_revenue": ("wcdata", r"^inventory/sales$", 0),
     "acc_payable_pct_revenue": ("wcdata", r"^acc pay/sales$", 0),
-    "book_interest_rate": ("dbtfund", r"^book interest rate$", 0),
 }
-# D&A has no direct column; derived per industry as EBITDA/Sales minus the
-# pre-tax unadjusted operating (EBIT) margin, both from margin.xls.
-DA_PARTS = ("margin", r"^ebitda/sales$", r"^pre-tax unadjusted operating margin$")
+
+# Metrics Damodaran doesn't publish directly, derived from published ratios.
+# Results outside a plausible range (e.g. negative D&A for insurers, where the
+# operating margin includes items EBITDA doesn't) become "NA" so the engine's
+# fallback chain supplies a value instead.
+EBITDA_MARGIN = ("margin", r"^ebitda/sales$")
+EBIT_MARGIN = ("margin", r"^pre-tax unadjusted operating margin$")
+COVERAGE = ("dbtfund", r"^interest coverage ratio$")  # EBIT / interest
+DEBT_TO_EBITDA = ("dbtfund", r"^debt to ebitda$")
+
+
+def derive_da(v):
+    """D&A / sales = EBITDA/sales - EBIT/sales."""
+    return v(EBITDA_MARGIN) - v(EBIT_MARGIN), (0.0, 0.35)
+
+
+def derive_book_interest_rate(v):
+    """Interest / debt = (EBIT / coverage) / (Debt/EBITDA * EBITDA)
+    = (EBIT margin / EBITDA margin) / (coverage * Debt/EBITDA)."""
+    return (v(EBIT_MARGIN) / v(EBITDA_MARGIN)) / (v(COVERAGE) * v(DEBT_TO_EBITDA)), (0.0, 0.25)
+
+
+DERIVED = {"da_pct_revenue": derive_da, "book_interest_rate": derive_book_interest_rate}
 
 
 def norm(s):
-    return re.sub(r"\s+", " ", str(s)).strip().lower()
+    return re.sub(r"\s*/\s*", "/", re.sub(r"\s+", " ", str(s))).strip().lower()
 
 
 def sheet_rows(path):
@@ -108,6 +135,11 @@ def num(v):
     return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v else "NA"
 
 
+def too_few_firms(headers, row):
+    n = num(row[headers.index("number of firms")])
+    return n == "NA" or n < MIN_FIRMS
+
+
 def read_file(folder, stem, suffix, cache={}):
     key = (stem, suffix)
     if key not in cache:
@@ -138,18 +170,30 @@ def main():
             col = column(headers, pattern, occ, fname)
             for ind in old:
                 row = rows.get(norm(ind))
-                if row is None:
+                if row is None:  # not in Damodaran's file: keep the prior value, report it
                     unmatched.setdefault(f"{stem}{suffix}", set()).add(ind)
+                elif too_few_firms(headers, row):
                     new[ind][metric][region] = "NA"
                 else:
                     new[ind][metric][region] = num(row[col])
-        fname, headers, rows = read_file(folder, DA_PARTS[0], suffix)
-        c_ebitda = column(headers, DA_PARTS[1], 0, fname)
-        c_ebit = column(headers, DA_PARTS[2], 0, fname)
         for ind in old:
-            row = rows.get(norm(ind))
-            e, o = (num(row[c_ebitda]), num(row[c_ebit])) if row else ("NA", "NA")
-            new[ind]["da_pct_revenue"][region] = e - o if "NA" not in (e, o) else "NA"
+            if norm(ind) not in read_file(folder, EBITDA_MARGIN[0], suffix)[2]:
+                continue  # already reported as unmatched; prior values kept
+            def v(source):
+                fname, headers, rows = read_file(folder, source[0], suffix)
+                row = rows.get(norm(ind))
+                if row is None or too_few_firms(headers, row):
+                    raise ValueError
+                x = num(row[column(headers, source[1], 0, fname)])
+                if x == "NA" or x == 0:
+                    raise ValueError
+                return x
+            for metric, derive in DERIVED.items():
+                try:
+                    x, (lo, hi) = derive(v)
+                    new[ind][metric][region] = x if lo < x < hi else "NA"
+                except (ValueError, ZeroDivisionError):
+                    new[ind][metric][region] = "NA"
 
     for f, inds in sorted(unmatched.items()):
         print(f"UNMATCHED in {f}: {sorted(inds)}")

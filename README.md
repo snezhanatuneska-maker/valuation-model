@@ -108,16 +108,38 @@ Year-1 revenue 1,000,000 € growing 10% a year, capex 30,000 € in Years
 | Method | Value |
 |---|---|
 | Scorecard | 1,023,000.00 € |
-| Venture Capital | 965,486.96 € |
-| DCF Multiples | 2,142,052.40 € |
-| DCF | 257,742.40 € |
-| **Blended pre-money** | **1,114,760.18 €** |
-| **Post-money** | **1,414,760.18 €** |
+| Venture Capital | 1,422,481.00 € |
+| DCF Multiples | 2,915,592.70 € |
+| DCF | 367,591.19 € |
+| **Blended pre-money** | **1,494,025.42 €** |
+| **Post-money** | **1,794,025.42 €** |
 
 The Scorecard (and therefore the blend) depends on the questionnaire
 answers; 1,023,000 € is for answers that score 93% of the benchmark
-company. The DCF figure reflects the WACC fix and the January 2026
-country-risk refresh (Tanzania's equity risk premium).
+company. The other three reflect Damodaran's January 2026 data (country
+risk and industry benchmarks) and the WACC fix.
+
+## Benchmark data
+
+Country data and industry benchmarks come from Prof. Aswath Damodaran's
+January 2026 datasets (NYU Stern). To refresh the industry benchmarks,
+download his `vebitda`, `wacc`, `margin`, `wcdata` and `dbtfund`
+spreadsheets for US, Europe, Japan, emerging markets, China, India and
+Global into one folder, then run:
+
+```bash
+pip install xlrd openpyxl
+python refresh_industry_benchmarks.py path/to/folder valuation_engine/reference_data.json          # report only
+python refresh_industry_benchmarks.py path/to/folder valuation_engine/reference_data.json --write  # apply
+```
+
+Rules the refresh applies:
+- A regional figure based on fewer than 10 companies is not used; the
+  engine falls back to that industry's global figure.
+- D&A (% of revenue) and the interest rate on debt aren't published
+  directly, so they are derived from Damodaran's margin and debt ratios;
+  implausible results fall back the same way.
+- "Retail (Online)" is not in Damodaran's files and keeps its earlier values.
 
 ## License
 
