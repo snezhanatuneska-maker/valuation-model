@@ -1273,7 +1273,9 @@ async function updateProjectionPreview() {
   wrap.innerHTML = `
     <div class="suggested-data-wrap">
       <h3>Projection used in the valuation</h3>
-      <p class="suggested-data-hint">The EBITDA margin starts from ${startText} and moves in equal steps to ${targetText} by Year 5. ${stepped ? `Tax steps down year by year under the German schedule (${pct(proj.tax_rate)} after Year 5).` : `Tax rate ${pct(proj.tax_rate)}.`}</p>
+      <p class="suggested-data-hint">${proj.starting_margin_source === "company"
+        ? `The EBITDA margin starts from ${startText} and moves in equal steps to ${targetText} by Year 5.`
+        : `With no revenue history, the projection uses ${targetText} as the EBITDA margin from Year 1.`} ${stepped ? `Tax steps down year by year under the German schedule (${pct(proj.tax_rate)} after Year 5).` : `Tax rate ${pct(proj.tax_rate)}.`}</p>
       <div style="overflow-x:auto">
       <table class="suggested-table">
         <thead><tr><th>&nbsp;</th>${years.map((y) => `<th>${y.year_label}<br><span style="font-weight:400">${escapeHtml(y.period_label)}</span></th>`).join("")}</tr></thead>
@@ -1685,7 +1687,7 @@ function scenarioBlock(scenarios) {
   const labels = Object.keys(scenarios).map((l) => Number(l.replace("%", "")));
   return `
     <h2 class="ledger-title" style="margin-top:32px">Scenario &amp; sensitivity</h2>
-    <p class="ledger-subtitle">How the valuation shifts if Year-1 revenue comes in above or below plan. Scorecard and Comparables don't move: they use your answers and last-12-month EBITDA, not projected revenue.</p>
+    <p class="ledger-subtitle">How the valuation shifts if Year-1 revenue comes in above or below plan. Scorecard and Comparables don't move: they use your answers and last-12-month EBITDA, not projected revenue. The weights stay as in your result above; a method that gives no positive value in a scenario counts as €0.</p>
     <div class="scenario-slider-row">
       <label for="scenario-slider">Revenue scenario</label>
       <input type="range" id="scenario-slider" min="${Math.min(...labels)}" max="${Math.max(...labels)}" step="10" value="100">
@@ -2051,8 +2053,9 @@ async function findCleanSample() {
       if (!sampleIsClean(candidate, result)) continue;
       // The revenue slider should move smoothly: the same methods must apply in every scenario.
       const scenarios = await apiFetch("/valuations/preview/scenarios", { method: "POST", body });
-      const usedIn = (r) => Object.keys(r.method_values).filter((k) => r.method_values[k].status === "ok").join();
-      if (Object.keys(scenarios).length === 6 && Object.values(scenarios).every((r) => usedIn(r) === usedIn(result))) {
+      // ...and every method keeps a positive value in every scenario (none falls to €0).
+      const positive = (r) => Object.values(r.method_values).every((mv) => mv.status !== "ok" || mv.pre_money_value > 0);
+      if (Object.keys(scenarios).length === 6 && Object.values(scenarios).every(positive)) {
         return candidate;
       }
     } catch (_) { /* try another */ }

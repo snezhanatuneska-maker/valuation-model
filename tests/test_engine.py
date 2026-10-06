@@ -359,3 +359,45 @@ def test_unanswered_scorecard_questions_count_as_typical():
     r = run(case)
     assert r.blended_pre_money_valuation == pytest.approx(run(GERMAN_CASE).blended_pre_money_valuation)
     assert "scorecard_unanswered" not in {w.code for w in r.warnings}
+
+
+
+# A pre-revenue company whose VC value disappears at lower revenue (the case behind the
+# "slider runs backwards" report).
+SLIDER_CASE = german(company_profile__company_stage="Development stage",
+                     company_profile__industry="Healthcare Products",
+                     operating_performance__current_revenue_last_12_months=0,
+                     operating_performance__current_ebitda=-120_000,
+                     financial_assumptions__revenue_year1=200_000,
+                     financial_assumptions__revenue_growth_rates=[1.2, 0.8, 0.5, 0.3],
+                     funding__capital_needed=600_000)
+
+
+def test_scenarios_keep_the_main_weights_so_value_rises_with_revenue():
+    base = run(SLIDER_CASE)
+    s = ve.run_valuation_scenarios(ve.ValuationInput(**SLIDER_CASE))
+    blended = [s[k].blended_pre_money_valuation for k in s]
+    assert blended == sorted(blended)  # never higher at lower revenue
+    assert s["100%"].blended_pre_money_valuation == pytest.approx(base.blended_pre_money_valuation)
+    for out in s.values():
+        assert {k: mv.weight_used for k, mv in out.method_values.items()} == \
+            {k: mv.weight_used for k, mv in base.method_values.items()}
+    assert s["80%"].method_values["venture_capital"].pre_money_value == 0  # counts as zero, not dropped
+
+
+def test_low_vc_value_is_explained():
+    codes_ = {w.code for w in run(SLIDER_CASE).warnings}
+    assert "vc_low" in codes_
+    assert "vc_low" not in {w.code for w in run(GERMAN_CASE).warnings}
+
+
+def test_revenue_drop_is_flagged():
+    assert "revenue_drop" in codes(german(operating_performance__current_revenue_last_12_months=350_000,
+                                          operating_performance__current_ebitda=40_000,
+                                          financial_assumptions__revenue_year1=200_000))
+    assert "revenue_drop" not in codes(GERMAN_CASE)
+
+
+def test_no_duplicate_comparables_note_without_revenue():
+    found = codes(SLIDER_CASE)
+    assert "no_revenue_history" in found and "nm_comparables" not in found
