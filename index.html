@@ -185,6 +185,30 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 }
 .loading-hint { color: var(--ink-soft); font-size: 14px; font-style: italic; }
 
+/* ---------- Landing ---------- */
+.landing { padding: 8px 4px 36px; }
+.landing-kicker {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.landing h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.7rem, 5vw, 2.3rem);
+  line-height: 1.15;
+  color: var(--navy-deep);
+  margin: 0 0 12px;
+}
+.landing-lede { margin: 0 0 22px; color: var(--ink-soft); font-size: 1.05rem; line-height: 1.5; }
+.landing-points { list-style: none; margin: 0 0 26px; padding: 0; display: grid; gap: 14px; }
+.landing-points li { padding-left: 16px; border-left: 3px solid var(--brass-light); line-height: 1.5; }
+.landing-points strong { display: block; color: var(--navy); }
+.landing-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.landing-actions .btn { flex: 1 1 220px; }
+.landing-fineprint { margin: 18px 0 0; font-size: 0.85rem; color: var(--ink-soft); }
 .demo-note {
   margin: 0 0 24px;
   padding: 10px 14px;
@@ -396,6 +420,24 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 </div>
 
 <main class="page" id="app-main">
+
+  <!-- ============ LANDING ============ -->
+  <section class="landing" aria-labelledby="landing-title">
+    <!-- COMMUNITY LINE: delete this one paragraph to remove the FAU / Nuremberg mention everywhere. -->
+    <p class="landing-kicker" id="community-line">Free for founders in the FAU / Nuremberg start-up community</p>
+    <h2 id="landing-title">Free startup valuation for early-stage founders</h2>
+    <p class="landing-lede">Find out what your company could be worth before you talk to investors, and see exactly how that number is reached.</p>
+    <ul class="landing-points">
+      <li><strong>What you get</strong>A pre-money and post-money valuation blended from four standard methods (Scorecard, Venture Capital, Comparables, discounted cash flow), a 5-year projection, a revenue sensitivity check, and a PDF report that explains every number.</li>
+      <li><strong>How long it takes</strong>About 15 minutes if you have your last 12 months' figures and a simple 5-year plan at hand. Or see a finished example in one click.</li>
+      <li><strong>Where the data comes from</strong>Industry benchmarks and country risk from Prof. Aswath Damodaran (NYU Stern, 2026), German tax law including the 2028&ndash;2032 corporate tax cuts, the 10-year Bund yield, and Equidam's 2026 pre-seed valuation data. Every source is listed in the report.</li>
+    </ul>
+    <div class="landing-actions">
+      <button type="button" class="btn btn-primary" id="btn-start">Start your valuation</button>
+      <button type="button" class="btn btn-ghost" id="btn-sample">Try with a sample company</button>
+    </div>
+    <p class="landing-fineprint">An informed starting point for investor conversations, not a certified appraisal.</p>
+  </section>
 
   <!-- ============ NEW VALUATION WIZARD ============ -->
   <section id="view-wizard" class="view">
@@ -1535,9 +1577,207 @@ document.getElementById("btn-remove-logo").addEventListener("click", () => {
 });
 
 // ============================================================
+// Landing: "Start" scrolls to the form; "Try with a sample company" fills
+// the whole wizard with an imaginary, randomized German startup and runs it.
+// ============================================================
+const pick = (list) => list[Math.floor(Math.random() * list.length)];
+const between = (lo, hi, step = 1) => Math.round((lo + Math.random() * (hi - lo)) / step) * step;
+
+const SAMPLE_PROFILES = [
+  { suffix: "Analytics", industry: "Software (System & Application)", activity: "B2B analytics software for manufacturers", model: "SaaS subscription" },
+  { suffix: "Health", industry: "Heathcare Information and Technology", activity: "Software for clinics and medical practices", model: "SaaS subscription" },
+  { suffix: "Energy", industry: "Green & Renewable Energy", activity: "Solar-plus-storage planning and installation for SMEs", model: "Project fees and service contracts" },
+  { suffix: "Robotics", industry: "Machinery", activity: "Collaborative robots for small factories", model: "Hardware sales plus maintenance" },
+  { suffix: "Logistics", industry: "Business & Consumer Services", activity: "Last-mile delivery planning for regional retailers", model: "Usage-based fees" },
+];
+const SAMPLE_NAMES = ["Kranich", "Lindwurm", "Morgenrot", "Silberfluss", "Brückenwerk", "Funkenflug", "Sternwarte", "Eichhorn"];
+const SAMPLE_CITIES = ["Erlangen", "Nürnberg", "Fürth"];
+
+function setVal(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value;
+}
+
+// industryMargin: the industry's EBITDA margin for Europe, so the sample's own
+// margin sits near it (as a real company's would) instead of far away.
+function sampleCompany(profile, industryMargin) {
+  const preRevenue = Math.random() < 0.25;
+  const stage = preRevenue ? "Development stage" : pick(["Startup stage", "Startup stage", "Expansion stage"]);
+  const ltmRevenue = preRevenue ? 0 : between(250000, 900000, 5000);
+  const margin = Math.min(Math.max(industryMargin + between(-6, 3) / 100, 0.04), 0.3);
+  const ltmEbitda = preRevenue ? -between(60000, 180000, 5000) : Math.round(ltmRevenue * margin / 1000) * 1000;
+  const year1 = preRevenue ? between(250000, 450000, 10000) : Math.round(ltmRevenue * between(150, 190) / 100 / 5000) * 5000;
+  const raise = Math.max(150000, Math.round(year1 * between(preRevenue ? 45 : 30, preRevenue ? 70 : 60) / 100 / 50000) * 50000);
+  const capexY1 = between(10, 40, 5) * 1000;
+  const growth = preRevenue ? [between(70, 95), between(50, 70), between(35, 50), between(25, 35)]
+                            : [between(30, 60), between(25, 45), between(20, 35), between(15, 25)];
+  const founders = between(2, 3);
+  return { profile, stage, preRevenue, ltmRevenue, ltmEbitda, year1, raise, capexY1, growth, founders,
+           name: `${pick(SAMPLE_NAMES)} ${profile.suffix} GmbH (sample)`, city: pick(SAMPLE_CITIES) };
+}
+
+// A sample is only shown if it demonstrates the methods cleanly: every method
+// used at its stage gives a value (apart from Comparables, which needs revenue)
+// and no input warnings fire. Otherwise another one is drawn.
+function sampleIsClean(c, result) {
+  const methodsOk = Object.entries(result.method_values).every(([key, mv]) =>
+    mv.weight === 0 || mv.status === "ok" || (c.preRevenue && key === "comparables"));
+  const vc = result.method_values.venture_capital;
+  const vcSensible = vc.weight === 0 || (vc.pre_money_value || 0) > 0.2 * result.blended_pre_money_valuation;
+  const noWarnings = result.warnings.every((w) => w.severity !== "warning" || w.code === "nm_comparables");
+  return methodsOk && vcSensible && noWarnings;
+}
+
+async function findCleanSample() {
+  let candidate = null;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const profile = pick(SAMPLE_PROFILES);
+    const bench = await apiFetch(`/reference-data/industries/${encodeURIComponent(profile.industry)}`);
+    candidate = sampleCompany(profile, bench.ebitda_margin[DEFAULT_REGION] || 0.12);
+    fillSample(candidate);
+    try {
+      const result = await apiFetch("/valuations/preview", { method: "POST", body: JSON.stringify(buildPayload()) });
+      if (sampleIsClean(candidate, result)) return candidate;
+    } catch (_) { /* try another */ }
+  }
+  return candidate; // still a valid company, just not a textbook one
+}
+
+function fillSample(c) {
+  setVal("company_name", c.name);
+  setVal("contact_name", "");
+  setVal("contact_email", "");
+  setVal("address", `${c.city}, Germany`);
+  setVal("website", "");
+  setVal("country", "Germany");
+  setVal("business_territory_region", DEFAULT_REGION);
+  setVal("industry", c.profile.industry);
+  setVal("company_stage", c.stage);
+  showStageHint();
+  setVal("business_activity", c.profile.activity);
+  setVal("business_model", c.profile.model);
+  setVal("exit_strategy", "Trade sale to a strategic buyer");
+  setVal("num_founders", c.founders);
+  setVal("num_employees", between(c.preRevenue ? 3 : 6, c.preRevenue ? 8 : 25));
+  setVal("year_of_incorporation", new Date().getFullYear() - between(c.preRevenue ? 0 : 1, c.preRevenue ? 1 : 4));
+  setVal("committed_capital", between(25, 150, 5) * 1000);
+  setVal("planned_time_to_exit_years", 5);
+  setVal("valuation_date", todayIso());
+  setVal("dcf_tax_rate_override", "");
+  setVal("trade_tax_hebesatz", "");
+
+  // Scorecard: a solid but not perfect team and product.
+  const answers = {
+    management_team_experience: pick(["Demonstrated experience as a COO, CFO or CTO", "Demonstrated experience as a product manager", "Experience in the business sector"]),
+    willingness_to_step_aside_for_ceo: pick(["Neutral", "Willing"]),
+    management_team_completeness: pick(["One competent player in place", "Team identified and on the sideline", "Competent team in place"]),
+    product_development_stage: c.preRevenue ? pick(["Well defined, working prototype", "Good feedback from potential customers"]) : "Orders or early sales from customers",
+    product_compelling_to_customers: pick(["This product is novel and sought after", "This product will be a necessity"]),
+    product_can_be_duplicated: pick(["It's difficult to be copied (time and financials resources needed)", "Product is unique and protected by trade secrets"]),
+    strength_of_competitors_in_market: pick(["Dominated by several players", "Fractured many small players", "Developing market"]),
+    strength_of_competitive_products: pick(["Competitive products are similar to ours", "Competitive products are weak"]),
+    target_market_size: pick(["$50 to $100 million", "About $100 million", "> $100 million"]),
+    revenue_potential_in_5_years: pick(["< $20 Million", "$20 to $50 Million"]),
+    sales_channels_partners: c.preRevenue ? "Key beta testers identified and contacted" : pick(["Channels secure, customers placed trial orders", "Key sales partners in place, channels secured, order traction"]),
+    marketing_partners: pick(["No partners identified", "Key partners in place"]),
+    need_for_additional_funding_rounds: pick(["Another angel round", "Need venture capital"]),
+  };
+  for (const [key, value] of Object.entries(answers)) setVal(`sc_${key}`, value);
+  setVal("benchmark_pre_money_override", "");
+  ["key_competitor_1", "key_competitor_2", "key_competitor_3"].forEach((id) => setVal(id, ""));
+
+  setVal("current_revenue_last_12_months", c.ltmRevenue);
+  setVal("current_ebitda", c.ltmEbitda);
+  setVal("cash_available", between(40, 250, 10) * 1000);
+  setVal("current_ppe_value", between(10, 80, 5) * 1000);
+
+  setVal("revenue_year1", c.year1);
+  ["growth_y2", "growth_y3", "growth_y4", "growth_y5"].forEach((id, i) => setVal(id, c.growth[i]));
+  const capex = [c.capexY1, ...[2, 3, 4, 5].map(() => between(20, 80, 5) * 1000)];
+  ["capex_y1", "capex_y2", "capex_y3", "capex_y4", "capex_y5"].forEach((id, i) => setVal(id, capex[i]));
+  setVal("existing_debt_balance", 0);
+  setVal("target_ebitda_margin_override", "");
+
+  setVal("capital_needed", c.raise);
+  setVal("number_of_existing_shares", 25000 * c.founders);
+  const founderShare = between(70, 85);
+  const owners = c.founders === 2
+    ? [["Founder A", founderShare / 2], ["Founder B", founderShare / 2]]
+    : [["Founder A", founderShare / 3], ["Founder B", founderShare / 3], ["Founder C", founderShare / 3]];
+  owners.push(["Business angels", 100 - founderShare]);
+  for (let i = 1; i <= 6; i++) {
+    const row = owners[i - 1];
+    setVal(`shareholder_name_${i}`, row ? row[0] : (i === 6 ? "Other minor shareholders" : ""));
+    setVal(`shareholder_pct_${i}`, row ? Math.round(row[1] * 10) / 10 : "");
+  }
+  // Rounding the founders' thirds can leave 99.9%: give the remainder to the angels.
+  const total = owners.reduce((sum, r) => sum + Math.round(r[1] * 10) / 10, 0);
+  setVal(`shareholder_pct_${owners.length}`, Math.round((100 - founderShare + 100 - total) * 10) / 10);
+
+  // Use of funds adds up exactly to the raise; capex matches Year-1 capex.
+  const rd = Math.round(c.raise * 0.45 / 1000) * 1000;
+  const sales = Math.round(c.raise * 0.35 / 1000) * 1000;
+  setVal("use_rd", rd);
+  setVal("use_sales", sales);
+  setVal("use_inventory", "");
+  setVal("use_capex", c.capexY1);
+  setVal("use_ops", c.raise - rd - sales - c.capexY1);
+  setVal("use_other", "");
+  regionTouched = false;
+}
+
+function scrollToForm() {
+  document.getElementById("view-wizard").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+let sampleLoaded = false;
+
+// After a sample run, "Start" gives an empty form again (with the same defaults as on page load).
+async function clearSample() {
+  document.querySelectorAll("form.wizard-step").forEach((form) => form.reset());
+  setVal("country", DEFAULT_COUNTRY);
+  setVal("business_territory_region", DEFAULT_REGION);
+  setVal("valuation_date", todayIso());
+  regionTouched = false;
+  lastResult = null;
+  document.getElementById("results-panel").innerHTML = "";
+  showStageHint();
+  await onCountryChange();
+  sampleLoaded = false;
+}
+
+document.getElementById("btn-start").addEventListener("click", async () => {
+  if (sampleLoaded) await clearSample();
+  goToStep(1);
+  scrollToForm();
+  setTimeout(() => document.getElementById("company_name").focus({ preventScroll: true }), 400);
+});
+
+document.getElementById("btn-sample").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-sample");
+  btn.disabled = true;
+  try {
+    await initPromise; // the dropdowns must be loaded before they can be filled
+    if (!didInit) return;
+    btn.textContent = "Preparing a sample company\u2026";
+    await findCleanSample();
+    sampleLoaded = true;
+    await onCountryChange();
+    scrollToForm();
+    document.getElementById("btn-calculate").click();
+  } catch (err) {
+    showFormError(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Try with a sample company";
+  }
+});
+
+// ============================================================
 // Startup
 // ============================================================
 let didInit = false;
+let initPromise = null;
 async function runInit() {
   if (didInit) return;
   didInit = true;
@@ -1551,7 +1791,7 @@ async function runInit() {
 }
 
 wakeServer().catch(() => { /* runInit reports it */ }); // start waking the server straight away
-runInit();
+initPromise = runInit();
 
 </script>
 </body>
