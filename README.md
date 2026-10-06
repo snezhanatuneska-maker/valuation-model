@@ -106,7 +106,7 @@ report is rebuilt fresh from the saved inputs each time.
 
 | Method | What it does | Stage assumption it uses (only here) |
 |---|---|---|
-| Scorecard (Payne) | Typical pre-money for the stage/region × your weighted questionnaire score | — |
+| Scorecard (Payne) | Typical pre-revenue pre-money for the region (Equidam H1 2026 median) × your weighted questionnaire score. Idea and Development stages only | — |
 | Venture Capital | Exit-year EBITDA × EV/EBITDA multiple, minus debt, discounted at the investor's target return; minus the raise | Target return: 65% (Idea) falling to 20% (Maturity) |
 | Comparables | Last-12-month EBITDA × EV/EBITDA multiple, less a private-company discount, minus debt plus cash | Private-company discount: 40% → 20% |
 | DCF | 5 years of free cash flow + Gordon terminal value at WACC, × probability of survival, minus debt plus cash | Survival: 30% → 95% |
@@ -126,12 +126,12 @@ cash €20,000, no debt. Year-1 revenue €1,000,000 growing 10% a year, capex
 
 | Method | Value |
 |---|---|
-| Scorecard | 1,860,000 € |
+| Scorecard | not used (company has revenue) |
 | Venture Capital | 1,242,335 € |
 | Comparables | 697,925 € |
 | DCF | 841,159 € |
-| **Blended pre-money** | **1,051,309 €** |
-| **Post-money** | **1,351,309 €** |
+| **Blended pre-money** | **911,380 €** |
+| **Post-money** | **1,211,380 €** |
 
 These are pinned in `tests/test_engine.py` and recomputed independently by
 `audit/recompute.py`.

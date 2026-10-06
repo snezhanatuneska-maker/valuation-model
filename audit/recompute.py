@@ -183,8 +183,7 @@ def recompute(case):
         "strategic_relationships_with_partners": (0.10, ["sales_channels_partners", "marketing_partners"]),
         "funding_required": (0.10, ["need_for_additional_funding_rounds"]),
     }
-    benchmark = cp.get("benchmark_pre_money_override") or \
-        REF["stage_region_pre_money_benchmarks"][cp["company_stage"]][reg]
+    benchmark = cp.get("benchmark_pre_money_override") or REF["scorecard_benchmarks"]["regions"][reg]["eur"]
     out["scorecard_amounts"] = {k: benchmark * w * sum(s(q) for q in qs) / len(qs) for k, (w, qs) in groups.items()}
     out["scorecard"] = sum(out["scorecard_amounts"].values())
 
@@ -342,7 +341,7 @@ def edge_cases():
 def sweep():
     """Every industry x region x stage: no crash, positive blend (or a clear ValuationError)."""
     import valuation_engine as ve
-    regions = list(REF["stage_region_pre_money_benchmarks"]["Startup stage"].keys())
+    regions = REF["categorical_options"]["business_territory_region"]
     total, problems, no_method = 0, [], 0
     for stage in REF["stage_parameters"]:
         for ind in REF["industry_benchmarks"]:

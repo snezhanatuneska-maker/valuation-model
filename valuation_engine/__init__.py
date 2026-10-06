@@ -71,9 +71,13 @@ def stage_descriptions() -> dict:
     return _all_reference_data().get("stage_descriptions", {})
 
 
-def stage_region_pre_money_benchmarks() -> dict:
-    """stage -> region -> value"""
-    return _all_reference_data()["stage_region_pre_money_benchmarks"]
+def scorecard_benchmarks() -> dict:
+    """region -> {eur, usd, basis, regional_figure}: typical pre-revenue pre-money valuation."""
+    return _all_reference_data()["scorecard_benchmarks"]["regions"]
+
+
+def business_regions() -> list[str]:
+    return categorical_options()["business_territory_region"]
 
 
 def scorecard_qualitative_lookup() -> dict:
@@ -297,8 +301,8 @@ class CompanyProfile(BaseModel):
     # the country's statutory corporate tax rate. (Name kept for saved data.)
     dcf_tax_rate_override: Optional[float] = Field(default=None, ge=0, le=0.6)
 
-    # Optional replacement for the stage/region "average pre-money" benchmark
-    # used by the Scorecard method (the built-in table is an internal estimate).
+    # Optional replacement for the regional "typical pre-revenue pre-money"
+    # benchmark used by the Scorecard method (built-in: Equidam H1 2026 medians).
     benchmark_pre_money_override: Optional[float] = Field(default=None, gt=0)
 
     # Optional company logo for the PDF report cover page/header. Either a
@@ -690,20 +694,20 @@ class ScorecardResult:
     criteria: dict[str, ScorecardCriterionResult]
     benchmark_pre_money_valuation: float
     benchmark_source: str  # "table" | "user_override"
+    benchmark_basis: str  # where the built-in figure comes from
     total_factor: float
     pre_money_valuation: float
 
 
 def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) -> ScorecardResult:
     if company.benchmark_pre_money_override is not None:
-        benchmark, source = company.benchmark_pre_money_override, "user_override"
+        benchmark, source, basis = company.benchmark_pre_money_override, "user_override", "Your own benchmark"
     else:
         try:
-            benchmark = stage_region_pre_money_benchmarks()[company.company_stage][company.business_territory_region]
+            row = scorecard_benchmarks()[company.business_territory_region]
         except KeyError as e:
-            raise KeyError(f"No pre-money benchmark for {company.company_stage!r} / "
-                           f"{company.business_territory_region!r}") from e
-        source = "table"
+            raise KeyError(f"No Scorecard benchmark for {company.business_territory_region!r}") from e
+        benchmark, source, basis = row["eur"], "table", row["basis"]
 
     criteria_results = {}
     total_factor = 0.0
@@ -718,6 +722,7 @@ def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) 
         criteria=criteria_results,
         benchmark_pre_money_valuation=benchmark,
         benchmark_source=source,
+        benchmark_basis=basis,
         total_factor=total_factor,
         pre_money_valuation=benchmark * total_factor,
     )
@@ -1116,9 +1121,11 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
         warn("tv_share", f"The terminal value is {_pct(dcf.terminal_value_share)} of the DCF value, so the DCF "
              "depends mostly on years after the forecast.", "info")
 
-    if scorecard.benchmark_source == "table":
-        warn("benchmark_estimate", "The Scorecard's average pre-money benchmark is an internal estimate, not "
-             "from a published survey. Replace it with a local benchmark if you have one.", "info")
+    if (method_values["scorecard"].status == "ok" and scorecard.benchmark_source == "table"
+            and not scorecard_benchmarks()[cp.business_territory_region]["regional_figure"]):
+        warn("benchmark_global", f"There is no separate published pre-revenue benchmark for "
+             f"{region_name}, so the Scorecard uses the all-region median. Enter a local benchmark if you "
+             "have one.", "info")
 
     for key, mv in method_values.items():
         if mv.status == "not_meaningful" and mv.weight > 0:
@@ -1191,7 +1198,7 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
     stage = get_stage_params(company.company_stage)
     if company.industry not in industry_benchmarks():
         raise KeyError(f"Unknown industry {company.industry!r}")
-    if company.business_territory_region not in stage_region_pre_money_benchmarks()[company.company_stage]:
+    if company.business_territory_region not in business_regions():
         raise KeyError(f"Unknown region {company.business_territory_region!r}")
 
     bench = _BenchmarkRecorder(company.industry, company.business_territory_region)
@@ -1212,6 +1219,10 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
     }
     weights = stage["method_weights"]
     usable_weight = sum(weights[k] for k, (v, _) in raw.items() if v is not None and weights[k] > 0)
+    if usable_weight <= 0 and company.industry in FINANCIAL_SECTOR_INDUSTRIES:
+        raise ValuationError(
+            "Banks and insurers can't be valued on EBITDA or free cash flow, and the Scorecard applies only to "
+            "pre-revenue companies (Idea and Development stages), so this tool can't value this company.")
     if usable_weight <= 0:
         reasons = "; ".join(f"{METHOD_NAMES[k]}: {r}" for k, (v, r) in raw.items() if r and weights[k] > 0)
         raise ValuationError(
@@ -1222,7 +1233,8 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
     for key, (value, reason) in raw.items():
         w = weights[key]
         if w <= 0:
-            status, note = "not_used", "Not used at this stage."
+            status, note = "not_used", ("Used only for pre-revenue companies (Idea and Development stages)."
+                                        if key == "scorecard" else "Not used at this stage.")
         elif value is None:
             status, note = "not_meaningful", reason
         elif key in ("comparables", "dcf") and (comparables_result if key == "comparables" else dcf_result).debt_exceeds_value:

@@ -14490,10 +14490,10 @@
       "private_company_discount": 0.3,
       "survival_probability": 0.5,
       "method_weights": {
-        "scorecard": 0.15,
-        "venture_capital": 0.25,
-        "comparables": 0.3,
-        "dcf": 0.3
+        "scorecard": 0,
+        "venture_capital": 0.3,
+        "comparables": 0.35,
+        "dcf": 0.35
       }
     },
     "Expansion stage": {
@@ -14501,10 +14501,10 @@
       "private_company_discount": 0.25,
       "survival_probability": 0.65,
       "method_weights": {
-        "scorecard": 0.05,
+        "scorecard": 0,
         "venture_capital": 0.15,
-        "comparables": 0.4,
-        "dcf": 0.4
+        "comparables": 0.425,
+        "dcf": 0.425
       }
     },
     "Growth Stage": {
@@ -14528,62 +14528,6 @@
         "comparables": 0.5,
         "dcf": 0.5
       }
-    }
-  },
-  "stage_region_pre_money_benchmarks": {
-    "Idea stage": {
-      "US": 1000000,
-      "Europe (EU, UK, Switzerland & Scandinavia)": 700000,
-      "Japan": 800000,
-      "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 300000,
-      "China": 500000,
-      "India": 400000,
-      "Global": 500000
-    },
-    "Development stage": {
-      "US": 2000000,
-      "Europe (EU, UK, Switzerland & Scandinavia)": 1500000,
-      "Japan": 1500000,
-      "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 800000,
-      "China": 1200000,
-      "India": 1000000,
-      "Global": 1500000
-    },
-    "Startup stage": {
-      "US": 4000000,
-      "Europe (EU, UK, Switzerland & Scandinavia)": 3000000,
-      "Japan": 3000000,
-      "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2000000,
-      "China": 3500000,
-      "India": 2500000,
-      "Global": 3500000
-    },
-    "Expansion stage": {
-      "US": 9000000,
-      "Europe (EU, UK, Switzerland & Scandinavia)": 6500000,
-      "Japan": 6000000,
-      "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 4000000,
-      "China": 6000000,
-      "India": 5000000,
-      "Global": 7000000
-    },
-    "Growth Stage": {
-      "US": 20000000,
-      "Europe (EU, UK, Switzerland & Scandinavia)": 15000000,
-      "Japan": 12000000,
-      "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 8000000,
-      "China": 15000000,
-      "India": 10000000,
-      "Global": 15000000
-    },
-    "Maturity stage": {
-      "US": 50000000,
-      "Europe (EU, UK, Switzerland & Scandinavia)": 30000000,
-      "Japan": 25000000,
-      "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 15000000,
-      "China": 30000000,
-      "India": 20000000,
-      "Global": 30000000
     }
   },
   "scorecard_qualitative_lookup": {
@@ -14972,9 +14916,10 @@
     "vc_target_return": "App assumption per stage, at the midpoint of the venture-capital target returns reported for the matching financing stage (Sahlman / Scherlis, as tabulated in Damodaran, 'Valuing Young, Start-up and Growth Companies', 2009): start-up 50-70% (Idea 65%, Development 55%), first stage 40-60% (Startup 50%), second stage 35-50% (Expansion 40%), bridge / pre-IPO 25-35% (Growth 30%). Maturity uses 20%, a typical private-equity target. Used only by the Venture Capital method.",
     "private_company_discount": "App assumption per stage, applied only to the Comparables method: public-company multiples are reduced for illiquidity and size. Restricted-stock studies commonly find about 20-35% and pre-IPO studies about 40-50%; the discount runs from 40% (Idea) to 20% (Growth, Maturity).",
     "survival_probability": "App assumption per stage, applied only to the DCF method, anchored on US BLS Business Employment Dynamics data (about 78% of new businesses survive one year, about 49% five years and about 35% ten years): Startup 50% (five-year survival), lower before revenue (Idea 30%, Development 40%), higher for established firms (Expansion 65%, Growth 80%, Maturity 95%).",
-    "stage_region_pre_money_benchmarks": "Internal estimate carried over from the original workbook. Not taken from a published survey; users can replace it with their own benchmark in the wizard.",
-    "scorecard": "Scorecard method (Bill Payne / Ohio TechAngels): criterion weights 30/25/15/10/10/10 (Payne's 'need for additional investment' and 'other' 5% each are combined into 'funding required').",
-    "country_data_as_of": "2026-07-01"
+    "scorecard": "Scorecard method (Bill Payne / Ohio TechAngels), which compares a pre-revenue company with the typical pre-revenue company in its region: criterion weights 30/25/15/10/10/10 (Payne's 'need for additional investment' and 'other' 5% each are combined into 'funding required'). Used only for the Idea and Development stages; companies with revenue are valued on their numbers.",
+    "country_data_as_of": "2026-07-01",
+    "scorecard_benchmark": "Equidam, Startup Valuation Delta H1 2026: median pre-seed valuations from 3,000+ valuations of pre-seed companies preparing their first institutional round (results of Equidam's five-method valuations, not prices paid in closed rounds). United States $5.16M, Europe $3.30M; Emerging Markets uses the average of the Africa ($2.99M) and Latin America ($2.40M) medians; Japan, China, India and Global use the all-region median ($5.20M). Converted to euros at the ECB reference rate of 1 July 2026 (1.1383 US$ per euro). Used only for pre-revenue stages (Idea, Development).",
+    "method_weights": "Stage weights carried over from the original workbook, except that the Scorecard's weight is moved to the other methods in proportion once a company has revenue (Startup and Expansion stages)."
   },
   "stage_descriptions": {
     "Idea stage": "An idea or concept; no product and no revenue yet.",
@@ -14983,5 +14928,52 @@
     "Expansion stage": "Proven product with fast-growing revenue; scaling sales and operations.",
     "Growth Stage": "Established business with substantial revenue, usually profitable, still growing.",
     "Maturity stage": "Stable, profitable business with modest growth."
+  },
+  "scorecard_benchmarks": {
+    "usd_per_eur": 1.1383,
+    "regions": {
+      "US": {
+        "eur": 4533000.0,
+        "usd": 5160000.0,
+        "basis": "Equidam H1 2026 median, United States",
+        "regional_figure": true
+      },
+      "Europe (EU, UK, Switzerland & Scandinavia)": {
+        "eur": 2899000.0,
+        "usd": 3300000.0,
+        "basis": "Equidam H1 2026 median, Europe",
+        "regional_figure": true
+      },
+      "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": {
+        "eur": 2368000.0,
+        "usd": 2695000.0,
+        "basis": "Average of the Equidam H1 2026 medians for Africa ($2.99M) and Latin America ($2.40M)",
+        "regional_figure": true
+      },
+      "Japan": {
+        "eur": 4568000.0,
+        "usd": 5200000.0,
+        "basis": "Equidam H1 2026 all-region median (no separate figure for Japan)",
+        "regional_figure": false
+      },
+      "China": {
+        "eur": 4568000.0,
+        "usd": 5200000.0,
+        "basis": "Equidam H1 2026 all-region median (no separate figure for China)",
+        "regional_figure": false
+      },
+      "India": {
+        "eur": 4568000.0,
+        "usd": 5200000.0,
+        "basis": "Equidam H1 2026 all-region median (no separate figure for India)",
+        "regional_figure": false
+      },
+      "Global": {
+        "eur": 4568000.0,
+        "usd": 5200000.0,
+        "basis": "Equidam H1 2026 all-region median",
+        "regional_figure": false
+      }
+    }
   }
 }

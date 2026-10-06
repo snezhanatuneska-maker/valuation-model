@@ -525,9 +525,9 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
       <fieldset class="field-group">
         <legend>Scorecard benchmark (optional)</legend>
         <div class="field">
-          <label for="benchmark_pre_money_override">Typical pre-money valuation for your stage and region (&euro;)</label>
-          <input type="number" id="benchmark_pre_money_override" min="1" step="1" placeholder="Use the built-in estimate">
-          <p class="field-hint" id="benchmark-hint">The Scorecard compares your company with a typical company at the same stage. The built-in figure is an internal estimate; if you know a better local benchmark (from an angel network or a recent market report), enter it here.</p>
+          <label for="benchmark_pre_money_override">Typical pre-money valuation of a pre-revenue startup in your region (&euro;)</label>
+          <input type="number" id="benchmark_pre_money_override" min="1" step="1" placeholder="Use the built-in benchmark">
+          <p class="field-hint" id="benchmark-hint">Used only for pre-revenue companies (Idea and Development stages). The built-in figure is the median pre-seed valuation for your region from Equidam's Startup Valuation Delta, H1 2026 (US &euro;4.53M, Europe &euro;2.90M, Emerging Markets &euro;2.37M, elsewhere the all-region median &euro;4.57M). If you know a better local figure, enter it here.</p>
         </div>
       </fieldset>
       <fieldset class="field-group">
@@ -1193,7 +1193,8 @@ function methodValueCell(mv) {
 function methodExplanation(key, o) {
   if (key === "scorecard") {
     const sc = o.scorecard;
-    return `A typical company at this stage and region is valued at ${money(sc.benchmark_pre_money_valuation)}${sc.benchmark_source === "user_override" ? " (your benchmark)" : " (built-in estimate)"}; your answers score ${pct(sc.total_factor)} of that company.`;
+    if (o.method_values.scorecard.status === "not_used") return "Used only for pre-revenue companies (Idea and Development stages).";
+    return `A typical pre-revenue company in this region is valued at ${money(sc.benchmark_pre_money_valuation)}${sc.benchmark_source === "user_override" ? " (your benchmark)" : " (Equidam H1 2026 median)"}; your answers score ${pct(sc.total_factor)} of that company.`;
   }
   if (key === "venture_capital") {
     const vc = o.venture_capital;
