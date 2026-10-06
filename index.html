@@ -185,6 +185,26 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 }
 .loading-hint { color: var(--ink-soft); font-size: 14px; font-style: italic; }
 
+.demo-note {
+  margin: 0 0 24px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--brass);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.wake-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 12px 16px;
+  background: var(--navy);
+  color: #fff;
+  text-align: center;
+  font-size: 0.95rem;
+}
+.wake-banner[hidden] { display: none; }
+.wake-banner small { display: block; opacity: 0.8; margin-top: 2px; }
 .form-error {
   background: rgba(168, 64, 47, 0.08);
   border: 1px solid rgba(168, 64, 47, 0.3);
@@ -370,11 +390,18 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
   </div>
 </header>
 
+<div id="wake-banner" class="wake-banner" role="status" aria-live="polite" hidden>
+  Waking up the server, about 30 seconds&hellip;
+  <small>The free server sleeps when nobody is using it. The page continues on its own.</small>
+</div>
+
 <main class="page" id="app-main">
 
   <!-- ============ NEW VALUATION WIZARD ============ -->
   <section id="view-wizard" class="view">
 
+
+    <p class="demo-note"><strong>Demo version</strong> &mdash; your inputs are not stored. Close the tab and they're gone.</p>
 
     <div class="step-tracker">
       <p class="step-label"><span id="step-current">1</span> of <span id="step-total">6</span> &mdash; <span id="step-name">Company profile</span></p>
@@ -773,16 +800,69 @@ function errorDetail(body, fallback) {
   return JSON.stringify(body.detail);
 }
 
-async function apiFetch(path, options = {}) {
-  let res;
-  try {
-    res = await fetch(`${API_BASE}${path}`, {
-      headers: { "Content-Type": "application/json" },
-      ...options,
-    });
-  } catch (_) {
-    throw new Error("Could not reach the valuation service. Check your connection and try again in a minute (the server may be starting up).");
+// ------------------------------------------------------------
+// Waking the server. The free Render backend sleeps when idle and takes
+// ~30-60 s to start, so every request first waits until /health answers
+// (showing a friendly banner if that is slow), and a request that fails
+// because the server went back to sleep is retried once it is awake.
+// ------------------------------------------------------------
+const WAKE_TIMEOUT_MS = 120000;
+let serverAwake = false;
+let wakePromise = null;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function showWakeBanner(on) { document.getElementById("wake-banner").hidden = !on; }
+
+function wakeServer() {
+  if (serverAwake) return Promise.resolve();
+  if (wakePromise) return wakePromise;
+  wakePromise = (async () => {
+    const slowTimer = setTimeout(() => showWakeBanner(true), 1500);
+    const deadline = Date.now() + WAKE_TIMEOUT_MS;
+    try {
+      for (;;) {
+        try {
+          const res = await fetch(`${API_BASE}/health`, { cache: "no-store" });
+          if (res.ok) { serverAwake = true; return; }
+        } catch (_) { /* still starting */ }
+        showWakeBanner(true);
+        if (Date.now() > deadline) {
+          throw new Error("The valuation server isn't answering right now. Please try again in a few minutes.");
+        }
+        await sleep(3000);
+      }
+    } finally {
+      clearTimeout(slowTimer);
+      showWakeBanner(false);
+      wakePromise = null;
+    }
+  })();
+  return wakePromise;
+}
+
+// Render answers 502/503/504 while an instance is starting.
+const WAKING_STATUSES = new Set([502, 503, 504]);
+
+async function apiRequest(path, options = {}) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await wakeServer();
+    try {
+      const res = await fetch(`${API_BASE}${path}`, {
+        headers: { "Content-Type": "application/json" },
+        ...options,
+      });
+      if (!WAKING_STATUSES.has(res.status) || attempt === 1) return res;
+    } catch (_) {
+      if (attempt === 1) {
+        throw new Error("Could not reach the valuation server. Check your connection and try again.");
+      }
+    }
+    serverAwake = false; // fell asleep again: wake it and retry once
   }
+}
+
+async function apiFetch(path, options = {}) {
+  const res = await apiRequest(path, options);
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -1385,9 +1465,8 @@ async function downloadResultsPdf() {
   btn.disabled = true;
   btn.textContent = "Preparing PDF\u2026";
   try {
-    const res = await fetch(`${API_BASE}/valuations/preview/report`, {
+    const res = await apiRequest("/valuations/preview/report", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(lastResult.payload),
     });
     if (!res.ok) {
@@ -1466,12 +1545,12 @@ async function runInit() {
   try {
     await loadReferenceData();
   } catch (err) {
-    showFormError(
-      `Could not reach the valuation API at ${API_BASE}. Is it running? (${err.message})`
-    );
+    didInit = false;
+    showFormError(`${err.message} Reload the page to try again.`);
   }
 }
 
+wakeServer().catch(() => { /* runInit reports it */ }); // start waking the server straight away
 runInit();
 
 </script>

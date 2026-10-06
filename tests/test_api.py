@@ -11,9 +11,49 @@ from recompute import GERMAN_CASE, REFERENCE_CASE
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
+    """The API as deployed: demo mode, nothing stored."""
     monkeypatch.setattr(api, "DB_PATH", tmp_path / "test.db")
     with TestClient(api.app, raise_server_exceptions=False) as c:
         yield c
+
+
+@pytest.fixture()
+def storing_client(tmp_path, monkeypatch):
+    """The API with saving switched on (VALUATIVA_STORE_VALUATIONS=1)."""
+    monkeypatch.setattr(api, "DB_PATH", tmp_path / "test.db")
+    monkeypatch.setattr(api, "STORE_VALUATIONS", True)
+    with TestClient(api.app, raise_server_exceptions=False) as c:
+        yield c
+
+
+def test_demo_flow_stores_nothing(client, tmp_path):
+    """Every call the wizard makes, then check that no database was created."""
+    body = {k: GERMAN_CASE[k] for k in ("company_profile", "operating_performance", "financial_assumptions")}
+    assert client.get("/health").status_code == 200
+    assert client.post("/valuations/preview/projections", json=body).status_code == 200
+    assert client.post("/valuations/preview", json=GERMAN_CASE).status_code == 200
+    assert client.post("/valuations/preview/scenarios", json=GERMAN_CASE).status_code == 200
+    assert client.post("/valuations/preview/report", json=GERMAN_CASE).status_code == 200
+    assert not (tmp_path / "test.db").exists()
+
+
+def test_saving_routes_are_off_in_demo(client, tmp_path):
+    assert client.post("/valuations?owner_id=a", json=GERMAN_CASE).status_code == 404
+    for path in ("/valuations?owner_id=a", "/valuations/x", "/valuations/x/scenarios", "/valuations/x/report"):
+        assert client.get(path).status_code == 404, path
+    assert client.post("/valuations/x/rerun").status_code == 404
+    assert client.delete("/valuations/x").status_code == 404
+    assert not (tmp_path / "test.db").exists()
+
+
+def test_wizard_only_calls_preview_routes():
+    """The page itself never calls a route that stores data."""
+    from pathlib import Path
+    import re
+    html = (Path(api.__file__).parent / "index.html").read_text(encoding="utf-8")
+    called = set(re.findall(r"/valuations[\w/]*", html))
+    assert called and called <= {"/valuations/preview", "/valuations/preview/projections",
+                                 "/valuations/preview/scenarios", "/valuations/preview/report"}, called
 
 
 @pytest.mark.parametrize("path", [
@@ -102,7 +142,8 @@ def test_pdf_report_for_edge_cases(client):
             assert r.content[:4] == b"%PDF"
 
 
-def test_save_list_rerun_report_delete(client):
+def test_save_list_rerun_report_delete(storing_client):
+    client = storing_client
     case = copy.deepcopy(REFERENCE_CASE)
     case["company_profile"]["valuation_date"] = None
     r = client.post("/valuations?owner_id=browser-a", json=case)
@@ -117,7 +158,8 @@ def test_save_list_rerun_report_delete(client):
     assert client.delete(f"/valuations/{vid}?owner_id=browser-a").status_code == 204
 
 
-def test_valuations_are_private_to_their_browser(client):
+def test_valuations_are_private_to_their_browser(storing_client):
+    client = storing_client
     vid = client.post("/valuations?owner_id=browser-a", json=REFERENCE_CASE).json()["id"]
     assert client.get("/valuations").json() == []  # no owner: nothing listed
     assert client.get("/valuations?owner_id=browser-b").json() == []
@@ -129,7 +171,8 @@ def test_login_and_payment_endpoints_are_gone(client):
     assert client.post("/auth/demo-login", json={"email": "a@b.com"}).status_code == 404
 
 
-def test_valuation_saved_by_the_old_version_still_opens(client):
+def test_valuation_saved_by_the_old_version_still_opens(storing_client):
+    client = storing_client
     """Input saved before this release: old answer spellings, no valuation date."""
     old_input = copy.deepcopy(REFERENCE_CASE)
     del old_input["company_profile"]["valuation_date"]
