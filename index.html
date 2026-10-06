@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Startup Valuation</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Valuation Model: free startup valuation</title>
+<meta name="description" content="Free startup valuation for early-stage founders: four standard methods, German tax and market data, and a PDF report that explains every number.">
 <style>
 :root {
   --paper: #F7F4EC;
@@ -20,8 +19,9 @@
   --rust: #A8402F;
   --rule: rgba(28, 36, 48, 0.14);
   --rule-soft: rgba(28, 36, 48, 0.08);
-  --font-serif: "Source Serif 4", Georgia, serif;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Fonts already on the visitor's device: no requests to third-party font servers. */
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -52,6 +52,34 @@ body {
   flex-wrap: wrap;
   gap: 12px;
 }
+.masthead-tag { color: var(--brass-light); font-size: 13px; letter-spacing: 0.02em; }
+.site-footer {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 20px 40px;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  text-align: center;
+  line-height: 1.7;
+}
+.site-footer a { color: var(--navy); }
+.site-footer .sep { margin: 0 8px; color: var(--rule); }
+.privacy-dialog {
+  max-width: 560px;
+  width: calc(100vw - 32px);
+  padding: 24px 24px 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  line-height: 1.55;
+  font-size: 15px;
+}
+.privacy-dialog::backdrop { background: rgba(23, 41, 59, 0.45); }
+.privacy-dialog h2 { font-family: var(--font-serif); color: var(--navy-deep); margin: 0 0 12px; font-size: 22px; }
+.privacy-dialog ul { padding-left: 18px; margin: 0 0 16px; }
+.privacy-dialog li { margin-bottom: 8px; }
 .wordmark {
   font-family: var(--font-serif);
   font-weight: 600;
@@ -75,7 +103,26 @@ body {
   padding: 40px 44px 36px;
 }
 @media (max-width: 620px) {
-  .view { padding: 28px 20px 24px; border-radius: 8px; }
+  .page { padding: 20px 12px 64px; }
+  .view { padding: 24px 16px 22px; border-radius: 8px; }
+  .landing { padding: 4px 4px 28px; }
+}
+/* Phones: each method of the summary table becomes a block (name and explanation
+   across the full width, then its weight / value / weighted value in one line). */
+@media (max-width: 560px) {
+  .ledger-table.stacked thead { display: none; }
+  .ledger-table.stacked tr { display: block; padding: 12px 0; border-bottom: 1px solid var(--rule-soft); }
+  .ledger-table.stacked td { display: inline-block; border: none; padding: 2px 14px 0 0; text-align: left; }
+  .ledger-table.stacked td:first-child { display: block; padding-right: 0; }
+  .ledger-table.stacked td[data-label]::before {
+    content: attr(data-label) " ";
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+  }
+  .ledger-table.stacked .ledger-total-row { display: flex; justify-content: space-between; align-items: baseline; border-bottom: none; }
+  .ledger-table.stacked .ledger-total-row td { padding: 0; }
 }
 .section-heading {
   font-family: var(--font-serif);
@@ -135,6 +182,11 @@ body {
 @media (max-width: 560px) {
   .field-row, .field-row-3, .field-row-5 { grid-template-columns: 1fr 1fr; }
 }
+@media (max-width: 420px) {
+  /* Phones: one field per line, except the short year-by-year number rows. */
+  .field-row, .field-row-3 { grid-template-columns: 1fr; gap: 12px; }
+  .field-row.field-row-5 { grid-template-columns: 1fr 1fr; }
+}
 
 label {
   display: block;
@@ -185,6 +237,111 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 }
 .loading-hint { color: var(--ink-soft); font-size: 14px; font-style: italic; }
 
+/* ---------- Landing ---------- */
+.landing { padding: 8px 4px 36px; }
+.landing-kicker {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.landing h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.7rem, 5vw, 2.3rem);
+  line-height: 1.15;
+  color: var(--navy-deep);
+  margin: 0 0 12px;
+}
+.landing-lede { margin: 0 0 22px; color: var(--ink-soft); font-size: 1.05rem; line-height: 1.5; }
+.landing-points { list-style: none; margin: 0 0 26px; padding: 0; display: grid; gap: 14px; }
+.landing-points li { padding-left: 16px; border-left: 3px solid var(--brass-light); line-height: 1.5; }
+.landing-points strong { display: block; color: var(--navy); }
+.landing-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.landing-actions .btn { flex: 1 1 220px; }
+.results-actions .btn { flex: 1 1 200px; }
+.landing-fineprint { margin: 18px 0 0; font-size: 0.85rem; color: var(--ink-soft); }
+/* ---------- Term explanations (info icons) ---------- */
+.tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0;
+  border: 1px solid var(--ink-soft);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  font: italic 700 11px/1 Georgia, serif;
+  vertical-align: 1px;
+  cursor: help;
+}
+.tip:hover, .tip:focus-visible, .tip[aria-expanded="true"] { border-color: var(--navy); color: #fff; background: var(--navy); outline: none; }
+.tip-bubble {
+  position: absolute;
+  z-index: 30;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--navy-deep);
+  color: #fff;
+  font-size: 13.5px;
+  line-height: 1.45;
+  font-weight: 400;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+.tip-bubble[hidden] { display: none; }
+.read-result {
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--brass-light);
+  border-radius: 6px;
+  background: var(--paper);
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+.read-result h3 { margin: 0 0 6px; font-size: 15px; color: var(--navy); }
+.read-result p { margin: 0; }
+.glossary { margin-top: 28px; font-size: 14px; }
+.glossary summary { cursor: pointer; font-weight: 600; color: var(--navy); }
+.glossary dl { margin: 12px 0 0; }
+.glossary dt { font-weight: 600; margin-top: 10px; }
+.glossary dd { margin: 2px 0 0; color: var(--ink-soft); line-height: 1.5; }
+.form-warning {
+  margin: 0 0 20px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--brass);
+  background: #FBF3E2;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+.form-warning[hidden] { display: none; }
+input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-shadow: 0 0 0 3px rgba(168, 64, 47, 0.15); }
+.running-total { font-weight: 600; }
+.running-total.is-off { color: var(--rust); }
+.demo-note {
+  margin: 0 0 24px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--brass);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.wake-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 12px 16px;
+  background: var(--navy);
+  color: #fff;
+  text-align: center;
+  font-size: 0.95rem;
+}
+.wake-banner[hidden] { display: none; }
+.wake-banner small { display: block; opacity: 0.8; margin-top: 2px; }
 .form-error {
   background: rgba(168, 64, 47, 0.08);
   border: 1px solid rgba(168, 64, 47, 0.3);
@@ -329,6 +486,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 }
 .results-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 24px;
 }
@@ -366,25 +524,54 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 
 <header class="masthead">
   <div class="masthead-inner">
-    <h1 class="wordmark">Startup Valuation</h1>
+    <h1 class="wordmark">Valuation Model</h1>
+    <span class="masthead-tag">Startup valuation for founders</span>
   </div>
 </header>
 
+<div id="tip-bubble" class="tip-bubble" role="tooltip" hidden></div>
+
+<div id="wake-banner" class="wake-banner" role="status" aria-live="polite" hidden>
+  Waking up the server, about 30 seconds&hellip;
+  <small>The free server sleeps when nobody is using it. The page continues on its own.</small>
+</div>
+
 <main class="page" id="app-main">
+
+  <!-- ============ LANDING ============ -->
+  <section class="landing" aria-labelledby="landing-title">
+    <!-- COMMUNITY LINE: delete this one paragraph to remove the FAU / Nuremberg mention everywhere. -->
+    <p class="landing-kicker" id="community-line">Free for founders in the FAU / Nuremberg start-up community</p>
+    <h2 id="landing-title">Free startup valuation for early-stage founders</h2>
+    <p class="landing-lede">Find out what your company could be worth before you talk to investors, and see exactly how that number is reached.</p>
+    <ul class="landing-points">
+      <li><strong>What you get</strong>A pre-money and post-money valuation blended from four standard methods (Scorecard, Venture Capital, Comparables, discounted cash flow), a 5-year projection, a revenue sensitivity check, and a PDF report that explains every number.</li>
+      <li><strong>How long it takes</strong>About 15 minutes if you have your last 12 months' figures and a simple 5-year plan at hand. Or see a finished example in one click.</li>
+      <li><strong>Where the data comes from</strong>Industry benchmarks and country risk from Prof. Aswath Damodaran (NYU Stern, 2026), German tax law including the 2028&ndash;2032 corporate tax cuts, the 10-year Bund yield, and Equidam's 2026 pre-seed valuation data. Every source is listed in the report.</li>
+    </ul>
+    <div class="landing-actions">
+      <button type="button" class="btn btn-primary" id="btn-start">Start your valuation</button>
+      <button type="button" class="btn btn-ghost" id="btn-sample">Try with a sample company</button>
+    </div>
+    <p class="landing-fineprint">An informed starting point for investor conversations, not a certified appraisal.</p>
+  </section>
 
   <!-- ============ NEW VALUATION WIZARD ============ -->
   <section id="view-wizard" class="view">
 
+
+    <p class="demo-note"><strong>Demo version</strong> &mdash; your inputs are not stored. Close the tab and they're gone.</p>
 
     <div class="step-tracker">
       <p class="step-label"><span id="step-current">1</span> of <span id="step-total">6</span> &mdash; <span id="step-name">Company profile</span></p>
       <div class="step-rule"><div id="step-fill" class="step-fill"></div></div>
     </div>
 
-    <p id="form-error" class="form-error" hidden></p>
+    <p id="form-error" class="form-error" role="alert" hidden></p>
+    <p id="form-warning" class="form-warning" role="status" hidden></p>
 
     <!-- Step 1: Company Profile -->
-    <form class="wizard-step is-active" data-step="1" id="step-1">
+    <form class="wizard-step is-active" data-step="1" id="step-1" novalidate>
       <p class="step-intro">General information about the company being valued.</p>
 
       <fieldset class="field-group" style="border-top:none; padding-top:0;">
@@ -480,7 +667,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
         <legend>Financial profile</legend>
         <div class="field-row">
           <div class="field">
-            <label for="committed_capital">Committed capital</label>
+            <label for="committed_capital">Committed capital (&euro;)<button type="button" class="tip" data-term="committed_capital" aria-label="What is committed capital?">i</button></label>
             <input type="number" id="committed_capital" min="0" step="1" value="0">
           </div>
           <div class="field">
@@ -528,8 +715,8 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
     </form>
 
     <!-- Step 2: Market & Team Assessment -->
-    <form class="wizard-step" data-step="2" id="step-2">
-      <p class="step-intro">These qualitative answers drive the Scorecard method. Each dropdown offers exactly the option set the calculation engine recognizes.</p>
+    <form class="wizard-step" data-step="2" id="step-2" novalidate>
+      <p class="step-intro">These answers compare your team, product and market with a typical startup. They feed the Scorecard method, which counts only for pre-revenue companies (Idea and Development stages).</p>
       <div id="scorecard-fields"><p class="loading-hint">Loading question set&hellip;</p></div>
 
       <fieldset class="field-group">
@@ -552,7 +739,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
     </form>
 
     <!-- Step 3: Operating Performance -->
-    <form class="wizard-step" data-step="3" id="step-3">
+    <form class="wizard-step" data-step="3" id="step-3" novalidate>
       <p class="step-intro">The company's actual (not projected) results for the last 12 months. Projected margins start from these figures, and the Comparables method uses this EBITDA.</p>
 
       <div class="field-row">
@@ -561,7 +748,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
           <input type="number" id="current_revenue_last_12_months" min="0" step="1" required>
         </div>
         <div class="field">
-          <label for="current_ebitda">EBITDA, last 12 months (&euro;)</label>
+          <label for="current_ebitda">EBITDA, last 12 months (&euro;)<button type="button" class="tip" data-term="ebitda" aria-label="What is EBITDA?">i</button></label>
           <input type="number" id="current_ebitda" step="1" required>
           <p class="field-hint">Enter a negative number for a loss.</p>
         </div>
@@ -579,7 +766,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
     </form>
 
     <!-- Step 4: Financial Assumptions -->
-    <form class="wizard-step" data-step="4" id="step-4">
+    <form class="wizard-step" data-step="4" id="step-4" novalidate>
       <p class="step-intro">A 5-year revenue and capital-expenditure plan. The EBITDA margin starts from your last 12 months and moves to the industry margin by Year 5, unless you set your own target below.</p>
 
       <div class="field">
@@ -599,7 +786,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
       </fieldset>
 
       <fieldset class="field-group">
-        <legend>Planned capital expenditure (&euro;)</legend>
+        <legend>Planned capital expenditure (capex, &euro;)<button type="button" class="tip" data-term="capex" aria-label="What is capex?">i</button></legend>
         <div class="field-row field-row-5">
           <div class="field"><label for="capex_y1">Year 1</label><input type="number" id="capex_y1" min="0" step="1" value="0"></div>
           <div class="field"><label for="capex_y2">Year 2</label><input type="number" id="capex_y2" min="0" step="1" value="30000"></div>
@@ -616,7 +803,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
           <p class="field-hint">Subtracted (and cash added) to turn enterprise value into equity value.</p>
         </div>
         <div class="field">
-          <label for="target_ebitda_margin_override">Year-5 EBITDA margin (%, optional)</label>
+          <label for="target_ebitda_margin_override">Year-5 EBITDA margin (%, optional)<button type="button" class="tip" data-term="ebitda_margin" aria-label="What is an EBITDA margin?">i</button></label>
           <input type="number" id="target_ebitda_margin_override" min="-100" max="90" step="0.1" placeholder="Industry margin">
           <p class="field-hint">Leave empty to use the industry's EBITDA margin.</p>
         </div>
@@ -626,12 +813,12 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
     </form>
 
     <!-- Step 5: Ownership & Funding -->
-    <form class="wizard-step" data-step="5" id="step-5">
+    <form class="wizard-step" data-step="5" id="step-5" novalidate>
       <p class="step-intro">The capital being raised, and what it funds.</p>
 
       <div class="field-row">
         <div class="field">
-          <label for="capital_needed">Capital being raised (&euro;)</label>
+          <label for="capital_needed">Capital being raised (&euro;)<button type="button" class="tip" data-term="pre_post_money" aria-label="What is pre-money and post-money?">i</button></label>
           <input type="number" id="capital_needed" min="1" step="1" required>
         </div>
         <div class="field">
@@ -643,7 +830,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 
       <fieldset class="field-group">
         <legend>Ownership structure</legend>
-        <p class="field-hint">Current shareholders and their ownership percentage, before this round. If you fill this in, it must add up to 100%.</p>
+        <p class="field-hint">Current shareholders and their ownership percentage, before this round. Optional; if you fill it in, it should add up to 100%. <span class="running-total" id="ownership-total"></span></p>
         <div class="field-row field-row-3">
           <div class="field"><input type="text" id="shareholder_name_1" placeholder="Shareholder 1 name"><input type="number" id="shareholder_pct_1" min="0" max="100" step="0.1" placeholder="%" style="margin-top:6px"></div>
           <div class="field"><input type="text" id="shareholder_name_2" placeholder="Shareholder 2 name"><input type="number" id="shareholder_pct_2" min="0" max="100" step="0.1" placeholder="%" style="margin-top:6px"></div>
@@ -665,10 +852,10 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
         </div>
         <div class="field-row field-row-3">
           <div class="field"><label for="use_ops">Operations</label><input type="number" id="use_ops" min="0" step="1"></div>
-          <div class="field"><label for="use_capex">Capital expenditures</label><input type="number" id="use_capex" min="0" step="1"></div>
+          <div class="field"><label for="use_capex">Capital expenditure (capex)</label><input type="number" id="use_capex" min="0" step="1"></div>
           <div class="field"><label for="use_other">Others</label><input type="number" id="use_other" min="0" step="1"></div>
         </div>
-        <p class="field-hint">If you fill this in, it must add up to the capital being raised.</p>
+        <p class="field-hint">Optional; if you fill it in, it should add up to the capital being raised. <span class="running-total" id="uof-total"></span></p>
       </fieldset>
     </form>
 
@@ -689,6 +876,23 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
   </section>
 
 </main>
+
+<footer class="site-footer">
+  <strong>Valuation Model</strong> demo &middot; informational estimate, not a certified appraisal<br>
+  Snezhana Tuneska<span class="sep">|</span><a href="#privacy" id="privacy-link">Privacy</a>
+</footer>
+
+<dialog class="privacy-dialog" id="privacy" aria-labelledby="privacy-title">
+  <h2 id="privacy-title">Privacy in this demo</h2>
+  <ul>
+    <li><strong>Nothing is stored.</strong> What you enter is sent to the calculation server only to work out your result and build your PDF, and is discarded straight after. There is no database and no account.</li>
+    <li><strong>Where it runs.</strong> This page is hosted on GitHub Pages and the calculation server on Render (render.com). Like any web host, they may keep short-lived technical logs, such as your IP address and the time of a request, to run and protect their service.</li>
+    <li><strong>No tracking.</strong> No analytics, no advertising, no cookies, and nothing loaded from other websites. The page doesn't save anything in your browser.</li>
+    <li><strong>Your logo</strong>, if you add one, is only used to build your PDF and isn't kept.</li>
+  </ul>
+  <p>This demo is run by Snezhana Tuneska.</p>
+  <form method="dialog"><button class="btn btn-primary" type="submit">Close</button></form>
+</dialog>
 
 
 <script>
@@ -773,16 +977,69 @@ function errorDetail(body, fallback) {
   return JSON.stringify(body.detail);
 }
 
-async function apiFetch(path, options = {}) {
-  let res;
-  try {
-    res = await fetch(`${API_BASE}${path}`, {
-      headers: { "Content-Type": "application/json" },
-      ...options,
-    });
-  } catch (_) {
-    throw new Error("Could not reach the valuation service. Check your connection and try again in a minute (the server may be starting up).");
+// ------------------------------------------------------------
+// Waking the server. The free Render backend sleeps when idle and takes
+// ~30-60 s to start, so every request first waits until /health answers
+// (showing a friendly banner if that is slow), and a request that fails
+// because the server went back to sleep is retried once it is awake.
+// ------------------------------------------------------------
+const WAKE_TIMEOUT_MS = 120000;
+let serverAwake = false;
+let wakePromise = null;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function showWakeBanner(on) { document.getElementById("wake-banner").hidden = !on; }
+
+function wakeServer() {
+  if (serverAwake) return Promise.resolve();
+  if (wakePromise) return wakePromise;
+  wakePromise = (async () => {
+    const slowTimer = setTimeout(() => showWakeBanner(true), 1500);
+    const deadline = Date.now() + WAKE_TIMEOUT_MS;
+    try {
+      for (;;) {
+        try {
+          const res = await fetch(`${API_BASE}/health`, { cache: "no-store" });
+          if (res.ok) { serverAwake = true; return; }
+        } catch (_) { /* still starting */ }
+        showWakeBanner(true);
+        if (Date.now() > deadline) {
+          throw new Error("The valuation server isn't answering right now. Please try again in a few minutes.");
+        }
+        await sleep(3000);
+      }
+    } finally {
+      clearTimeout(slowTimer);
+      showWakeBanner(false);
+      wakePromise = null;
+    }
+  })();
+  return wakePromise;
+}
+
+// Render answers 502/503/504 while an instance is starting.
+const WAKING_STATUSES = new Set([502, 503, 504]);
+
+async function apiRequest(path, options = {}) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await wakeServer();
+    try {
+      const res = await fetch(`${API_BASE}${path}`, {
+        headers: { "Content-Type": "application/json" },
+        ...options,
+      });
+      if (!WAKING_STATUSES.has(res.status) || attempt === 1) return res;
+    } catch (_) {
+      if (attempt === 1) {
+        throw new Error("Could not reach the valuation server. Check your connection and try again.");
+      }
+    }
+    serverAwake = false; // fell asleep again: wake it and retry once
   }
+}
+
+async function apiFetch(path, options = {}) {
+  const res = await apiRequest(path, options);
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -992,12 +1249,12 @@ async function updateProjectionPreview() {
         <tbody>
           <tr><td>Revenue</td>${cells((y) => money(y.revenue))}</tr>
           <tr><td>EBITDA margin</td>${cells((y) => pct(y.ebitda_margin))}</tr>
-          <tr class="subtotal-row"><td>EBITDA</td>${cells((y) => money(y.ebitda))}</tr>
+          <tr class="subtotal-row"><td>EBITDA<button type="button" class="tip" data-term="ebitda" aria-label="What is EBITDA?">i</button></td>${cells((y) => money(y.ebitda))}</tr>
           <tr><td>Depreciation &amp; amortisation</td>${cells((y) => money(y.da))}</tr>
           ${stepped ? `<tr><td>Tax rate</td>${cells((y) => pct(y.tax_rate))}</tr>` : ""}
           <tr><td>Tax on EBIT</td>${cells((y) => money(-y.tax_on_ebit))}</tr>
-          <tr><td>Capital expenditure</td>${cells((y) => money(-y.capex))}</tr>
-          <tr><td>Change in working capital</td>${cells((y) => money(-y.change_in_working_capital))}</tr>
+          <tr><td>Capital expenditure<button type="button" class="tip" data-term="capex" aria-label="What is capex?">i</button></td>${cells((y) => money(-y.capex))}</tr>
+          <tr><td>Change in working capital<button type="button" class="tip" data-term="working_capital" aria-label="What is working capital?">i</button></td>${cells((y) => money(-y.change_in_working_capital))}</tr>
           <tr class="subtotal-row"><td>Free cash flow</td>${cells((y) => money(y.unlevered_fcf))}</tr>
         </tbody>
       </table>
@@ -1023,66 +1280,177 @@ function goToStep(step) {
   document.getElementById("step-name").textContent = stepNames[step];
   document.getElementById("step-fill").style.width = `${(step / TOTAL_STEPS) * 100}%`;
 
-  document.getElementById("btn-back").hidden = step === 1;
+  document.getElementById("btn-back").hidden = step === 1 || step === 6;
+  document.querySelector(".wizard-nav").style.display = step === 6 ? "none" : ""; // results have their own buttons
   document.getElementById("btn-next").hidden = step === 5 || step === 6;
   document.getElementById("btn-calculate").hidden = step !== 5;
 
   if (step === 4) updateProjectionPreview();
+  if (step === 5) updateRunningTotals();
 
   clearFormError();
+  showFormWarnings([]);
 }
 
-// Checks the browser can't express with min/max/required.
+// ------------------------------------------------------------
+// Validation: impossible or missing inputs stop the step with a plain
+// message next to the field; things that are merely unusual (ownership
+// below 100%, use of funds not matching the raise) are shown as a note and
+// listed again under "Checks on your inputs" in the results.
+// ------------------------------------------------------------
+const FIELD_NAMES = {
+  company_name: "Company name", valuation_date: "Valuation date",
+  planned_time_to_exit_years: "Planned time to exit", committed_capital: "Committed capital",
+  current_revenue_last_12_months: "Revenue in the last 12 months", current_ebitda: "EBITDA in the last 12 months",
+  cash_available: "Cash available", current_ppe_value: "Property, plant & equipment",
+  revenue_year1: "Year-1 revenue", existing_debt_balance: "Existing debt",
+  growth_y2: "Revenue growth in Year 2", growth_y3: "Revenue growth in Year 3",
+  growth_y4: "Revenue growth in Year 4", growth_y5: "Revenue growth in Year 5",
+  capex_y1: "Capex in Year 1", capex_y2: "Capex in Year 2", capex_y3: "Capex in Year 3",
+  capex_y4: "Capex in Year 4", capex_y5: "Capex in Year 5",
+  target_ebitda_margin_override: "Year-5 EBITDA margin", dcf_tax_rate_override: "Corporate tax rate",
+  trade_tax_hebesatz: "Hebesatz", capital_needed: "Capital being raised",
+  number_of_existing_shares: "Number of existing shares", benchmark_pre_money_override: "Your own benchmark",
+  num_founders: "Number of founders", num_employees: "Number of employees",
+  year_of_incorporation: "Year incorporated", contact_email: "Contact email",
+};
+
+function fieldName(el) {
+  if (FIELD_NAMES[el.id]) return FIELD_NAMES[el.id];
+  const m = el.id.match(/^shareholder_pct_(\d)$/);
+  if (m) return `Shareholder ${m[1]}'s percentage`;
+  const label = document.querySelector(`label[for="${el.id}"]`);
+  return label ? label.textContent.trim() : "This field";
+}
+
+// A friendly message for a field the browser considers invalid, or null.
+function fieldProblem(el) {
+  if (el.closest("[hidden]") || el.disabled) return null;
+  const v = el.validity;
+  if (v.valid) return null;
+  const name = fieldName(el);
+  const fmt = (x) => Number(x).toLocaleString("en-US");
+  if (v.valueMissing) return `${name} is missing. Please fill it in.`;
+  if (v.badInput) return `${name}: please enter a number (digits only, no currency signs or spaces).`;
+  if (v.rangeUnderflow) {
+    return Number(el.min) === 0 ? `${name} can't be negative.` : `${name} must be at least ${fmt(el.min)}.`;
+  }
+  if (v.rangeOverflow) return `${name} can be at most ${fmt(el.max)}.`;
+  if (v.stepMismatch) return `${name}: please use ${Number(el.step) === 1 ? "whole numbers" : "fewer decimals"}.`;
+  if (v.typeMismatch) return `${name} doesn't look right. Please check it.`;
+  return `${name} doesn't look right. Please check it.`;
+}
+
+function markInvalid(el) {
+  const details = el.closest("details");
+  if (details) details.open = true;
+  el.classList.add("is-invalid");
+  el.addEventListener("input", () => el.classList.remove("is-invalid"), { once: true });
+  el.focus({ preventScroll: true });
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function ownershipTotal() {
+  let total = 0, any = false;
+  for (let i = 1; i <= 6; i++) {
+    const v = val(`shareholder_pct_${i}`);
+    if (v !== "" && Number(v) > 0) { total += Number(v); any = true; }
+  }
+  return any ? total : null;
+}
+
+function useOfFundsTotal() {
+  const uses = ["use_rd", "use_sales", "use_inventory", "use_ops", "use_capex", "use_other"]
+    .map((id) => val(id)).filter((v) => v !== "").map(Number);
+  return uses.length ? uses.reduce((a, b) => a + b, 0) : null;
+}
+
+// Returns { error, field } for something that must be fixed, or { warnings } for things worth a look.
 function extraChecks(step) {
+  const warnings = [];
   if (step === 3) {
     const rev = Number(val("current_revenue_last_12_months") || 0);
     const ebitda = Number(val("current_ebitda") || 0);
-    if (rev > 0 && ebitda > rev) return "EBITDA can't be larger than revenue. Please check both figures.";
+    if (rev > 0 && ebitda > rev) {
+      return { error: "EBITDA can't be larger than revenue (it is what's left of revenue after operating costs). Please check both figures.", field: "current_ebitda" };
+    }
+    if (rev === 0 && ebitda > 0) {
+      return { error: "With no revenue, EBITDA can't be positive. Enter 0 or a negative number (your operating loss).", field: "current_ebitda" };
+    }
   }
   if (step === 4) {
-    if (!(Number(val("revenue_year1")) > 0)) return "Year-1 revenue must be above zero.";
+    if (!(Number(val("revenue_year1")) > 0)) {
+      return { error: "Year-1 revenue must be above zero: the cash-flow methods need a revenue plan to build on.", field: "revenue_year1" };
+    }
   }
   if (step === 5) {
-    const capital = Number(val("capital_needed") || 0);
-    if (!(capital > 0)) return "Please enter the capital being raised.";
-    const owners = [];
+    if (!(Number(val("capital_needed")) > 0)) {
+      return { error: "Please enter the amount you are raising in this round (above zero).", field: "capital_needed" };
+    }
     for (let i = 1; i <= 6; i++) {
       const name = (val(`shareholder_name_${i}`) || "").trim();
       const pctVal = val(`shareholder_pct_${i}`);
-      if (pctVal !== "" && Number(pctVal) > 0 && !name) return `Shareholder ${i} has a percentage but no name.`;
-      if (pctVal !== "" && Number(pctVal) > 0) owners.push(Number(pctVal));
-    }
-    if (owners.length) {
-      const total = owners.reduce((a, b) => a + b, 0);
-      if (Math.abs(total - 100) > 0.5) {
-        return `Ownership adds up to ${total.toFixed(1)}%. It must add up to 100% (add the remaining shareholders, or leave the whole section empty).`;
+      if (pctVal !== "" && Number(pctVal) > 0 && !name) {
+        return { error: `Shareholder ${i} has a percentage but no name. Add a name or clear the percentage.`, field: `shareholder_name_${i}` };
       }
     }
-    const uses = ["use_rd", "use_sales", "use_inventory", "use_ops", "use_capex", "use_other"]
-      .map((id) => val(id)).filter((v) => v !== "").map(Number);
-    if (uses.length) {
-      const total = uses.reduce((a, b) => a + b, 0);
-      if (Math.abs(total - capital) > Math.max(1, 0.005 * capital)) {
-        return `Use of funds adds up to ${money(total)}, but the capital being raised is ${money(capital)}. Please make them match (or leave use of funds empty).`;
-      }
+    const owned = ownershipTotal();
+    if (owned !== null && owned > 100.5) {
+      return { error: `Ownership adds up to ${owned.toFixed(1)}%, which is more than 100%. Please check the percentages.`, field: "shareholder_pct_1" };
+    }
+    if (owned !== null && owned < 99.5) {
+      warnings.push(`Ownership adds up to ${owned.toFixed(1)}%, not 100%. The valuation still runs; add the remaining shareholders if you want the ownership chart in the report to be complete.`);
+    }
+    const capital = Number(val("capital_needed"));
+    const uses = useOfFundsTotal();
+    if (uses !== null && Math.abs(uses - capital) > Math.max(1, 0.005 * capital)) {
+      warnings.push(`Use of funds adds up to ${money(uses)}, but you are raising ${money(capital)}. The valuation still runs; it is just flagged in the report.`);
     }
   }
-  return null;
+  return { warnings };
+}
+
+function showFormWarnings(list) {
+  const el = document.getElementById("form-warning");
+  el.textContent = list.join(" ");
+  el.hidden = list.length === 0;
 }
 
 function validateStep(step) {
   const form = document.getElementById(`step-${step}`);
-  if (form && typeof form.reportValidity === "function" && !form.reportValidity()) {
-    showFormError("Please fix the highlighted field before continuing.");
+  if (form) {
+    for (const el of form.querySelectorAll("input, select")) {
+      const problem = fieldProblem(el);
+      if (problem) {
+        showFormError(problem);
+        markInvalid(el);
+        return false;
+      }
+    }
+  }
+  const { error, field, warnings } = extraChecks(step);
+  if (error) {
+    showFormError(error);
+    if (field) markInvalid(document.getElementById(field));
     return false;
   }
-  const problem = extraChecks(step);
-  if (problem) {
-    showFormError(problem);
-    return false;
-  }
+  showFormWarnings(warnings || []);
   return true;
 }
+
+// Live totals under Ownership and Use of funds.
+function updateRunningTotals() {
+  const owned = ownershipTotal();
+  const ownEl = document.getElementById("ownership-total");
+  ownEl.textContent = owned === null ? "" : `Total so far: ${owned.toFixed(1)}%.`;
+  ownEl.classList.toggle("is-off", owned !== null && Math.abs(owned - 100) > 0.5);
+  const uses = useOfFundsTotal();
+  const capital = Number(val("capital_needed") || 0);
+  const uofEl = document.getElementById("uof-total");
+  uofEl.textContent = uses === null ? "" : `Total so far: ${money(uses)}${capital > 0 ? ` of ${money(capital)}` : ""}.`;
+  uofEl.classList.toggle("is-off", uses !== null && capital > 0 && Math.abs(uses - capital) > Math.max(1, 0.005 * capital));
+}
+document.getElementById("step-5").addEventListener("input", updateRunningTotals);
 
 document.getElementById("btn-next").addEventListener("click", () => {
   if (!validateStep(currentStep)) return;
@@ -1200,9 +1568,8 @@ document.getElementById("btn-calculate").addEventListener("click", async () => {
   for (const step of [1, 2, 3, 4, 5]) {
     if (!validateStep(step)) {
       if (step !== currentStep) {
-        const msg = document.getElementById("form-error").textContent;
         goToStep(step);
-        showFormError(msg);
+        validateStep(step); // again, now that the step is visible, to point at the field
       }
       return;
     }
@@ -1326,6 +1693,105 @@ function checksBlock(warnings) {
   `;
 }
 
+// ------------------------------------------------------------
+// Plain-language explanations of financial terms, shown from the (i)
+// buttons next to them and listed together under "Key terms" in the results.
+// ------------------------------------------------------------
+const TERMS = {
+  ebitda: ["EBITDA",
+    "Earnings before interest, taxes, depreciation and amortisation: your revenue minus operating costs such as COGS (cost of goods sold: materials, production, hosting) and SG&A (selling, general and administrative costs: salaries, marketing, rent). It shows what the business itself earns before financing and accounting write-downs. A loss is a negative number."],
+  ebitda_margin: ["EBITDA margin",
+    "EBITDA as a percentage of revenue. A 15% margin means €15 of EBITDA for every €100 of revenue. If you leave this empty, the projection moves towards the typical margin of your industry by Year 5."],
+  working_capital: ["Working capital",
+    "Cash tied up in day-to-day business: receivables (invoices customers haven't paid yet) plus inventory (stock not yet sold) minus payables (bills you haven't paid yet). When revenue grows, more cash gets tied up, which lowers free cash flow. The app uses typical levels for your industry."],
+  capex: ["Capex (capital expenditure)",
+    "Money spent on things the company uses for several years, such as machines, equipment, vehicles or building software it capitalises. It isn't an operating cost, so it doesn't reduce EBITDA, but it does use cash."],
+  hurdle_rate: ["Target return (hurdle rate)",
+    "The yearly return an investor expects at your stage to make up for the risk that many startups fail: from 65% a year at the Idea stage down to 20% for mature companies. The Venture Capital method discounts your future exit value at this rate."],
+  pre_post_money: ["Pre-money and post-money",
+    "Pre-money is what the company is worth just before the new investment; post-money is pre-money plus the money raised. Example: €250,000 invested at a €1,000,000 pre-money valuation gives a €1,250,000 post-money valuation, and the investor owns 250,000 / 1,250,000 = 20%."],
+  ev_ebitda: ["EV/EBITDA multiple",
+    "Enterprise value divided by EBITDA: how many years of EBITDA buyers pay for listed companies in your industry. The Comparables method applies it to your EBITDA, then takes a discount because a young private company is harder to sell."],
+  dcf: ["Discounted cash flow (DCF)",
+    "Adds up the cash your plan generates over five years plus a value for the years after, each discounted to today at the cost of capital (WACC), then weighs it by the chance that a company at your stage survives."],
+  committed_capital: ["Committed capital",
+    "Money that founders and investors have already paid in or firmly promised, such as share capital or signed angel commitments. It appears in the report for context and doesn't change the valuation."],
+};
+const METHOD_TIPS = {
+  venture_capital: ["hurdle_rate", "a target return"],
+  comparables: ["ev_ebitda", "an EV/EBITDA multiple"],
+  dcf: ["dcf", "a DCF"],
+};
+
+function tipButton(term, what) {
+  return `<button type="button" class="tip" data-term="${term}" aria-label="What is ${escapeHtml(what)}?">i</button>`;
+}
+
+function glossaryBlock() {
+  const order = ["pre_post_money", "ebitda", "ebitda_margin", "working_capital", "capex", "hurdle_rate", "ev_ebitda", "dcf", "committed_capital"];
+  return `
+    <details class="glossary">
+      <summary>Key terms explained</summary>
+      <dl>${order.map((k) => `<dt>${escapeHtml(TERMS[k][0])}</dt><dd>${escapeHtml(TERMS[k][1])}</dd>`).join("")}</dl>
+    </details>`;
+}
+
+function readResultBox(result, scenarios) {
+  const used = Object.entries(result.method_values).filter(([, mv]) => mv.status === "ok" && mv.weight_used > 0);
+  const weights = used.map(([key, mv]) => `${METHOD_LABELS[key].replace(/ \(.*\)$/, "")} ${pct(mv.weight_used)}`).join(", ");
+  const hasScenarios = scenarios && Object.keys(scenarios).length > 0;
+  return `
+    <div class="read-result">
+      <h3>How to read your result</h3>
+      <p>The four methods look at your company from different angles: how your team and market compare with a typical startup (Scorecard), what an investor could earn at exit (Venture Capital), what similar listed companies are worth (Comparables) and the cash your plan generates (DCF). That is why they rarely agree.
+      ${used.length > 1
+        ? `The blended value weights them by your company's stage (here: ${escapeHtml(weights)}); a method that doesn't fit your company is left out.`
+        : `The blended value normally weights them by your company's stage, but with these inputs only ${escapeHtml(weights.replace(/ [\d.]+%$/, ""))} gives a meaningful value, so it carries the whole result; the checks below say why the others were left out.`}
+      ${hasScenarios ? "The revenue scenario slider further down shows how the value moves if Year-1 revenue comes in lower or higher than planned. " : ""}Treat the result as a well-reasoned starting point for a conversation with investors, not as a fixed price.</p>
+    </div>`;
+}
+
+// One shared bubble; opens on click/tap or keyboard focus, closes on Escape,
+// outside click or scroll. Works on touch screens where hover doesn't exist.
+const tipBubble = document.getElementById("tip-bubble");
+let openTip = null;
+
+function closeTip() {
+  if (!openTip) return;
+  openTip.setAttribute("aria-expanded", "false");
+  openTip = null;
+  tipBubble.hidden = true;
+}
+
+function showTip(btn) {
+  const term = TERMS[btn.dataset.term];
+  if (!term) return;
+  if (openTip && openTip !== btn) openTip.setAttribute("aria-expanded", "false");
+  openTip = btn;
+  btn.setAttribute("aria-expanded", "true");
+  tipBubble.innerHTML = `<strong>${escapeHtml(term[0])}</strong><br>${escapeHtml(term[1])}`;
+  tipBubble.hidden = false;
+  const r = btn.getBoundingClientRect();
+  const w = tipBubble.offsetWidth;
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), document.documentElement.clientWidth - w - 8);
+  const below = r.bottom + 8;
+  const fitsBelow = below + tipBubble.offsetHeight < window.innerHeight;
+  tipBubble.style.left = `${left + window.scrollX}px`;
+  tipBubble.style.top = `${(fitsBelow ? below : r.top - tipBubble.offsetHeight - 8) + window.scrollY}px`;
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".tip");
+  if (btn) {
+    e.preventDefault();
+    if (openTip === btn) closeTip(); else showTip(btn);
+  } else if (!e.target.closest("#tip-bubble")) {
+    closeTip();
+  }
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeTip(); });
+window.addEventListener("resize", closeTip);
+
 function renderResults(result, scenarios) {
   document.getElementById("results-loading").hidden = true;
   const panel = document.getElementById("results-panel");
@@ -1334,21 +1800,22 @@ function renderResults(result, scenarios) {
 
   const rows = Object.entries(result.method_values).map(([key, mv]) => `
     <tr>
-      <td>${METHOD_LABELS[key] || key}<p class="method-notes">${escapeHtml(methodExplanation(key, result))}</p></td>
-      <td>${pct(mv.weight_used)}</td>
-      <td class="${mv.status === "ok" ? "" : "muted"}">${methodValueCell(mv)}</td>
-      <td>${mv.status === "ok" ? money(mv.weighted_value) : "—"}</td>
+      <td>${METHOD_LABELS[key] || key}${METHOD_TIPS[key] ? tipButton(...METHOD_TIPS[key]) : ""}<p class="method-notes">${escapeHtml(methodExplanation(key, result))}</p></td>
+      <td data-label="Weight">${pct(mv.weight_used)}</td>
+      <td data-label="Value" class="${mv.status === "ok" ? "" : "muted"}">${methodValueCell(mv)}</td>
+      <td data-label="Weighted">${mv.status === "ok" ? money(mv.weighted_value) : "—"}</td>
     </tr>
   `).join("");
 
   const leftOut = Object.values(result.method_values).some((mv) => mv.status === "not_meaningful");
 
   panel.innerHTML = `
+    ${readResultBox(result, scenarios)}
     <h2 class="ledger-title">Valuation summary</h2>
-    <p class="ledger-subtitle">Pre-money equity value as of ${escapeHtml(new Date(result.valuation_date + "T00:00:00").toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }))}, blended across four methods with weights for the company's stage.${leftOut ? " Methods that can't give a meaningful value for this company are left out and the other weights scaled up." : ""}</p>
-    <table class="ledger-table">
+    <p class="ledger-subtitle">Pre-money equity value as of ${escapeHtml(new Date(result.valuation_date + "T00:00:00").toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" }))}, blended across four methods with weights for the company's stage.${leftOut ? " Methods that can't give a meaningful value for this company are left out and the other weights scaled up." : ""}</p>
+    <table class="ledger-table stacked">
       <thead>
-        <tr><th>Method</th><th>Weight</th><th>Pre-money value</th><th>Weighted value</th></tr>
+        <tr><th>Method</th><th>Weight</th><th>Pre-money value${tipButton("pre_post_money", "pre-money value")}</th><th>Weighted value</th></tr>
       </thead>
       <tbody>
         ${rows}
@@ -1359,19 +1826,26 @@ function renderResults(result, scenarios) {
       </tbody>
     </table>
     <div class="ledger-postmoney">
-      <span class="ledger-postmoney-label">Post-money (+ ${money(result.capital_needed)} raised)</span>
+      <span class="ledger-postmoney-label">Post-money (+ ${money(result.capital_needed)} raised)${tipButton("pre_post_money", "post-money value")}</span>
       <span class="ledger-postmoney-value">${money(result.post_money_valuation)}</span>
     </div>
     ${checksBlock(result.warnings)}
     ${scenarioBlock(scenarios)}
     <div class="results-actions">
       <button class="btn btn-primary" id="btn-pdf">Download PDF report</button>
+      <button class="btn btn-ghost" id="btn-edit">Change inputs</button>
       <button class="btn btn-ghost" id="btn-restart">Start a new valuation</button>
     </div>
+    ${glossaryBlock()}
   `;
 
   document.getElementById("btn-pdf").addEventListener("click", downloadResultsPdf);
-  document.getElementById("btn-restart").addEventListener("click", () => {
+  document.getElementById("btn-edit").addEventListener("click", () => {
+    goToStep(1);
+    document.getElementById("view-wizard").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  document.getElementById("btn-restart").addEventListener("click", async () => {
+    if (sampleLoaded) await clearSample();
     lastResult = null;
     goToStep(1);
   });
@@ -1385,9 +1859,8 @@ async function downloadResultsPdf() {
   btn.disabled = true;
   btn.textContent = "Preparing PDF\u2026";
   try {
-    const res = await fetch(`${API_BASE}/valuations/preview/report`, {
+    const res = await apiRequest("/valuations/preview/report", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(lastResult.payload),
     });
     if (!res.ok) {
@@ -1399,7 +1872,10 @@ async function downloadResultsPdf() {
     }
     const blob = await res.blob();
     const companyName = (lastResult.payload.company_profile.company_name || "valuation").trim();
-    const safeName = companyName.replace(/[^a-z0-9 _-]/gi, "").replace(/\s+/g, "-") || "valuation";
+    const safeName = companyName
+      .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/Ä/g, "Ae").replace(/Ö/g, "Oe")
+      .replace(/Ü/g, "Ue").replace(/ß/g, "ss")
+      .replace(/[^a-z0-9 _-]/gi, "").trim().replace(/\s+/g, "-") || "valuation";
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1456,9 +1932,226 @@ document.getElementById("btn-remove-logo").addEventListener("click", () => {
 });
 
 // ============================================================
+// Landing: "Start" scrolls to the form; "Try with a sample company" fills
+// the whole wizard with an imaginary, randomized German startup and runs it.
+// ============================================================
+const pick = (list) => list[Math.floor(Math.random() * list.length)];
+const between = (lo, hi, step = 1) => Math.round((lo + Math.random() * (hi - lo)) / step) * step;
+
+// Industries whose benchmarks give a balanced showcase (in energy, for example, the DCF
+// runs far above the other methods, which would make a confusing first example).
+const SAMPLE_PROFILES = [
+  { suffix: "Analytics", industry: "Software (System & Application)", activity: "B2B analytics software for manufacturers", model: "SaaS subscription" },
+  { suffix: "Health", industry: "Healthcare Information and Technology", activity: "Software for clinics and medical practices", model: "SaaS subscription" },
+  { suffix: "Robotics", industry: "Machinery", activity: "Collaborative robots for small factories", model: "Hardware sales plus maintenance" },
+];
+const SAMPLE_NAMES = ["Kranich", "Lindwurm", "Morgenrot", "Silberfluss", "Brückenwerk", "Funkenflug", "Sternwarte", "Eichhorn"];
+const SAMPLE_CITIES = ["Erlangen", "Nürnberg", "Fürth"];
+
+function setVal(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value;
+}
+
+// industryMargin: the industry's EBITDA margin for Europe, so the sample's own
+// margin sits near it (as a real company's would) instead of far away.
+function sampleCompany(profile, industryMargin) {
+  const preRevenue = Math.random() < 0.25;
+  const stage = preRevenue ? "Development stage" : pick(["Startup stage", "Startup stage", "Expansion stage"]);
+  const ltmRevenue = preRevenue ? 0 : between(250000, 900000, 5000);
+  const margin = Math.min(Math.max(industryMargin + between(-6, 3) / 100, 0.04), 0.3);
+  const ltmEbitda = preRevenue ? -between(60000, 180000, 5000) : Math.round(ltmRevenue * margin / 1000) * 1000;
+  const year1 = preRevenue ? between(250000, 450000, 10000) : Math.round(ltmRevenue * between(150, 190) / 100 / 5000) * 5000;
+  const raise = Math.max(150000, Math.round(year1 * between(preRevenue ? 45 : 30, preRevenue ? 70 : 60) / 100 / 50000) * 50000);
+  const capexY1 = between(10, 40, 5) * 1000;
+  const growth = preRevenue ? [between(70, 95), between(50, 70), between(35, 50), between(25, 35)]
+                            : [between(30, 60), between(25, 45), between(20, 35), between(15, 25)];
+  const founders = between(2, 3);
+  return { profile, stage, preRevenue, ltmRevenue, ltmEbitda, year1, raise, capexY1, growth, founders,
+           name: `${pick(SAMPLE_NAMES)} ${profile.suffix} GmbH (sample)`, city: pick(SAMPLE_CITIES) };
+}
+
+// A sample is only shown if it demonstrates the methods cleanly: every method
+// used at its stage gives a value (apart from Comparables, which needs revenue)
+// and no input warnings fire. Otherwise another one is drawn.
+function sampleIsClean(c, result) {
+  const methodsOk = Object.entries(result.method_values).every(([key, mv]) =>
+    mv.weight === 0 || mv.status === "ok" || (c.preRevenue && key === "comparables"));
+  const vc = result.method_values.venture_capital;
+  const vcSensible = vc.weight === 0 || (vc.pre_money_value || 0) > 0.2 * result.blended_pre_money_valuation;
+  const noWarnings = result.warnings.every((w) => w.severity !== "warning" || w.code === "nm_comparables");
+  // Methods that disagree wildly (e.g. a DCF 8x the VC value) make a poor showcase.
+  // (Before revenue the Scorecard naturally sits well above the cash-flow methods, so it isn't compared.)
+  const values = Object.entries(result.method_values)
+    .filter(([key, mv]) => mv.status === "ok" && mv.weight > 0 && !(c.preRevenue && key === "scorecard"))
+    .map(([, mv]) => mv.pre_money_value);
+  const agree = values.length > 0 && Math.max(...values) <= 3.5 * Math.min(...values);
+  // Forecast years that burn cash overall push the whole DCF into the terminal value.
+  const share = result.dcf.terminal_value_share;
+  const dcfBalanced = share === null || share <= 0.95;
+  return methodsOk && vcSensible && noWarnings && agree && dcfBalanced;
+}
+
+async function findCleanSample() {
+  let candidate = null;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const profile = pick(SAMPLE_PROFILES);
+    const bench = await apiFetch(`/reference-data/industries/${encodeURIComponent(profile.industry)}`);
+    candidate = sampleCompany(profile, bench.ebitda_margin[DEFAULT_REGION] || 0.12);
+    fillSample(candidate);
+    try {
+      const body = JSON.stringify(buildPayload());
+      const result = await apiFetch("/valuations/preview", { method: "POST", body });
+      if (!sampleIsClean(candidate, result)) continue;
+      // The revenue slider should move smoothly: the same methods must apply in every scenario.
+      const scenarios = await apiFetch("/valuations/preview/scenarios", { method: "POST", body });
+      const usedIn = (r) => Object.keys(r.method_values).filter((k) => r.method_values[k].status === "ok").join();
+      if (Object.keys(scenarios).length === 6 && Object.values(scenarios).every((r) => usedIn(r) === usedIn(result))) {
+        return candidate;
+      }
+    } catch (_) { /* try another */ }
+  }
+  return candidate; // still a valid company, just not a textbook one
+}
+
+function fillSample(c) {
+  setVal("company_name", c.name);
+  setVal("contact_name", "");
+  setVal("contact_email", "");
+  setVal("address", `${c.city}, Germany`);
+  setVal("website", "");
+  setVal("country", "Germany");
+  setVal("business_territory_region", DEFAULT_REGION);
+  setVal("industry", c.profile.industry);
+  setVal("company_stage", c.stage);
+  showStageHint();
+  setVal("business_activity", c.profile.activity);
+  setVal("business_model", c.profile.model);
+  setVal("exit_strategy", "Trade sale to a strategic buyer");
+  setVal("num_founders", c.founders);
+  setVal("num_employees", between(c.preRevenue ? 3 : 6, c.preRevenue ? 8 : 25));
+  setVal("year_of_incorporation", new Date().getFullYear() - between(c.preRevenue ? 0 : 1, c.preRevenue ? 1 : 4));
+  setVal("committed_capital", between(25, 150, 5) * 1000);
+  setVal("planned_time_to_exit_years", 5);
+  setVal("valuation_date", todayIso());
+  setVal("dcf_tax_rate_override", "");
+  setVal("trade_tax_hebesatz", "");
+
+  // Scorecard: a solid but not perfect team and product.
+  const answers = {
+    management_team_experience: pick(["Demonstrated experience as a COO, CFO or CTO", "Demonstrated experience as a product manager", "Experience in the business sector"]),
+    willingness_to_step_aside_for_ceo: pick(["Neutral", "Willing"]),
+    management_team_completeness: pick(["One competent player in place", "Team identified and on the sideline", "Competent team in place"]),
+    product_development_stage: c.preRevenue ? pick(["Well defined, working prototype", "Good feedback from potential customers"]) : "Orders or early sales from customers",
+    product_compelling_to_customers: pick(["This product is novel and sought after", "This product will be a necessity"]),
+    product_can_be_duplicated: pick(["It's difficult to be copied (time and financial resources needed)", "Product is unique and protected by trade secrets"]),
+    strength_of_competitors_in_market: pick(["Dominated by several players", "Fractured many small players", "Developing market"]),
+    strength_of_competitive_products: pick(["Competitive products are similar to ours", "Competitive products are weak"]),
+    target_market_size: pick(["$50 to $100 million", "About $100 million", "> $100 million"]),
+    revenue_potential_in_5_years: pick(["< $20 Million", "$20 to $50 Million"]),
+    sales_channels_partners: c.preRevenue ? "Key beta testers identified and contacted" : pick(["Channels secure, customers placed trial orders", "Key sales partners in place, channels secured, order traction"]),
+    marketing_partners: pick(["No partners identified", "Key partners in place"]),
+    need_for_additional_funding_rounds: pick(["Another angel round", "Need venture capital"]),
+  };
+  for (const [key, value] of Object.entries(answers)) setVal(`sc_${key}`, value);
+  setVal("benchmark_pre_money_override", "");
+  ["key_competitor_1", "key_competitor_2", "key_competitor_3"].forEach((id) => setVal(id, ""));
+
+  setVal("current_revenue_last_12_months", c.ltmRevenue);
+  setVal("current_ebitda", c.ltmEbitda);
+  setVal("cash_available", between(40, 250, 10) * 1000);
+  setVal("current_ppe_value", between(10, 80, 5) * 1000);
+
+  setVal("revenue_year1", c.year1);
+  ["growth_y2", "growth_y3", "growth_y4", "growth_y5"].forEach((id, i) => setVal(id, c.growth[i]));
+  const capex = [c.capexY1, ...[2, 3, 4, 5].map(() => between(20, 80, 5) * 1000)];
+  ["capex_y1", "capex_y2", "capex_y3", "capex_y4", "capex_y5"].forEach((id, i) => setVal(id, capex[i]));
+  setVal("existing_debt_balance", 0);
+  setVal("target_ebitda_margin_override", "");
+
+  setVal("capital_needed", c.raise);
+  setVal("number_of_existing_shares", 25000 * c.founders);
+  const founderShare = between(70, 85);
+  const owners = c.founders === 2
+    ? [["Founder A", founderShare / 2], ["Founder B", founderShare / 2]]
+    : [["Founder A", founderShare / 3], ["Founder B", founderShare / 3], ["Founder C", founderShare / 3]];
+  owners.push(["Business angels", 100 - founderShare]);
+  for (let i = 1; i <= 6; i++) {
+    const row = owners[i - 1];
+    setVal(`shareholder_name_${i}`, row ? row[0] : (i === 6 ? "Other minor shareholders" : ""));
+    setVal(`shareholder_pct_${i}`, row ? Math.round(row[1] * 10) / 10 : "");
+  }
+  // Rounding the founders' thirds can leave 99.9%: give the remainder to the angels.
+  const total = owners.reduce((sum, r) => sum + Math.round(r[1] * 10) / 10, 0);
+  setVal(`shareholder_pct_${owners.length}`, Math.round((100 - founderShare + 100 - total) * 10) / 10);
+
+  // Use of funds adds up exactly to the raise; capex matches Year-1 capex.
+  const rd = Math.round(c.raise * 0.45 / 1000) * 1000;
+  const sales = Math.round(c.raise * 0.35 / 1000) * 1000;
+  setVal("use_rd", rd);
+  setVal("use_sales", sales);
+  setVal("use_inventory", "");
+  setVal("use_capex", c.capexY1);
+  setVal("use_ops", c.raise - rd - sales - c.capexY1);
+  setVal("use_other", "");
+  regionTouched = false;
+}
+
+function scrollToForm() {
+  document.getElementById("view-wizard").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+let sampleLoaded = false;
+
+// After a sample run, "Start" gives an empty form again (with the same defaults as on page load).
+async function clearSample() {
+  document.querySelectorAll("form.wizard-step").forEach((form) => form.reset());
+  setVal("country", DEFAULT_COUNTRY);
+  setVal("business_territory_region", DEFAULT_REGION);
+  setVal("valuation_date", todayIso());
+  regionTouched = false;
+  lastResult = null;
+  document.getElementById("results-panel").innerHTML = "";
+  showStageHint();
+  await onCountryChange();
+  sampleLoaded = false;
+}
+
+document.getElementById("btn-start").addEventListener("click", async () => {
+  if (sampleLoaded) await clearSample();
+  goToStep(1);
+  scrollToForm();
+  setTimeout(() => document.getElementById("company_name").focus({ preventScroll: true }), 400);
+});
+
+document.getElementById("btn-sample").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-sample");
+  btn.disabled = true;
+  try {
+    await initPromise; // the dropdowns must be loaded before they can be filled
+    if (!didInit) return;
+    btn.textContent = "Preparing a sample company\u2026";
+    lastResult = null;
+    goToStep(1);
+    document.getElementById("results-panel").innerHTML = ""; // never show the previous result meanwhile
+    await findCleanSample();
+    sampleLoaded = true;
+    await onCountryChange();
+    scrollToForm();
+    document.getElementById("btn-calculate").click();
+  } catch (err) {
+    showFormError(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Try with a sample company";
+  }
+});
+
+// ============================================================
 // Startup
 // ============================================================
 let didInit = false;
+let initPromise = null;
 async function runInit() {
   if (didInit) return;
   didInit = true;
@@ -1466,13 +2159,27 @@ async function runInit() {
   try {
     await loadReferenceData();
   } catch (err) {
-    showFormError(
-      `Could not reach the valuation API at ${API_BASE}. Is it running? (${err.message})`
-    );
+    didInit = false;
+    showFormError(`${err.message} Reload the page to try again.`);
   }
 }
 
-runInit();
+const privacyDialog = document.getElementById("privacy");
+function openPrivacy() {
+  if (typeof privacyDialog.showModal === "function") {
+    if (!privacyDialog.open) privacyDialog.showModal();
+  } else {
+    privacyDialog.setAttribute("open", "");
+  }
+}
+document.getElementById("privacy-link").addEventListener("click", (e) => { e.preventDefault(); openPrivacy(); });
+privacyDialog.addEventListener("close", () => {
+  if (location.hash === "#privacy") history.replaceState(null, "", location.pathname + location.search);
+});
+if (location.hash === "#privacy") openPrivacy();
+
+wakeServer().catch(() => { /* runInit reports it */ }); // start waking the server straight away
+initPromise = runInit();
 
 </script>
 </body>

@@ -51,14 +51,22 @@ with TestClient(api.app) as client:
     check("POST /valuations/preview/scenarios", r.status_code == 200 and len(r.json()) == 6)
 
     r = client.post("/valuations?owner_id=audit-browser", json=REFERENCE_CASE)
-    check("POST /valuations (save)", r.status_code == 201)
-    vid = r.json()["id"]
-    check("GET /valuations?owner_id=", client.get("/valuations?owner_id=audit-browser").status_code == 200)
-    check("GET /valuations/{id}", client.get(f"/valuations/{vid}").status_code == 200)
-    check("GET /valuations/{id}/scenarios", client.get(f"/valuations/{vid}/scenarios").status_code == 200)
-    r = client.get(f"/valuations/{vid}/report")
-    check("GET /valuations/{id}/report", r.status_code == 200 and r.content[:4] == b"%PDF")
-    check("DELETE /valuations/{id}", client.delete(f"/valuations/{vid}?owner_id=audit-browser").status_code == 204)
+    check("POST /valuations is off in the demo", r.status_code == 404)
+    api.STORE_VALUATIONS = True  # exercise the saving routes too, on the throwaway database
+    try:
+        api.init_db()
+        r = client.post("/valuations?owner_id=audit-browser", json=REFERENCE_CASE)
+        check("POST /valuations (save)", r.status_code == 201)
+        vid = r.json()["id"]
+        check("GET /valuations?owner_id=", client.get("/valuations?owner_id=audit-browser").status_code == 200)
+        check("GET /valuations/{id}", client.get(f"/valuations/{vid}").status_code == 200)
+        check("GET /valuations/{id}/scenarios", client.get(f"/valuations/{vid}/scenarios").status_code == 200)
+        r = client.get(f"/valuations/{vid}/report")
+        check("GET /valuations/{id}/report", r.status_code == 200 and r.content[:4] == b"%PDF")
+        check("DELETE /valuations/{id}",
+              client.delete(f"/valuations/{vid}?owner_id=audit-browser").status_code == 204)
+    finally:
+        api.STORE_VALUATIONS = False
 
     r = client.post("/valuations/preview/report", json=REFERENCE_CASE)
     check("POST /valuations/preview/report", r.status_code == 200 and r.content[:4] == b"%PDF")

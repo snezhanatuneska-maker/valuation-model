@@ -85,6 +85,11 @@ def scorecard_qualitative_lookup() -> dict:
     return _all_reference_data()["scorecard_qualitative_lookup"]
 
 
+def industry_aliases() -> dict:
+    """{old industry name: current name}, e.g. Damodaran's "Heathcare" spelling."""
+    return _all_reference_data().get("industry_aliases", {})
+
+
 def scorecard_option_aliases() -> dict:
     """criterion -> {old option text: current option text} (old saved valuations keep working)."""
     return _all_reference_data().get("scorecard_option_aliases", {})
@@ -319,6 +324,12 @@ class CompanyProfile(BaseModel):
     # Optional company logo for the PDF report cover page/header. Either a
     # plain base64 string or a data URL (e.g. "data:image/png;base64,....").
     logo_base64: Optional[str] = None
+
+    @field_validator("industry")
+    @classmethod
+    def _current_industry_name(cls, v):
+        """Inputs using an old industry name (e.g. a corrected misspelling) keep working."""
+        return industry_aliases().get(v, v)
 
 
 class MarketAndTeamAssessment(BaseModel):
@@ -1236,7 +1247,10 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
     if dcf.terminal_value_floor_applied:
         warn("tv_floor", "The discount rate is close to the long-run growth rate, so the terminal value was "
              f"calculated with a minimum {_pct(MIN_DISCOUNT_GROWTH_SPREAD)} gap between them.")
-    if dcf.terminal_value_share is not None and dcf.terminal_value_share > 0.75:
+    if dcf.terminal_value_share is not None and dcf.terminal_value_share > 1:
+        warn("tv_share", "The forecast years burn cash in total, so all of the DCF value comes from the years "
+             "after Year 5 (the terminal value).", "info")
+    elif dcf.terminal_value_share is not None and dcf.terminal_value_share > 0.75:
         warn("tv_share", f"The terminal value is {_pct(dcf.terminal_value_share)} of the DCF value, so the DCF "
              "depends mostly on years after the forecast.", "info")
 

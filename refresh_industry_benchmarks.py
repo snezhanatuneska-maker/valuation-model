@@ -74,7 +74,9 @@ METRICS = {
 # Industries the app lists that Damodaran no longer publishes under that name:
 # app industry -> the Damodaran industry whose figures are used instead.
 # Damodaran's current files class online retailers under Retail (General).
-SOURCE_ALIASES = {"Retail (Online)": "Retail (General)"}
+SOURCE_ALIASES = {"Retail (Online)": "Retail (General)",
+                  # Damodaran spells it "Heathcare"; the app shows the corrected name.
+                  "Healthcare Information and Technology": "Heathcare Information and Technology"}
 
 # Metrics Damodaran doesn't publish directly, derived from published ratios.
 # Results outside a plausible range (e.g. negative D&A for insurers, where the

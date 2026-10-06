@@ -492,6 +492,10 @@ def _fit_image(logo_bytes: bytes, max_w: float, max_h: float) -> Image:
 # ============================================================================
 
 
+BRAND = "Valuation Model"
+AUTHOR = "Snezhana Tuneska"
+
+
 def _make_page_decorator(company_name: str, date_str: str, logo_bytes: Optional[bytes]):
     def _draw(canvas, doc):
         canvas.saveState()
@@ -522,7 +526,7 @@ def _make_page_decorator(company_name: str, date_str: str, logo_bytes: Optional[
         canvas.setFillColor(colors.HexColor("#a7b0bc"))
         canvas.drawCentredString(
             PAGE_W / 2, MARGIN_BOTTOM - 10 * mm,
-            f"Valuation as of {date_str} · Page {doc.page} · "
+            f"{BRAND} by {AUTHOR} · Valuation as of {date_str} · Page {doc.page} · "
             "Informational estimate, not a certified appraisal",
         )
         canvas.restoreState()
@@ -592,6 +596,8 @@ def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Op
         "investment, or legal advice.",
         STYLES["cover_disclaimer"],
     ))
+    story.append(Spacer(1, 6))
+    story.append(P(f"Prepared with {BRAND} by {AUTHOR}.", STYLES["cover_disclaimer"]))
     return story
 
 
@@ -838,14 +844,18 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
 
     def val(label, key):
         mv = scenarios[label].get("method_values", {}).get(key, {})
-        return money(mv.get("pre_money_value")) if mv.get("status") == "ok" else "n/m"
+        if mv.get("status") == "ok":
+            return money(mv.get("pre_money_value"))
+        return "not used" if mv.get("status") == "not_used" else "n/m"
 
     rows = [[METHOD_CHART_LABELS[k]] + [val(l, k) for l in labels]
             for k in ("scorecard", "venture_capital", "comparables", "dcf")]
     total_row = ["Blended pre-money"] + [money(scenarios[l].get("blended_pre_money_valuation")) for l in labels]
     col_w = [CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n
     story.append(data_table(["Method"] + labels, rows, total_row=total_row, col_widths=col_w))
-    story.append(P("n/m = not meaningful in that scenario (left out of the blend).", STYLES["sub"]))
+    if any(scenarios[l].get("method_values", {}).get(k, {}).get("status") == "not_meaningful"
+           for l in labels for k in ("scorecard", "venture_capital", "comparables", "dcf")):
+        story.append(P("n/m = not meaningful in that scenario (left out of the blend).", STYLES["sub"]))
     story.append(Spacer(1, 10))
     story.append(P("Blended pre-money valuation across scenarios", STYLES["h3"]))
     story.append(bar_chart(labels, [scenarios[l].get("blended_pre_money_valuation") or 0 for l in labels],
@@ -866,6 +876,7 @@ def _scorecard_page(sc: dict, cp: dict, mv: Optional[dict] = None) -> list:
     factor = g(sc, "total_factor")
     source = g(sc, "benchmark_source")
     bench_src = ("your own benchmark" if source == "user_override"
+                 else g(sc, "benchmark_basis") if source == "country_table"
                  else f"{g(sc, 'benchmark_basis')}, converted to euros")
     where = g(cp, "country") if source == "country_table" else short_region(g(cp, "business_territory_region"))
     story += _how(
@@ -956,12 +967,16 @@ def _comparables_page(cm: dict, cp: dict) -> list:
             f"{money(g(cm, 'public_company_ev'))}. A private company of this stage is harder to sell than a listed "
             f"one, so a {pct(g(cm, 'private_company_discount'))} discount gives an enterprise value of "
             f"{money(g(cm, 'enterprise_value'))}; minus debt and plus cash gives the equity value.")
+    used = g(cm, "pre_money_valuation") is not None
+    # When the method doesn't apply (e.g. negative EBITDA), the inputs are shown but not
+    # the meaningless results of multiplying them.
+    shown = lambda v: v if used else "—"  # noqa: E731
     story.append(info_table([
         ("EBITDA, last 12 months", money(g(cm, "trailing_ebitda"))),
         ("EV/EBITDA multiple (trailing)", multiple(g(cm, "ev_ebitda_multiple"))),
-        ("Value at the public-company multiple", money(g(cm, "public_company_ev"))),
+        ("Value at the public-company multiple", shown(money(g(cm, "public_company_ev")))),
         ("Private-company discount (for this stage)", f"−{pct(g(cm, 'private_company_discount'))}"),
-        ("Enterprise value", money(g(cm, "enterprise_value"))),
+        ("Enterprise value", shown(money(g(cm, "enterprise_value")))),
         ("Less: debt", money(-(g(cm, "debt") or 0))),
         ("Plus: cash", money(g(cm, "cash"))),
         ("Equity value (pre-money)", money(g(cm, "equity_value"))),
@@ -1006,7 +1021,8 @@ def _dcf_page(dcf: dict, wacc: dict, years: list, german: Optional[dict] = None)
         ("PV of 5 years of free cash flow", money(g(dcf, "pv_of_fcf"))),
         ("PV of terminal value", money(g(dcf, "pv_of_terminal_value"))),
         ("Enterprise value (if the business survives)", money(g(dcf, "enterprise_value"))),
-        ("Terminal value share of that value", pct(tv_share)),
+        ("Terminal value share of that value",
+         "over 100% (Years 1-5 burn cash)" if tv_share is not None and tv_share > 1 else pct(tv_share)),
         ("Probability of survival (for this stage)", pct(g(dcf, "survival_probability"))),
         ("Risk-adjusted enterprise value", money(g(dcf, "risk_adjusted_enterprise_value"))),
         ("Less: debt", money(-(g(dcf, "debt") or 0))),
@@ -1054,8 +1070,8 @@ def _country_inputs_section(country: str, specific: dict, output: dict) -> list:
     if taxes and tax:
         rows = [[str(y.get("year")), pct(y.get("corporate_tax")), pct2(y.get("solidarity_surcharge")),
                  pct2(y.get("trade_tax")), pct2(y.get("combined"))] for y in taxes.get("calendar_years", [])]
-        story.append(P(f"Tax by calendar year (trade-tax Hebesatz {_hebesatz_text(taxes)}); the last year's rate "
-                       "applies to the terminal value and the WACC", STYLES["td_label"]))
+        story.append(P(f"Tax by calendar year, with a trade-tax Hebesatz of {_hebesatz_text(taxes)}. The last "
+                       "year's rate also applies after Year 5 (terminal value) and in the WACC.", STYLES["td_label"]))
         story.append(data_table(["Year", "Corporate tax", "Solidarity surcharge", "Trade tax", "Combined"], rows,
                                 col_widths=[CONTENT_W * 0.12, CONTENT_W * 0.22, CONTENT_W * 0.24,
                                             CONTENT_W * 0.2, CONTENT_W * 0.22]))
@@ -1073,7 +1089,7 @@ def _country_inputs_section(country: str, specific: dict, output: dict) -> list:
 
     sb = specific.get("stage_benchmarks")
     if sb:
-        flag = (" <b>To be sourced:</b> the figures are placeholders."
+        flag = (" <b>The German figures are still to be sourced; these are placeholders.</b>"
                 if any(r.get("to_be_sourced") for r in sb.get("stages", {}).values()) else "")
         story.append(P(f"<b>Scorecard benchmark by stage (Idea, Development):</b> {esc(sb.get('source'))}{flag}",
                        STYLES["td_label"], raw=True))
@@ -1138,7 +1154,8 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
         "recommendation for any financial transaction. All valuations are based on information and "
         "assumptions believed to be accurate at the time of preparation, but no guarantee is made "
         "regarding completeness, accuracy, or future performance. Consult a qualified financial, "
-        "legal, or investment professional before making decisions based on this analysis.",
+        "legal, or investment professional before making decisions based on this analysis. "
+        f"{BRAND} by {AUTHOR}.",
         STYLES["disclaimer"], raw=True,
     )]], colWidths=[CONTENT_W])
     disclaimer_box.setStyle(TableStyle([
@@ -1188,7 +1205,8 @@ def build_pdf_bytes(
         buffer, pagesize=PAGE_SIZE,
         leftMargin=MARGIN_SIDE, rightMargin=MARGIN_SIDE,
         topMargin=MARGIN_TOP, bottomMargin=MARGIN_BOTTOM,
-        title=f"{company_name} - Valuation Report",
+        title=f"{company_name} - Valuation Report ({BRAND})",
+        author=BRAND,
     )
     cover_frame = Frame(MARGIN_SIDE, MARGIN_BOTTOM, CONTENT_W, PAGE_H - MARGIN_TOP - MARGIN_BOTTOM, id="cover")
     content_frame = Frame(MARGIN_SIDE, MARGIN_BOTTOM, CONTENT_W, PAGE_H - MARGIN_TOP - MARGIN_BOTTOM, id="content")

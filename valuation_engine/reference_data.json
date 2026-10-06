@@ -5480,7 +5480,7 @@
         "Global": 0.0013248744474030228
       }
     },
-    "Heathcare Information and Technology": {
+    "Healthcare Information and Technology": {
       "ev_ebitda_multiple": {
         "Global": 20.95699362062974,
         "Europe (EU, UK, Switzerland & Scandinavia)": 15.915988357635332,
@@ -14556,7 +14556,7 @@
     },
     "product_can_be_duplicated": {
       "Easily copied, no intellectual property": 0.6,
-      "It's difficult to be copied (time and financials resources needed)": 0.9,
+      "It's difficult to be copied (time and financial resources needed)": 0.9,
       "Product is unique and protected by trade secrets": 1,
       "Solid patent protections": 1.1
     },
@@ -14805,9 +14805,9 @@
       "Food Wholesalers",
       "Furn/Home Furnishings",
       "Green & Renewable Energy",
+      "Healthcare Information and Technology",
       "Healthcare Products",
       "Healthcare Support Services",
-      "Heathcare Information and Technology",
       "Homebuilding",
       "Hospitals/Healthcare Facilities",
       "Hotel/Gaming",
@@ -14900,6 +14900,9 @@
     "target_market_size": {
       "< $50 million ": "< $50 million",
       "$100 million": "About $100 million"
+    },
+    "product_can_be_duplicated": {
+      "It's difficult to be copied (time and financials resources needed)": "It's difficult to be copied (time and financial resources needed)"
     }
   },
   "market_parameters": {
@@ -14982,7 +14985,8 @@
       "risk_free_rate": {
         "value": 0.035,
         "as_of": "2026-10-05",
-        "source": "Yield on 10-year German Federal bonds (Bund), 3.50% on 5 October 2026, as reported by market data (cbonds, ariva.de / dpa-AFX). The official daily series is published by the Deutsche Bundesbank ('Tägliche Renditen der jeweils jüngsten Bundeswertpapiere', 10-year); check it there when updating."
+        "source": "Yield on 10-year German Federal bonds (Bund) on 5 October 2026, as reported by market data providers (cbonds, ariva.de / dpa-AFX); the official series is published by the Deutsche Bundesbank.",
+        "update_note": "When updating, take the value from the Deutsche Bundesbank's 'Tägliche Renditen der jeweils jüngsten Bundeswertpapiere' (10-year)."
       },
       "tax": {
         "corporate_tax_by_year": {
@@ -15006,21 +15010,24 @@
       },
       "stage_benchmarks": {
         "_note": "Typical pre-money valuation by stage for German startups, used by the Scorecard method (Idea and Development stages only) when the country is Germany. TO BE SOURCED: no credible public German figure by stage was found (October 2026). The values below are placeholders equal to the current Europe figure.",
-        "source": "To be sourced. Placeholder: Equidam, Startup Valuation Delta H1 2026, median pre-seed valuation for Europe ($3.30M = €2.90M), the same figure the app uses for the Europe region.",
+        "source": "Placeholder: Equidam, Startup Valuation Delta H1 2026, median pre-seed valuation for Europe ($3.30M = €2.90M), the same figure the app uses for the Europe region.",
         "as_of": "2026-07-01",
         "stages": {
           "Idea stage": {
             "eur": 2899000.0,
-            "basis": "Germany table (to be sourced); placeholder: Equidam H1 2026 median, Europe",
+            "basis": "the Equidam H1 2026 median for Europe in euros, used as a placeholder until a German figure is sourced",
             "to_be_sourced": true
           },
           "Development stage": {
             "eur": 2899000.0,
-            "basis": "Germany table (to be sourced); placeholder: Equidam H1 2026 median, Europe",
+            "basis": "the Equidam H1 2026 median for Europe in euros, used as a placeholder until a German figure is sourced",
             "to_be_sourced": true
           }
         }
       }
     }
+  },
+  "industry_aliases": {
+    "Heathcare Information and Technology": "Healthcare Information and Technology"
   }
 }

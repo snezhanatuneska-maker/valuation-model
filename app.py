@@ -6,8 +6,12 @@ persistence. Organized into sections below (database, schemas, routes)
 rather than split across files, so the whole API is one file to read,
 copy, or upload.
 
-There are no user accounts yet: each browser has an anonymous owner ID,
-and saved valuations are listed and deleted per owner ID.
+Demo mode (the default): nothing is ever written to disk. The wizard only
+uses the /valuations/preview* routes, which compute and return results
+without storing them, and the routes that save, list, read or delete
+valuations answer 404. Set VALUATION_MODEL_STORE_VALUATIONS=1 to switch saving
+back on (there are no user accounts yet: each browser has an anonymous
+owner ID, and saved valuations are listed and deleted per owner ID).
 
 Run with:  uvicorn app:app --reload
 Docs at:   http://localhost:8000/docs
@@ -16,6 +20,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import sqlite3
 import uuid
 from contextlib import asynccontextmanager, contextmanager
@@ -23,7 +28,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -41,7 +46,16 @@ import report as pdf_report
 # ============================================================================
 
 DB_PATH = Path(__file__).parent / "data" / "valuations.db"
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+# Off unless explicitly switched on: the public demo stores no inputs at all.
+STORE_VALUATIONS = os.environ.get("VALUATION_MODEL_STORE_VALUATIONS") == "1"
+
+
+def _require_storage() -> None:
+    """Guards every route that saves or reads stored valuations."""
+    if not STORE_VALUATIONS:
+        raise HTTPException(status_code=404, detail="Saving valuations is switched off in this demo; "
+                                                    "nothing you enter is stored.")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS valuations (
@@ -66,6 +80,7 @@ def _get_connection():
 
 
 def init_db() -> None:
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _get_connection() as conn:
         conn.executescript(_SCHEMA)
         # Migration for databases created before saved valuations had an owner.
@@ -187,7 +202,7 @@ def _run(fn, *args):
 valuations_router = APIRouter(prefix="/valuations", tags=["valuations"])
 
 
-@valuations_router.post("", response_model=ValuationRunResponse, status_code=201)
+@valuations_router.post("", response_model=ValuationRunResponse, status_code=201, dependencies=[Depends(_require_storage)])
 def create_valuation(payload: ve.ValuationInput, owner_id: Optional[str] = None) -> ValuationRunResponse:
     """Run a full valuation and persist it. Returns the computed result.
 
@@ -214,13 +229,13 @@ def create_valuation(payload: ve.ValuationInput, owner_id: Optional[str] = None)
     )
 
 
-@valuations_router.get("", response_model=list[ValuationSummary])
+@valuations_router.get("", response_model=list[ValuationSummary], dependencies=[Depends(_require_storage)])
 def list_valuations_route(owner_id: str = "", limit: int = 50, offset: int = 0) -> list[ValuationSummary]:
     """The valuations saved from one browser (`owner_id`)."""
     return [ValuationSummary(**row) for row in list_valuations(owner_id, limit=limit, offset=offset)]
 
 
-@valuations_router.get("/{valuation_id}", response_model=ValuationDetailResponse)
+@valuations_router.get("/{valuation_id}", response_model=ValuationDetailResponse, dependencies=[Depends(_require_storage)])
 def get_valuation_route(valuation_id: str) -> ValuationDetailResponse:
     record = get_valuation(valuation_id)
     if record is None:
@@ -228,7 +243,7 @@ def get_valuation_route(valuation_id: str) -> ValuationDetailResponse:
     return ValuationDetailResponse(**record)
 
 
-@valuations_router.delete("/{valuation_id}", status_code=204, response_model=None)
+@valuations_router.delete("/{valuation_id}", status_code=204, response_model=None, dependencies=[Depends(_require_storage)])
 def delete_valuation_route(valuation_id: str, owner_id: Optional[str] = None) -> None:
     if not delete_valuation(valuation_id, owner_id):
         raise HTTPException(status_code=404, detail=f"No valuation found with id {valuation_id!r}")
@@ -276,7 +291,7 @@ def preview_valuation_scenarios(payload: ve.ValuationInput) -> dict:
     return _scenarios_dict(payload)
 
 
-@valuations_router.get("/{valuation_id}/scenarios", response_model=dict)
+@valuations_router.get("/{valuation_id}/scenarios", response_model=dict, dependencies=[Depends(_require_storage)])
 def get_valuation_scenarios(valuation_id: str) -> dict:
     """Same as POST /valuations/preview/scenarios, but re-runs a previously saved valuation's inputs."""
     record = get_valuation(valuation_id)
@@ -298,7 +313,7 @@ def _saved_input(record: dict) -> ve.ValuationInput:
         raise HTTPException(status_code=422, detail=f"This saved valuation's inputs are no longer valid: {e}")
 
 
-@valuations_router.post("/{valuation_id}/rerun", response_model=dict)
+@valuations_router.post("/{valuation_id}/rerun", response_model=dict, dependencies=[Depends(_require_storage)])
 def rerun_valuation(valuation_id: str) -> dict:
     """Re-runs a saved valuation's inputs with the current methodology (what History > View shows)."""
     record = get_valuation(valuation_id)
@@ -346,7 +361,7 @@ def preview_valuation_report(payload: ve.ValuationInput) -> Response:
     return _pdf_response(payload, dataclasses.asdict(result))
 
 
-@valuations_router.get("/{valuation_id}/report")
+@valuations_router.get("/{valuation_id}/report", dependencies=[Depends(_require_storage)])
 def get_valuation_report(valuation_id: str) -> Response:
     """Re-runs a previously saved valuation's inputs and returns the branded PDF report."""
     record = get_valuation(valuation_id)
@@ -453,7 +468,8 @@ def get_scorecard_lookup() -> dict:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
+    if STORE_VALUATIONS:
+        init_db()
     yield
 
 
