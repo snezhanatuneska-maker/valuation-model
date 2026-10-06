@@ -34,7 +34,7 @@ def test_default_region(client):
 def test_preview_and_scenarios(client):
     r = client.post("/valuations/preview", json=REFERENCE_CASE)
     assert r.status_code == 200
-    assert round(r.json()["blended_pre_money_valuation"]) == 1_043_118
+    assert round(r.json()["blended_pre_money_valuation"]) == 911_380
     assert len(client.post("/valuations/preview/scenarios", json=REFERENCE_CASE).json()) == 6
 
 
@@ -70,7 +70,7 @@ def test_no_applicable_method_is_422(client):
     case["company_profile"]["industry"] = "Bank (Money Center)"
     case["company_profile"]["company_stage"] = "Maturity stage"
     r = client.post("/valuations/preview", json=case)
-    assert r.status_code == 422 and "None of the methods" in r.json()["detail"]
+    assert r.status_code == 422 and "Banks and insurers" in r.json()["detail"]
 
 
 def test_pdf_report(client):

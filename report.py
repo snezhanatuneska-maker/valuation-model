@@ -835,15 +835,21 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
     return story
 
 
-def _scorecard_page(sc: dict, cp: dict) -> list:
+def _scorecard_page(sc: dict, cp: dict, mv: Optional[dict] = None) -> list:
     story = [P("Scorecard method", STYLES["h2"])]
+    if mv and mv.get("status") == "not_used":
+        story.append(P(
+            "Not used for this company. The Scorecard compares a pre-revenue company with the typical "
+            "pre-revenue company in its region, so it applies only at the Idea and Development stages; "
+            "companies with revenue are valued on their numbers by the other methods.", STYLES["td_label"]))
+        return story
     story += _method_value_header("Pre-money valuation", money(g(sc, "pre_money_valuation")))
     bench = g(sc, "benchmark_pre_money_valuation")
     factor = g(sc, "total_factor")
     bench_src = ("your own benchmark" if g(sc, "benchmark_source") == "user_override"
-                 else "the tool's internal estimate (not from a published survey)")
+                 else f"{g(sc, 'benchmark_basis')}, converted to euros")
     story += _how(
-        f"A typical {safe(g(cp, 'company_stage')).lower()} company in {short_region(g(cp, 'business_territory_region'))} "
+        f"A typical pre-revenue company in {short_region(g(cp, 'business_territory_region'))} "
         f"is valued at about {money(bench)} before investment ({bench_src}). Your answers score this company at "
         f"{pct(factor)} of that typical company overall, so {money(bench)} × {pct(factor)} = "
         f"{money(g(sc, 'pre_money_valuation'))}.")
@@ -1006,8 +1012,8 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
     story = [P("Methods, data sources & disclaimer", STYLES["h2"])]
     story.append(P("Methods", STYLES["h3"]))
     for text in (
-        "<b>Scorecard</b> (Bill Payne): compares the company with a typical pre-money valuation for its stage "
-        "and region on six weighted criteria.",
+        "<b>Scorecard</b> (Bill Payne): compares a pre-revenue company with the typical pre-revenue company in "
+        "its region on six weighted criteria. Used only at the Idea and Development stages.",
         "<b>Venture Capital</b>: values a projected exit and discounts it at the annual return an investor at "
         "this stage targets. This is the only place a target return is used.",
         "<b>Comparables</b>: applies public-company EV/EBITDA multiples to the last 12 months' EBITDA, with a "
@@ -1037,8 +1043,9 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
         ("vc_target_return", "VC target returns"),
         ("private_company_discount", "Private-company discount"),
         ("survival_probability", "Survival probability"),
-        ("stage_region_pre_money_benchmarks", "Scorecard pre-money benchmark"),
-        ("scorecard", "Scorecard weights"),
+        ("scorecard_benchmark", "Scorecard benchmark"),
+        ("scorecard", "Scorecard method"),
+        ("method_weights", "Method weights"),
     ]
     for key, label in labels:
         if sources.get(key):
@@ -1125,7 +1132,7 @@ def build_pdf_bytes(
     story.append(PageBreak())
     story += _scenario_sensitivity_page(scenarios or {})
     story.append(PageBreak())
-    story += _scorecard_page(g(output, "scorecard", {}), cp)
+    story += _scorecard_page(g(output, "scorecard", {}), cp, g(output, "method_values", {}).get("scorecard"))
     story.append(PageBreak())
     story += _vc_page(g(output, "venture_capital", {}))
     story.append(PageBreak())

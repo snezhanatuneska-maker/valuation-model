@@ -36,9 +36,9 @@ def test_reference_case_regression_values():
     """Pinned values (README "Verified numbers"); update deliberately if the method changes."""
     r = run(REFERENCE_CASE)
     got = {k: round(v.pre_money_value) for k, v in r.method_values.items()}
-    assert got == {"scorecard": 1_860_000, "venture_capital": 1_242_335, "comparables": 697_925, "dcf": 813_856}
-    assert round(r.blended_pre_money_valuation) == 1_043_118
-    assert round(r.post_money_valuation) == 1_343_118
+    assert got == {"scorecard": 2_202_240, "venture_capital": 1_242_335, "comparables": 697_925, "dcf": 841_159}
+    assert round(r.blended_pre_money_valuation) == 911_380
+    assert round(r.post_money_valuation) == 1_211_380
 
 
 def test_scorecard_rows_add_up_to_total():
@@ -162,13 +162,30 @@ def test_invalid_inputs_are_rejected(path, value):
 
 
 def test_banks_use_scorecard_only():
-    r = run(EDGE_CASES["Bank (Money Center) / US"])
+    r = run(variant(company_profile__industry="Bank (Money Center)", company_profile__company_stage="Development stage"))
     assert [k for k, mv in r.method_values.items() if mv.status == "ok"] == ["scorecard"]
     assert any(w.code == "financial_sector" for w in r.warnings)
+    with pytest.raises(ve.ValuationError, match="Banks and insurers"):
+        run(EDGE_CASES["Bank (Money Center) / US"])  # Startup stage: no method applies
+
+
+def test_scorecard_not_used_once_company_has_revenue():
+    r = run(REFERENCE_CASE)  # Startup stage
+    assert r.method_values["scorecard"].status == "not_used"
+    assert r.method_values["scorecard"].weight_used == 0
+
+
+def test_scorecard_uses_regional_equidam_benchmark():
+    r = run(variant(company_profile__company_stage="Idea stage"))
+    assert r.scorecard.benchmark_pre_money_valuation == ve.scorecard_benchmarks()[
+        REFERENCE_CASE["company_profile"]["business_territory_region"]]["eur"]
+    assert r.scorecard.benchmark_basis.startswith("Average of the Equidam H1 2026")
 
 
 def test_no_applicable_method_gives_clear_error():
-    case = variant(company_profile__industry="Bank (Money Center)", company_profile__company_stage="Maturity stage")
+    case = variant(operating_performance__current_ebitda=-500_000,            # Comparables: no positive EBITDA
+                   funding__capital_needed=50_000_000,                        # VC: raise exceeds what the exit supports
+                   financial_assumptions__target_ebitda_margin_override=-0.5)  # DCF: negative cash flows
     with pytest.raises(ve.ValuationError, match="None of the methods"):
         run(case)
 
