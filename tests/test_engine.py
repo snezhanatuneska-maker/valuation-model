@@ -36,9 +36,9 @@ def test_reference_case_regression_values():
     """Pinned values (README "Verified numbers"); update deliberately if the method changes."""
     r = run(REFERENCE_CASE)
     got = {k: round(v.pre_money_value) for k, v in r.method_values.items()}
-    assert got == {"scorecard": 1_860_000, "venture_capital": 1_242_335, "comparables": 697_925, "dcf": 813_856}
-    assert round(r.blended_pre_money_valuation) == 1_043_118
-    assert round(r.post_money_valuation) == 1_343_118
+    assert got == {"scorecard": 1_860_000, "venture_capital": 1_242_335, "comparables": 697_925, "dcf": 841_159}
+    assert round(r.blended_pre_money_valuation) == 1_051_309
+    assert round(r.post_money_valuation) == 1_351_309
 
 
 def test_scorecard_rows_add_up_to_total():

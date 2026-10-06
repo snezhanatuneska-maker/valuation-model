@@ -129,9 +129,9 @@ cash €20,000, no debt. Year-1 revenue €1,000,000 growing 10% a year, capex
 | Scorecard | 1,860,000 € |
 | Venture Capital | 1,242,335 € |
 | Comparables | 697,925 € |
-| DCF | 813,856 € |
-| **Blended pre-money** | **1,043,118 €** |
-| **Post-money** | **1,343,118 €** |
+| DCF | 841,159 € |
+| **Blended pre-money** | **1,051,309 €** |
+| **Post-money** | **1,351,309 €** |
 
 These are pinned in `tests/test_engine.py` and recomputed independently by
 `audit/recompute.py`.

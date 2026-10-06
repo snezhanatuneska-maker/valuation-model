@@ -1,6 +1,7 @@
 """Reference-data tests: structure, sources, and (when the spreadsheets are
 available) every value against Damodaran's January 2026 files."""
 import os
+from pathlib import Path
 
 import pytest
 
@@ -52,10 +53,10 @@ def test_country_data_is_usable():
         assert 0.02 <= c["equity_risk_premium"] <= 0.4, country
 
 
-DAMODARAN_DIR = os.environ.get("DAMODARAN_DIR")
+DAMODARAN_DIR = os.environ.get("DAMODARAN_DIR") or str(
+    Path(__file__).resolve().parent.parent / "source_data" / "damodaran")
 
 
-@pytest.mark.skipif(not DAMODARAN_DIR, reason="set DAMODARAN_DIR to the folder with Damodaran's .xls files")
 def test_benchmarks_match_damodaran_files(capsys):
     import check_benchmarks
     check_benchmarks.sys.argv = ["check_benchmarks.py", DAMODARAN_DIR]
