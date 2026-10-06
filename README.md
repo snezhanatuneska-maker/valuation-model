@@ -1,6 +1,11 @@
-# Startup Valuation Model
+# Valuativa: startup valuation
 
-A blended startup valuation tool (Scorecard, Venture Capital, DCF Multiples,
+## Live demo
+
+https://snezhanatuneska-maker.github.io/valuation-model/ (demo mode: nothing you enter is stored; the
+first calculation can take about 30 seconds while the free server wakes up).
+
+A blended startup valuation tool (Scorecard, Venture Capital, Comparables,
 and DCF methods) — originally an Excel workbook, rebuilt into a Python
 calculation engine, a FastAPI backend, and a web frontend.
 
@@ -98,9 +103,21 @@ Optionally, upload a **company logo** near the top of Step 1 (PNG or
 JPEG, under 2 MB) — if provided, it replaces the default mark on the
 report's cover page and header.
 
-Saved valuations (History tab) can also have their PDF re-downloaded
-at any time, even after closing and reopening the app, since the
-report is rebuilt fresh from the saved inputs each time.
+"Try with a sample company" on the start page fills the whole wizard with an
+imaginary, randomized German startup (marked "(sample)") and shows its
+results and PDF. A sample is only shown if every method gives a meaningful,
+roughly consistent value, so it works as a clean example.
+
+## Demo mode (privacy)
+
+The API stores nothing by default: the wizard only calls the
+`/valuations/preview*` routes, which compute and return results without
+saving them, and no database file is created. The older routes that save,
+list, read and delete valuations answer 404 unless the server is started
+with `VALUATIVA_STORE_VALUATIONS=1`. The page loads nothing from other sites
+(system fonts, no analytics, no cookies); its privacy note is in
+`index.html` (`id="privacy"`), and the FAU / Nuremberg community line is the
+one paragraph marked `COMMUNITY LINE`.
 
 ## How the valuation works
 

@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Startup Valuation</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Valuativa: free startup valuation</title>
+<meta name="description" content="Free startup valuation for early-stage founders: four standard methods, German tax and market data, and a PDF report that explains every number.">
 <style>
 :root {
   --paper: #F7F4EC;
@@ -20,8 +19,9 @@
   --rust: #A8402F;
   --rule: rgba(28, 36, 48, 0.14);
   --rule-soft: rgba(28, 36, 48, 0.08);
-  --font-serif: "Source Serif 4", Georgia, serif;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Fonts already on the visitor's device: no requests to third-party font servers. */
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -52,6 +52,34 @@ body {
   flex-wrap: wrap;
   gap: 12px;
 }
+.masthead-tag { color: var(--brass-light); font-size: 13px; letter-spacing: 0.02em; }
+.site-footer {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 20px 40px;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  text-align: center;
+  line-height: 1.7;
+}
+.site-footer a { color: var(--navy); }
+.site-footer .sep { margin: 0 8px; color: var(--rule); }
+.privacy-dialog {
+  max-width: 560px;
+  width: calc(100vw - 32px);
+  padding: 24px 24px 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  line-height: 1.55;
+  font-size: 15px;
+}
+.privacy-dialog::backdrop { background: rgba(23, 41, 59, 0.45); }
+.privacy-dialog h2 { font-family: var(--font-serif); color: var(--navy-deep); margin: 0 0 12px; font-size: 22px; }
+.privacy-dialog ul { padding-left: 18px; margin: 0 0 16px; }
+.privacy-dialog li { margin-bottom: 8px; }
 .wordmark {
   font-family: var(--font-serif);
   font-weight: 600;
@@ -75,7 +103,26 @@ body {
   padding: 40px 44px 36px;
 }
 @media (max-width: 620px) {
-  .view { padding: 28px 20px 24px; border-radius: 8px; }
+  .page { padding: 20px 12px 64px; }
+  .view { padding: 24px 16px 22px; border-radius: 8px; }
+  .landing { padding: 4px 4px 28px; }
+}
+/* Phones: each method of the summary table becomes a block (name and explanation
+   across the full width, then its weight / value / weighted value in one line). */
+@media (max-width: 560px) {
+  .ledger-table.stacked thead { display: none; }
+  .ledger-table.stacked tr { display: block; padding: 12px 0; border-bottom: 1px solid var(--rule-soft); }
+  .ledger-table.stacked td { display: inline-block; border: none; padding: 2px 14px 0 0; text-align: left; }
+  .ledger-table.stacked td:first-child { display: block; padding-right: 0; }
+  .ledger-table.stacked td[data-label]::before {
+    content: attr(data-label) " ";
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+  }
+  .ledger-table.stacked .ledger-total-row { display: flex; justify-content: space-between; align-items: baseline; border-bottom: none; }
+  .ledger-table.stacked .ledger-total-row td { padding: 0; }
 }
 .section-heading {
   font-family: var(--font-serif);
@@ -134,6 +181,11 @@ body {
 .field-row-5 { grid-template-columns: repeat(5, 1fr); }
 @media (max-width: 560px) {
   .field-row, .field-row-3, .field-row-5 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 420px) {
+  /* Phones: one field per line, except the short year-by-year number rows. */
+  .field-row, .field-row-3 { grid-template-columns: 1fr; gap: 12px; }
+  .field-row.field-row-5 { grid-template-columns: 1fr 1fr; }
 }
 
 label {
@@ -208,6 +260,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 .landing-points strong { display: block; color: var(--navy); }
 .landing-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .landing-actions .btn { flex: 1 1 220px; }
+.results-actions .btn { flex: 1 1 200px; }
 .landing-fineprint { margin: 18px 0 0; font-size: 0.85rem; color: var(--ink-soft); }
 /* ---------- Term explanations (info icons) ---------- */
 .tip {
@@ -433,6 +486,7 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
 }
 .results-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 24px;
 }
@@ -470,7 +524,8 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
 
 <header class="masthead">
   <div class="masthead-inner">
-    <h1 class="wordmark">Startup Valuation</h1>
+    <h1 class="wordmark">Valuativa</h1>
+    <span class="masthead-tag">Startup valuation for founders</span>
   </div>
 </header>
 
@@ -661,7 +716,7 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
 
     <!-- Step 2: Market & Team Assessment -->
     <form class="wizard-step" data-step="2" id="step-2" novalidate>
-      <p class="step-intro">These qualitative answers drive the Scorecard method. Each dropdown offers exactly the option set the calculation engine recognizes.</p>
+      <p class="step-intro">These answers compare your team, product and market with a typical startup. They feed the Scorecard method, which counts only for pre-revenue companies (Idea and Development stages).</p>
       <div id="scorecard-fields"><p class="loading-hint">Loading question set&hellip;</p></div>
 
       <fieldset class="field-group">
@@ -821,6 +876,23 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
   </section>
 
 </main>
+
+<footer class="site-footer">
+  <strong>Valuativa</strong> demo &middot; informational estimate, not a certified appraisal<br>
+  <a href="mailto:snezhanatuneska@gmail.com">snezhanatuneska@gmail.com</a><span class="sep">|</span><a href="#privacy" id="privacy-link">Privacy</a>
+</footer>
+
+<dialog class="privacy-dialog" id="privacy" aria-labelledby="privacy-title">
+  <h2 id="privacy-title">Privacy in this demo</h2>
+  <ul>
+    <li><strong>Nothing is stored.</strong> What you enter is sent to the calculation server only to work out your result and build your PDF, and is discarded straight after. There is no database and no account.</li>
+    <li><strong>Where it runs.</strong> This page is hosted on GitHub Pages and the calculation server on Render (render.com). Like any web host, they may keep short-lived technical logs, such as your IP address and the time of a request, to run and protect their service.</li>
+    <li><strong>No tracking.</strong> No analytics, no advertising, no cookies, and nothing loaded from other websites. The page doesn't save anything in your browser.</li>
+    <li><strong>Your logo</strong>, if you add one, is only used to build your PDF and isn't kept.</li>
+  </ul>
+  <p>Questions: <a href="mailto:snezhanatuneska@gmail.com">snezhanatuneska@gmail.com</a></p>
+  <form method="dialog"><button class="btn btn-primary" type="submit">Close</button></form>
+</dialog>
 
 
 <script>
@@ -1208,7 +1280,8 @@ function goToStep(step) {
   document.getElementById("step-name").textContent = stepNames[step];
   document.getElementById("step-fill").style.width = `${(step / TOTAL_STEPS) * 100}%`;
 
-  document.getElementById("btn-back").hidden = step === 1;
+  document.getElementById("btn-back").hidden = step === 1 || step === 6;
+  document.querySelector(".wizard-nav").style.display = step === 6 ? "none" : ""; // results have their own buttons
   document.getElementById("btn-next").hidden = step === 5 || step === 6;
   document.getElementById("btn-calculate").hidden = step !== 5;
 
@@ -1728,9 +1801,9 @@ function renderResults(result, scenarios) {
   const rows = Object.entries(result.method_values).map(([key, mv]) => `
     <tr>
       <td>${METHOD_LABELS[key] || key}${METHOD_TIPS[key] ? tipButton(...METHOD_TIPS[key]) : ""}<p class="method-notes">${escapeHtml(methodExplanation(key, result))}</p></td>
-      <td>${pct(mv.weight_used)}</td>
-      <td class="${mv.status === "ok" ? "" : "muted"}">${methodValueCell(mv)}</td>
-      <td>${mv.status === "ok" ? money(mv.weighted_value) : "—"}</td>
+      <td data-label="Weight">${pct(mv.weight_used)}</td>
+      <td data-label="Value" class="${mv.status === "ok" ? "" : "muted"}">${methodValueCell(mv)}</td>
+      <td data-label="Weighted">${mv.status === "ok" ? money(mv.weighted_value) : "—"}</td>
     </tr>
   `).join("");
 
@@ -1739,8 +1812,8 @@ function renderResults(result, scenarios) {
   panel.innerHTML = `
     ${readResultBox(result, scenarios)}
     <h2 class="ledger-title">Valuation summary</h2>
-    <p class="ledger-subtitle">Pre-money equity value as of ${escapeHtml(new Date(result.valuation_date + "T00:00:00").toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }))}, blended across four methods with weights for the company's stage.${leftOut ? " Methods that can't give a meaningful value for this company are left out and the other weights scaled up." : ""}</p>
-    <table class="ledger-table">
+    <p class="ledger-subtitle">Pre-money equity value as of ${escapeHtml(new Date(result.valuation_date + "T00:00:00").toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" }))}, blended across four methods with weights for the company's stage.${leftOut ? " Methods that can't give a meaningful value for this company are left out and the other weights scaled up." : ""}</p>
+    <table class="ledger-table stacked">
       <thead>
         <tr><th>Method</th><th>Weight</th><th>Pre-money value${tipButton("pre_post_money", "pre-money value")}</th><th>Weighted value</th></tr>
       </thead>
@@ -1760,12 +1833,17 @@ function renderResults(result, scenarios) {
     ${scenarioBlock(scenarios)}
     <div class="results-actions">
       <button class="btn btn-primary" id="btn-pdf">Download PDF report</button>
+      <button class="btn btn-ghost" id="btn-edit">Change inputs</button>
       <button class="btn btn-ghost" id="btn-restart">Start a new valuation</button>
     </div>
     ${glossaryBlock()}
   `;
 
   document.getElementById("btn-pdf").addEventListener("click", downloadResultsPdf);
+  document.getElementById("btn-edit").addEventListener("click", () => {
+    goToStep(1);
+    document.getElementById("view-wizard").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   document.getElementById("btn-restart").addEventListener("click", async () => {
     if (sampleLoaded) await clearSample();
     lastResult = null;
@@ -1794,7 +1872,10 @@ async function downloadResultsPdf() {
     }
     const blob = await res.blob();
     const companyName = (lastResult.payload.company_profile.company_name || "valuation").trim();
-    const safeName = companyName.replace(/[^a-z0-9 _-]/gi, "").replace(/\s+/g, "-") || "valuation";
+    const safeName = companyName
+      .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/Ä/g, "Ae").replace(/Ö/g, "Oe")
+      .replace(/Ü/g, "Ue").replace(/ß/g, "ss")
+      .replace(/[^a-z0-9 _-]/gi, "").trim().replace(/\s+/g, "-") || "valuation";
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1857,12 +1938,12 @@ document.getElementById("btn-remove-logo").addEventListener("click", () => {
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const between = (lo, hi, step = 1) => Math.round((lo + Math.random() * (hi - lo)) / step) * step;
 
+// Industries whose benchmarks give a balanced showcase (in energy, for example, the DCF
+// runs far above the other methods, which would make a confusing first example).
 const SAMPLE_PROFILES = [
   { suffix: "Analytics", industry: "Software (System & Application)", activity: "B2B analytics software for manufacturers", model: "SaaS subscription" },
-  { suffix: "Health", industry: "Heathcare Information and Technology", activity: "Software for clinics and medical practices", model: "SaaS subscription" },
-  { suffix: "Energy", industry: "Green & Renewable Energy", activity: "Solar-plus-storage planning and installation for SMEs", model: "Project fees and service contracts" },
+  { suffix: "Health", industry: "Healthcare Information and Technology", activity: "Software for clinics and medical practices", model: "SaaS subscription" },
   { suffix: "Robotics", industry: "Machinery", activity: "Collaborative robots for small factories", model: "Hardware sales plus maintenance" },
-  { suffix: "Logistics", industry: "Business & Consumer Services", activity: "Last-mile delivery planning for regional retailers", model: "Usage-based fees" },
 ];
 const SAMPLE_NAMES = ["Kranich", "Lindwurm", "Morgenrot", "Silberfluss", "Brückenwerk", "Funkenflug", "Sternwarte", "Eichhorn"];
 const SAMPLE_CITIES = ["Erlangen", "Nürnberg", "Fürth"];
@@ -1899,19 +1980,35 @@ function sampleIsClean(c, result) {
   const vc = result.method_values.venture_capital;
   const vcSensible = vc.weight === 0 || (vc.pre_money_value || 0) > 0.2 * result.blended_pre_money_valuation;
   const noWarnings = result.warnings.every((w) => w.severity !== "warning" || w.code === "nm_comparables");
-  return methodsOk && vcSensible && noWarnings;
+  // Methods that disagree wildly (e.g. a DCF 8x the VC value) make a poor showcase.
+  // (Before revenue the Scorecard naturally sits well above the cash-flow methods, so it isn't compared.)
+  const values = Object.entries(result.method_values)
+    .filter(([key, mv]) => mv.status === "ok" && mv.weight > 0 && !(c.preRevenue && key === "scorecard"))
+    .map(([, mv]) => mv.pre_money_value);
+  const agree = values.length > 0 && Math.max(...values) <= 3.5 * Math.min(...values);
+  // Forecast years that burn cash overall push the whole DCF into the terminal value.
+  const share = result.dcf.terminal_value_share;
+  const dcfBalanced = share === null || share <= 0.95;
+  return methodsOk && vcSensible && noWarnings && agree && dcfBalanced;
 }
 
 async function findCleanSample() {
   let candidate = null;
-  for (let attempt = 0; attempt < 12; attempt++) {
+  for (let attempt = 0; attempt < 20; attempt++) {
     const profile = pick(SAMPLE_PROFILES);
     const bench = await apiFetch(`/reference-data/industries/${encodeURIComponent(profile.industry)}`);
     candidate = sampleCompany(profile, bench.ebitda_margin[DEFAULT_REGION] || 0.12);
     fillSample(candidate);
     try {
-      const result = await apiFetch("/valuations/preview", { method: "POST", body: JSON.stringify(buildPayload()) });
-      if (sampleIsClean(candidate, result)) return candidate;
+      const body = JSON.stringify(buildPayload());
+      const result = await apiFetch("/valuations/preview", { method: "POST", body });
+      if (!sampleIsClean(candidate, result)) continue;
+      // The revenue slider should move smoothly: the same methods must apply in every scenario.
+      const scenarios = await apiFetch("/valuations/preview/scenarios", { method: "POST", body });
+      const usedIn = (r) => Object.keys(r.method_values).filter((k) => r.method_values[k].status === "ok").join();
+      if (Object.keys(scenarios).length === 6 && Object.values(scenarios).every((r) => usedIn(r) === usedIn(result))) {
+        return candidate;
+      }
     } catch (_) { /* try another */ }
   }
   return candidate; // still a valid company, just not a textbook one
@@ -1947,7 +2044,7 @@ function fillSample(c) {
     management_team_completeness: pick(["One competent player in place", "Team identified and on the sideline", "Competent team in place"]),
     product_development_stage: c.preRevenue ? pick(["Well defined, working prototype", "Good feedback from potential customers"]) : "Orders or early sales from customers",
     product_compelling_to_customers: pick(["This product is novel and sought after", "This product will be a necessity"]),
-    product_can_be_duplicated: pick(["It's difficult to be copied (time and financials resources needed)", "Product is unique and protected by trade secrets"]),
+    product_can_be_duplicated: pick(["It's difficult to be copied (time and financial resources needed)", "Product is unique and protected by trade secrets"]),
     strength_of_competitors_in_market: pick(["Dominated by several players", "Fractured many small players", "Developing market"]),
     strength_of_competitive_products: pick(["Competitive products are similar to ours", "Competitive products are weak"]),
     target_market_size: pick(["$50 to $100 million", "About $100 million", "> $100 million"]),
@@ -2034,6 +2131,9 @@ document.getElementById("btn-sample").addEventListener("click", async () => {
     await initPromise; // the dropdowns must be loaded before they can be filled
     if (!didInit) return;
     btn.textContent = "Preparing a sample company\u2026";
+    lastResult = null;
+    goToStep(1);
+    document.getElementById("results-panel").innerHTML = ""; // never show the previous result meanwhile
     await findCleanSample();
     sampleLoaded = true;
     await onCountryChange();
@@ -2063,6 +2163,20 @@ async function runInit() {
     showFormError(`${err.message} Reload the page to try again.`);
   }
 }
+
+const privacyDialog = document.getElementById("privacy");
+function openPrivacy() {
+  if (typeof privacyDialog.showModal === "function") {
+    if (!privacyDialog.open) privacyDialog.showModal();
+  } else {
+    privacyDialog.setAttribute("open", "");
+  }
+}
+document.getElementById("privacy-link").addEventListener("click", (e) => { e.preventDefault(); openPrivacy(); });
+privacyDialog.addEventListener("close", () => {
+  if (location.hash === "#privacy") history.replaceState(null, "", location.pathname + location.search);
+});
+if (location.hash === "#privacy") openPrivacy();
 
 wakeServer().catch(() => { /* runInit reports it */ }); // start waking the server straight away
 initPromise = runInit();

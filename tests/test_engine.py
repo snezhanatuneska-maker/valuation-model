@@ -303,3 +303,13 @@ def test_every_german_figure_has_a_source_and_date():
                 "average_hebesatz_source", "average_hebesatz_as_of"):
         assert GERMAN_TAX[key], key
     assert de["stage_benchmarks"]["source"] and de["stage_benchmarks"]["as_of"]
+
+
+def test_old_industry_and_answer_spellings_still_work():
+    case = copy.deepcopy(GERMAN_CASE)
+    case["company_profile"]["industry"] = "Heathcare Information and Technology"  # Damodaran's spelling
+    case["market_and_team_assessment"]["product_can_be_duplicated"] = (
+        "It's difficult to be copied (time and financials resources needed)")
+    r = ve.ValuationInput(**case)
+    assert r.company_profile.industry == "Healthcare Information and Technology"
+    assert run(case).blended_pre_money_valuation > 0
