@@ -492,8 +492,8 @@ def _fit_image(logo_bytes: bytes, max_w: float, max_h: float) -> Image:
 # ============================================================================
 
 
-BRAND = "Valuativa"
-CONTACT_EMAIL = "snezhanatuneska@gmail.com"
+BRAND = "Valuation Model"
+AUTHOR = "Snezhana Tuneska"
 
 
 def _make_page_decorator(company_name: str, date_str: str, logo_bytes: Optional[bytes]):
@@ -518,7 +518,7 @@ def _make_page_decorator(company_name: str, date_str: str, logo_bytes: Optional[
                 pass
         else:
             canvas.setFont("Helvetica", 8)
-            canvas.drawRightString(PAGE_W - MARGIN_SIDE, header_y, f"{BRAND.upper()} · COMPANY VALUATION REPORT")
+            canvas.drawRightString(PAGE_W - MARGIN_SIDE, header_y, "COMPANY VALUATION REPORT")
         canvas.setStrokeColor(BORDER)
         canvas.line(MARGIN_SIDE, header_y - 4, PAGE_W - MARGIN_SIDE, header_y - 4)
 
@@ -526,7 +526,7 @@ def _make_page_decorator(company_name: str, date_str: str, logo_bytes: Optional[
         canvas.setFillColor(colors.HexColor("#a7b0bc"))
         canvas.drawCentredString(
             PAGE_W / 2, MARGIN_BOTTOM - 10 * mm,
-            f"{BRAND} · Valuation as of {date_str} · Page {doc.page} · "
+            f"{BRAND} by {AUTHOR} · Valuation as of {date_str} · Page {doc.page} · "
             "Informational estimate, not a certified appraisal",
         )
         canvas.restoreState()
@@ -574,7 +574,7 @@ def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Op
             story.append(Spacer(1, 14))
         except Exception:
             pass
-    story.append(P(f"{BRAND.upper()} · COMPANY VALUATION REPORT", STYLES["eyebrow"]))
+    story.append(P("COMPANY VALUATION REPORT", STYLES["eyebrow"]))
     story.append(P(company_name, STYLES["h1"]))
     meta_rows = [
         [P("Prepared for", STYLES["cover_meta_label"]), P(company_name, STYLES["cover_meta_value"])],
@@ -597,7 +597,7 @@ def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Op
         STYLES["cover_disclaimer"],
     ))
     story.append(Spacer(1, 6))
-    story.append(P(f"Prepared with {BRAND}. Questions: {CONTACT_EMAIL}", STYLES["cover_disclaimer"]))
+    story.append(P(f"Prepared with {BRAND} by {AUTHOR}.", STYLES["cover_disclaimer"]))
     return story
 
 
@@ -1155,7 +1155,7 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
         "assumptions believed to be accurate at the time of preparation, but no guarantee is made "
         "regarding completeness, accuracy, or future performance. Consult a qualified financial, "
         "legal, or investment professional before making decisions based on this analysis. "
-        f"Questions about this report: {CONTACT_EMAIL}.",
+        f"{BRAND} by {AUTHOR}.",
         STYLES["disclaimer"], raw=True,
     )]], colWidths=[CONTENT_W])
     disclaimer_box.setStyle(TableStyle([

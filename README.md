@@ -1,4 +1,4 @@
-# Valuativa: startup valuation
+# Valuation Model: startup valuation
 
 ## Live demo
 
@@ -114,7 +114,7 @@ The API stores nothing by default: the wizard only calls the
 `/valuations/preview*` routes, which compute and return results without
 saving them, and no database file is created. The older routes that save,
 list, read and delete valuations answer 404 unless the server is started
-with `VALUATIVA_STORE_VALUATIONS=1`. The page loads nothing from other sites
+with `VALUATION_MODEL_STORE_VALUATIONS=1`. The page loads nothing from other sites
 (system fonts, no analytics, no cookies); its privacy note is in
 `index.html` (`id="privacy"`), and the FAU / Nuremberg community line is the
 one paragraph marked `COMMUNITY LINE`.

@@ -9,7 +9,7 @@ copy, or upload.
 Demo mode (the default): nothing is ever written to disk. The wizard only
 uses the /valuations/preview* routes, which compute and return results
 without storing them, and the routes that save, list, read or delete
-valuations answer 404. Set VALUATIVA_STORE_VALUATIONS=1 to switch saving
+valuations answer 404. Set VALUATION_MODEL_STORE_VALUATIONS=1 to switch saving
 back on (there are no user accounts yet: each browser has an anonymous
 owner ID, and saved valuations are listed and deleted per owner ID).
 
@@ -48,7 +48,7 @@ import report as pdf_report
 DB_PATH = Path(__file__).parent / "data" / "valuations.db"
 
 # Off unless explicitly switched on: the public demo stores no inputs at all.
-STORE_VALUATIONS = os.environ.get("VALUATIVA_STORE_VALUATIONS") == "1"
+STORE_VALUATIONS = os.environ.get("VALUATION_MODEL_STORE_VALUATIONS") == "1"
 
 
 def _require_storage() -> None:

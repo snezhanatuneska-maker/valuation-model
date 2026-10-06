@@ -19,7 +19,7 @@ def client(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def storing_client(tmp_path, monkeypatch):
-    """The API with saving switched on (VALUATIVA_STORE_VALUATIONS=1)."""
+    """The API with saving switched on (VALUATION_MODEL_STORE_VALUATIONS=1)."""
     monkeypatch.setattr(api, "DB_PATH", tmp_path / "test.db")
     monkeypatch.setattr(api, "STORE_VALUATIONS", True)
     with TestClient(api.app, raise_server_exceptions=False) as c:
