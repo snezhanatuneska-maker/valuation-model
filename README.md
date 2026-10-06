@@ -100,16 +100,23 @@ report is rebuilt fresh from the saved inputs each time.
 
 ## Verified numbers (Valuativa DOO example)
 
+Tanzania, Software (Entertainment), Emerging Markets, Startup stage,
+Year-1 revenue 1,000,000 € growing 10% a year, capex 30,000 € in Years
+2–5, capital needed 300,000 €, DCF tax rate 10%.
+
 | Method | Value |
 |---|---|
-| Scorecard | 1,699,500.00 € |
+| Scorecard | 1,023,000.00 € |
 | Venture Capital | 965,486.96 € |
 | DCF Multiples | 2,142,052.40 € |
-| DCF | 270,529.88 € |
+| DCF | 257,742.40 € |
+| **Blended pre-money** | **1,114,760.18 €** |
+| **Post-money** | **1,414,760.18 €** |
 
-(Exact blended figures depend on the qualitative questionnaire answers
-entered, since the Scorecard method — and therefore the blend — scores
-those answers against a benchmark company.)
+The Scorecard (and therefore the blend) depends on the questionnaire
+answers; 1,023,000 € is for answers that score 93% of the benchmark
+company. The DCF figure reflects the WACC fix and the January 2026
+country-risk refresh (Tanzania's equity risk premium).
 
 ## License
 
