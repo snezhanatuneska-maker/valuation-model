@@ -12880,7 +12880,7 @@
     }
   },
   "country_data": {
-    "Abu Dhabi": {
+    "Abu Dhabi (UAE)": {
       "moodys_rating": "Aa2",
       "sovereign_cds": 0.0065,
       "adjusted_default_spread": 0.003930214513416281,
@@ -12900,7 +12900,7 @@
       "region_grouping": "Eastern Europe & Russia",
       "gdp_millions": 27046.429296667295
     },
-    "Andorra (Principality of)": {
+    "Andorra": {
       "moodys_rating": "Baa1",
       "sovereign_cds": "NA",
       "adjusted_default_spread": 0.012726408900586053,
@@ -13210,7 +13210,7 @@
       "region_grouping": "Central and South America",
       "gdp_millions": 418818.1548792711
     },
-    "Congo (Democratic Republic of)": {
+    "Congo (Democratic Republic)": {
       "moodys_rating": "B3",
       "sovereign_cds": "NA",
       "adjusted_default_spread": 0.05174782442664771,
@@ -13220,7 +13220,7 @@
       "region_grouping": "Africa",
       "gdp_millions": 70962.18579070935
     },
-    "Congo (Republic of)": {
+    "Congo (Republic)": {
       "moodys_rating": "Caa2",
       "sovereign_cds": "NA",
       "adjusted_default_spread": 0.07167962660183028,
@@ -13249,6 +13249,16 @@
       "corporate_tax_rate": 0.3,
       "region_grouping": "Central and South America",
       "gdp_millions": 95350.42317659622
+    },
+    "Côte d'Ivoire": {
+      "moodys_rating": "Ba2",
+      "sovereign_cds": "NA",
+      "adjusted_default_spread": 0.023955593224632577,
+      "equity_risk_premium": 0.07923886249657033,
+      "country_risk_premium": 0.03723886249657034,
+      "corporate_tax_rate": 0.25,
+      "region_grouping": "Africa",
+      "gdp_millions": 87113.17914928401
     },
     "Croatia": {
       "moodys_rating": "A3",
@@ -13299,16 +13309,6 @@
       "corporate_tax_rate": 0.21,
       "region_grouping": "Eastern Europe & Russia",
       "gdp_millions": 347034.06292847905
-    },
-    "Côte d'Ivoire": {
-      "moodys_rating": "Ba2",
-      "sovereign_cds": "NA",
-      "adjusted_default_spread": 0.023955593224632577,
-      "equity_risk_premium": 0.07923886249657033,
-      "country_risk_premium": 0.03723886249657034,
-      "corporate_tax_rate": 0.25,
-      "region_grouping": "Africa",
-      "gdp_millions": 87113.17914928401
     },
     "Denmark": {
       "moodys_rating": "Aaa",
@@ -13369,6 +13369,16 @@
       "corporate_tax_rate": 0.2,
       "region_grouping": "Eastern Europe & Russia",
       "gdp_millions": 43130.419829349994
+    },
+    "Eswatini": {
+      "moodys_rating": "B2",
+      "sovereign_cds": "NA",
+      "adjusted_default_spread": 0.04379381886378142,
+      "equity_risk_premium": 0.11007729550154263,
+      "country_risk_premium": 0.06807729550154264,
+      "corporate_tax_rate": 0.25,
+      "region_grouping": "Africa",
+      "gdp_millions": 4858.885840772364
     },
     "Ethiopia": {
       "moodys_rating": "Caa3",
@@ -13470,7 +13480,7 @@
       "region_grouping": "Central and South America",
       "gdp_millions": 113199.58115820274
     },
-    "Guernsey (States of)": {
+    "Guernsey": {
       "moodys_rating": "A1",
       "sovereign_cds": "NA",
       "adjusted_default_spread": 0.005614592162023261,
@@ -13610,7 +13620,7 @@
       "region_grouping": "Asia",
       "gdp_millions": 4027597.5235505826
     },
-    "Jersey (States of)": {
+    "Jersey": {
       "moodys_rating": "Aa3",
       "sovereign_cds": "NA",
       "adjusted_default_spread": 0.00477240333771977,
@@ -13649,16 +13659,6 @@
       "corporate_tax_rate": 0.3,
       "region_grouping": "Africa",
       "gdp_millions": 120339.55790593175
-    },
-    "Korea": {
-      "moodys_rating": "Aa2",
-      "sovereign_cds": 0.0042,
-      "adjusted_default_spread": 0.003930214513416281,
-      "equity_risk_premium": 0.04810950087834357,
-      "country_risk_premium": 0.00610950087834357,
-      "corporate_tax_rate": 0.264,
-      "region_grouping": "Asia",
-      "gdp_millions": 1875388.209406803
     },
     "Kuwait": {
       "moodys_rating": "A1",
@@ -13749,16 +13749,6 @@
       "corporate_tax_rate": 0.25,
       "region_grouping": "Asia",
       "gdp_millions": 49467.258923324385
-    },
-    "Macedonia": {
-      "moodys_rating": "Ba3",
-      "sovereign_cds": "NA",
-      "adjusted_default_spread": 0.02863442002631862,
-      "equity_risk_premium": 0.08651207782793173,
-      "country_risk_premium": 0.04451207782793173,
-      "corporate_tax_rate": 0.1,
-      "region_grouping": "Eastern Europe & Russia",
-      "gdp_millions": 16951.6822454202
     },
     "Malaysia": {
       "moodys_rating": "A3",
@@ -13950,6 +13940,16 @@
       "region_grouping": "Africa",
       "gdp_millions": 252261.88014115053
     },
+    "North Macedonia": {
+      "moodys_rating": "Ba3",
+      "sovereign_cds": "NA",
+      "adjusted_default_spread": 0.02863442002631862,
+      "equity_risk_premium": 0.08651207782793173,
+      "country_risk_premium": 0.04451207782793173,
+      "corporate_tax_rate": 0.1,
+      "region_grouping": "Eastern Europe & Russia",
+      "gdp_millions": 16951.6822454202
+    },
     "Norway": {
       "moodys_rating": "Aaa",
       "sovereign_cds": 0.0015,
@@ -14060,7 +14060,7 @@
       "region_grouping": "Middle East",
       "gdp_millions": 219162.63736263735
     },
-    "Ras Al Khaimah (Emirate of)": {
+    "Ras Al Khaimah (UAE)": {
       "moodys_rating": "A3",
       "sovereign_cds": "NA",
       "adjusted_default_spread": 0.00954480667543954,
@@ -14131,7 +14131,7 @@
       "region_grouping": "Eastern Europe & Russia",
       "gdp_millions": 90097.76595911144
     },
-    "Sharjah": {
+    "Sharjah (UAE)": {
       "moodys_rating": "Ba1",
       "sovereign_cds": "NA",
       "adjusted_default_spread": 0.019931802175182575,
@@ -14191,6 +14191,16 @@
       "region_grouping": "Africa",
       "gdp_millions": 401144.99837358523
     },
+    "South Korea": {
+      "moodys_rating": "Aa2",
+      "sovereign_cds": 0.0042,
+      "adjusted_default_spread": 0.003930214513416281,
+      "equity_risk_premium": 0.04810950087834357,
+      "country_risk_premium": 0.00610950087834357,
+      "corporate_tax_rate": 0.264,
+      "region_grouping": "Asia",
+      "gdp_millions": 1875388.209406803
+    },
     "Spain": {
       "moodys_rating": "A3",
       "sovereign_cds": 0.0036,
@@ -14240,16 +14250,6 @@
       "corporate_tax_rate": 0.36,
       "region_grouping": "Central and South America",
       "gdp_millions": 4416.775112096267
-    },
-    "Swaziland": {
-      "moodys_rating": "B2",
-      "sovereign_cds": "NA",
-      "adjusted_default_spread": 0.04379381886378142,
-      "equity_risk_premium": 0.11007729550154263,
-      "country_risk_premium": 0.06807729550154264,
-      "corporate_tax_rate": 0.25,
-      "region_grouping": "Africa",
-      "gdp_millions": 4858.885840772364
     },
     "Sweden": {
       "moodys_rating": "Aaa",
@@ -14341,7 +14341,7 @@
       "region_grouping": "Africa",
       "gdp_millions": 51332.28565654216
     },
-    "Turkey": {
+    "Türkiye": {
       "moodys_rating": "Ba3",
       "sovereign_cds": 0.0283,
       "adjusted_default_spread": 0.02863442002631862,
@@ -14607,9 +14607,9 @@
   },
   "categorical_options": {
     "country": [
-      "Abu Dhabi",
+      "Abu Dhabi (UAE)",
       "Albania",
-      "Andorra (Principality of)",
+      "Andorra",
       "Angola",
       "Argentina",
       "Armenia",
@@ -14640,22 +14640,23 @@
       "Chile",
       "China",
       "Colombia",
-      "Congo (Democratic Republic of)",
-      "Congo (Republic of)",
+      "Congo (Democratic Republic)",
+      "Congo (Republic)",
       "Cook Islands",
       "Costa Rica",
+      "Côte d'Ivoire",
       "Croatia",
       "Cuba",
       "Curacao",
       "Cyprus",
       "Czech Republic",
-      "Côte d'Ivoire",
       "Denmark",
       "Dominican Republic",
       "Ecuador",
       "Egypt",
       "El Salvador",
       "Estonia",
+      "Eswatini",
       "Ethiopia",
       "Fiji",
       "Finland",
@@ -14666,7 +14667,7 @@
       "Ghana",
       "Greece",
       "Guatemala",
-      "Guernsey (States of)",
+      "Guernsey",
       "Honduras",
       "Hong Kong",
       "Hungary",
@@ -14680,11 +14681,10 @@
       "Italy",
       "Jamaica",
       "Japan",
-      "Jersey (States of)",
+      "Jersey",
       "Jordan",
       "Kazakhstan",
       "Kenya",
-      "Korea",
       "Kuwait",
       "Kyrgyzstan",
       "Laos",
@@ -14694,7 +14694,6 @@
       "Lithuania",
       "Luxembourg",
       "Macao",
-      "Macedonia",
       "Malaysia",
       "Maldives",
       "Mali",
@@ -14714,6 +14713,7 @@
       "Nicaragua",
       "Niger",
       "Nigeria",
+      "North Macedonia",
       "Norway",
       "Oman",
       "Pakistan",
@@ -14725,25 +14725,25 @@
       "Poland",
       "Portugal",
       "Qatar",
-      "Ras Al Khaimah (Emirate of)",
+      "Ras Al Khaimah (UAE)",
       "Romania",
       "Russia",
       "Rwanda",
       "Saudi Arabia",
       "Senegal",
       "Serbia",
-      "Sharjah",
+      "Sharjah (UAE)",
       "Singapore",
       "Slovakia",
       "Slovenia",
       "Solomon Islands",
       "South Africa",
+      "South Korea",
       "Spain",
       "Sri Lanka",
       "St. Maarten",
       "St. Vincent & the Grenadines",
       "Suriname",
-      "Swaziland",
       "Sweden",
       "Switzerland",
       "Taiwan",
@@ -14753,7 +14753,7 @@
       "Togo",
       "Trinidad and Tobago",
       "Tunisia",
-      "Turkey",
+      "Türkiye",
       "Turks and Caicos Islands",
       "Uganda",
       "Ukraine",
@@ -15029,5 +15029,19 @@
   },
   "industry_aliases": {
     "Heathcare Information and Technology": "Healthcare Information and Technology"
+  },
+  "country_aliases": {
+    "Swaziland": "Eswatini",
+    "Macedonia": "North Macedonia",
+    "Korea": "South Korea",
+    "Turkey": "Türkiye",
+    "Abu Dhabi": "Abu Dhabi (UAE)",
+    "Sharjah": "Sharjah (UAE)",
+    "Ras Al Khaimah (Emirate of)": "Ras Al Khaimah (UAE)",
+    "Andorra (Principality of)": "Andorra",
+    "Guernsey (States of)": "Guernsey",
+    "Jersey (States of)": "Jersey",
+    "Congo (Democratic Republic of)": "Congo (Democratic Republic)",
+    "Congo (Republic of)": "Congo (Republic)"
   }
 }

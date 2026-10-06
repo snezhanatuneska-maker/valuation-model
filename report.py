@@ -652,11 +652,18 @@ def _company_summary_page(cp: dict, mkt: dict, ops: dict, output: dict) -> list:
     story.append(Spacer(1, 10))
 
     competitors = [c for c in (g(mkt, "key_competitor_1"), g(mkt, "key_competitor_2"), g(mkt, "key_competitor_3")) if c]
-    market_rows = [(SCORECARD_LABELS.get(k, k), g(mkt, k)) for k in MARKET_POTENTIAL_KEYS]
+    # Questionnaire answers: only the ones the founder actually gave. Companies with revenue
+    # may skip the questionnaire (the Scorecard only counts before revenue).
+    answered = any(g(mkt, k) for k in (*MARKET_POTENTIAL_KEYS, *TEAM_PRODUCT_KEYS))
+    answer = lambda k: g(mkt, k) or "Not answered"  # noqa: E731
+    if answered:
+        market_rows = [(SCORECARD_LABELS.get(k, k), answer(k)) for k in MARKET_POTENTIAL_KEYS]
+        team_rows = [(SCORECARD_LABELS.get(k, k), answer(k)) for k in TEAM_PRODUCT_KEYS]
+    else:
+        market_rows = []
+        team_rows = [("Questionnaire", "Not answered (only needed before revenue, for the Scorecard method)")]
     market_rows.append(("Key competitors", ", ".join(competitors) if competitors else None))
     market_table = info_table(market_rows, col_widths=[HALF_W * 0.4, HALF_W * 0.6])
-
-    team_rows = [(SCORECARD_LABELS.get(k, k), g(mkt, k)) for k in TEAM_PRODUCT_KEYS]
     team_table = info_table(team_rows, col_widths=[HALF_W * 0.4, HALF_W * 0.6])
     rev = g(ops, "current_revenue_last_12_months") or 0
     margin = (g(ops, "current_ebitda") or 0) / rev if rev else None
@@ -816,12 +823,15 @@ def _valuation_summary_page(output: dict) -> list:
 
 def _warnings_page(output: dict) -> list:
     warnings = g(output, "warnings", []) or []
-    story = [P("Checks on your inputs", STYLES["h2"])]
+    has_checks = any(w.get("severity") == "warning" for w in warnings)
+    story = [P("Checks on your inputs" if has_checks else "Notes on how the data was used", STYLES["h2"])]
     if not warnings:
         story.append(P("No issues were found in the inputs.", STYLES["td_label"]))
         return story
-    story.append(P("The calculation ran, but these points deserve a second look before the numbers are "
-                   "shared. Warnings may change the result; notes explain how the data was used.", STYLES["sub"]))
+    story.append(P("The calculation ran, but the points marked as warnings deserve a second look before the numbers "
+                   "are shared; notes explain how the data was used." if has_checks else
+                   "Nothing here needs fixing: these notes explain how your figures and the market data were "
+                   "used.", STYLES["sub"]))
     rows = [["Warning" if w.get("severity") == "warning" else "Note", w.get("message")] for w in warnings]
     t = data_table(["Type", "Detail"], rows, col_widths=[CONTENT_W * 0.14, CONTENT_W * 0.86], text_table=True)
     story.append(t)

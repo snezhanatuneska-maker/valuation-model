@@ -313,3 +313,49 @@ def test_old_industry_and_answer_spellings_still_work():
     r = ve.ValuationInput(**case)
     assert r.company_profile.industry == "Healthcare Information and Technology"
     assert run(case).blended_pre_money_valuation > 0
+
+
+def test_old_country_names_still_work():
+    case = copy.deepcopy(REFERENCE_CASE)
+    case["company_profile"]["country"] = "Swaziland"
+    assert ve.ValuationInput(**case).company_profile.country == "Eswatini"
+    assert run(case).blended_pre_money_valuation > 0
+
+
+def codes(case):
+    return {w.code for w in run(case).warnings}
+
+
+def test_stage_and_revenue_mismatch_is_flagged():
+    assert "stage_revenue" in codes(german(company_profile__company_stage="Idea stage"))  # €300k revenue
+    assert "stage_no_revenue" in codes(german(operating_performance__current_revenue_last_12_months=0,
+                                              operating_performance__current_ebitda=-50_000))
+    assert not {"stage_revenue", "stage_no_revenue"} & codes(GERMAN_CASE)
+
+
+def test_large_investor_stake_is_flagged():
+    assert "investor_stake" in codes(german(funding__capital_needed=2_000_000))
+    assert "investor_stake" not in codes(GERMAN_CASE)
+
+
+def test_implausible_dates_are_flagged():
+    assert "valuation_date" in codes(german(company_profile__valuation_date="1990-01-01"))
+    assert "incorporation_year" in codes(german(company_profile__year_of_incorporation=2030))
+
+
+def test_unanswered_scorecard_questions_count_as_typical():
+    case = german(company_profile__company_stage="Idea stage")
+    full = run(case).scorecard
+    case["market_and_team_assessment"] = {"management_team_experience": "Demonstrated experience as a CEO"}
+    r = run(case)
+    assert len(r.scorecard.unanswered) == 12
+    assert any(w.code == "scorecard_unanswered" for w in r.warnings)
+    team = r.scorecard.criteria["strength_of_the_team"]
+    assert team.score == pytest.approx((1.2 + 1 + 1) / 3)
+    assert full.unanswered == []
+    # Companies with revenue don't need to answer at all, and get no Scorecard warning.
+    case = german()
+    case["market_and_team_assessment"] = {}
+    r = run(case)
+    assert r.blended_pre_money_valuation == pytest.approx(run(GERMAN_CASE).blended_pre_money_valuation)
+    assert "scorecard_unanswered" not in {w.code for w in r.warnings}

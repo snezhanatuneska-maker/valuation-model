@@ -392,7 +392,7 @@ def get_industries() -> list[str]:
 
 @reference_router.get("/countries")
 def get_countries() -> list[str]:
-    return sorted(ve.country_data().keys())
+    return sorted(ve.country_data().keys(), key=ve.name_sort_key)
 
 
 @reference_router.get("/stages")

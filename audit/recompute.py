@@ -219,7 +219,7 @@ def recompute(case):
     # --- Scorecard (Payne): benchmark x sum(weight x score), no haircut ---
     L, aliases = REF["scorecard_qualitative_lookup"], REF["scorecard_option_aliases"]
     m = case["market_and_team_assessment"]
-    s = lambda k: L[k][aliases.get(k, {}).get(m[k], m[k])]
+    s = lambda k: 1.0 if m.get(k) is None else L[k][aliases.get(k, {}).get(m[k], m[k])]  # unanswered = typical
     groups = {
         "strength_of_the_team": (0.30, ["management_team_experience", "willingness_to_step_aside_for_ceo",
                                         "management_team_completeness"]),

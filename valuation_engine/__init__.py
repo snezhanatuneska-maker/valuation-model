@@ -85,6 +85,17 @@ def scorecard_qualitative_lookup() -> dict:
     return _all_reference_data()["scorecard_qualitative_lookup"]
 
 
+def country_aliases() -> dict:
+    """{old country name: current name}, e.g. "Swaziland" -> "Eswatini"."""
+    return _all_reference_data().get("country_aliases", {})
+
+
+def name_sort_key(name: str) -> str:
+    """Alphabetical order that ignores accents, so "Côte d'Ivoire" sorts under C and "Türkiye" under T."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", name) if not unicodedata.combining(c)).casefold()
+
+
 def industry_aliases() -> dict:
     """{old industry name: current name}, e.g. Damodaran's "Heathcare" spelling."""
     return _all_reference_data().get("industry_aliases", {})
@@ -331,26 +342,35 @@ class CompanyProfile(BaseModel):
         """Inputs using an old industry name (e.g. a corrected misspelling) keep working."""
         return industry_aliases().get(v, v)
 
+    @field_validator("country")
+    @classmethod
+    def _current_country_name(cls, v):
+        """Inputs using an old country name (e.g. "Swaziland") keep working."""
+        return country_aliases().get(v, v)
+
 
 class MarketAndTeamAssessment(BaseModel):
     """
-    Each field's value must be an option string present in
+    Each answer must be an option string present in
     scorecard_qualitative_lookup() under the matching key (or an old
-    spelling listed in scorecard_option_aliases).
+    spelling listed in scorecard_option_aliases). An answer may be left
+    out (None): it is then scored as typical (100%) and, if the Scorecard
+    is used, flagged in the warnings. Companies with revenue don't need to
+    answer, since the Scorecard only counts before revenue.
     """
-    management_team_experience: str
-    willingness_to_step_aside_for_ceo: str
-    management_team_completeness: str
-    product_development_stage: str
-    product_compelling_to_customers: str
-    product_can_be_duplicated: str
-    strength_of_competitors_in_market: str
-    strength_of_competitive_products: str
-    target_market_size: str
-    revenue_potential_in_5_years: str
-    sales_channels_partners: str
-    marketing_partners: str
-    need_for_additional_funding_rounds: str
+    management_team_experience: Optional[str] = None
+    willingness_to_step_aside_for_ceo: Optional[str] = None
+    management_team_completeness: Optional[str] = None
+    product_development_stage: Optional[str] = None
+    product_compelling_to_customers: Optional[str] = None
+    product_can_be_duplicated: Optional[str] = None
+    strength_of_competitors_in_market: Optional[str] = None
+    strength_of_competitive_products: Optional[str] = None
+    target_market_size: Optional[str] = None
+    revenue_potential_in_5_years: Optional[str] = None
+    sales_channels_partners: Optional[str] = None
+    marketing_partners: Optional[str] = None
+    need_for_additional_funding_rounds: Optional[str] = None
     key_competitor_1: Optional[str] = None
     key_competitor_2: Optional[str] = None
     key_competitor_3: Optional[str] = None
@@ -359,7 +379,7 @@ class MarketAndTeamAssessment(BaseModel):
     def _current_wording(self):
         """Old saved answers with misspelled option text are mapped to today's wording."""
         for criterion in scorecard_qualitative_lookup():
-            if hasattr(self, criterion):
+            if hasattr(self, criterion) and getattr(self, criterion) is not None:
                 object.__setattr__(self, criterion, canonical_option(criterion, getattr(self, criterion)))
         return self
 
@@ -813,6 +833,7 @@ class ScorecardResult:
     total_factor: float
     pre_money_valuation: float
     benchmark_to_be_sourced: bool = False  # the country table still holds placeholder figures
+    unanswered: list[str] = field(default_factory=list)  # questions scored as typical (100%)
 
 
 def country_stage_benchmark(country: str, stage: str) -> Optional[dict]:
@@ -837,9 +858,12 @@ def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) 
 
     criteria_results = {}
     total_factor = 0.0
+    unanswered = [q for qs in SCORECARD_CRITERIA_QUESTIONS.values() for q in qs if getattr(market, q) is None]
     for key, weight in SCORECARD_CRITERIA_WEIGHTS.items():
         questions = SCORECARD_CRITERIA_QUESTIONS[key]
-        score = sum(get_scorecard_score(q, getattr(market, q)) for q in questions) / len(questions)
+        # An unanswered question counts as "typical" (score 1.0).
+        score = sum(1.0 if getattr(market, q) is None else get_scorecard_score(q, getattr(market, q))
+                    for q in questions) / len(questions)
         criteria_results[key] = ScorecardCriterionResult(
             weight=weight, score=score, amount_assigned=benchmark * weight * score)
         total_factor += weight * score
@@ -852,6 +876,7 @@ def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) 
         total_factor=total_factor,
         pre_money_valuation=benchmark * total_factor,
         benchmark_to_be_sourced=to_be_sourced,
+        unanswered=unanswered,
     )
 
 
@@ -1162,6 +1187,19 @@ def _eur(x: float) -> str:
     return f"€{x:,.0f}"
 
 
+PRE_REVENUE_STAGES = {"Idea stage", "Development stage"}
+# Revenue (last 12 months) above which an Idea/Development stage choice is questioned.
+STAGE_REVENUE_THRESHOLD = 100_000
+# Share of the company the new investors would own above which the round is questioned.
+INVESTOR_STAKE_WARNING = 0.5
+
+
+def method_values_post_money(method_values: dict, capital_needed: float) -> Optional[float]:
+    """Post-money value from the blended pre-money (same blend as run_valuation)."""
+    blended = sum(mv.weighted_value for mv in method_values.values() if mv.weighted_value is not None)
+    return blended + capital_needed if blended > 0 else None
+
+
 def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, dcf: DCFResult,
                      bench: _BenchmarkRecorder, scorecard: ScorecardResult,
                      method_values: dict) -> list[ValuationWarning]:
@@ -1259,6 +1297,44 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
         warn("benchmark_global", f"There is no separate published pre-revenue benchmark for "
              f"{region_name}, so the Scorecard uses the all-region median. Enter a local benchmark if you "
              "have one.", "info")
+    if method_values["scorecard"].status == "ok" and scorecard.unanswered:
+        n = len(scorecard.unanswered)
+        warn("scorecard_unanswered", f"{n} of the {sum(len(q) for q in SCORECARD_CRITERIA_QUESTIONS.values())} "
+             f"Scorecard question{'s were' if n > 1 else ' was'} not answered and {'are' if n > 1 else 'is'} "
+             "scored as typical (100%). Answer them for a Scorecard value that reflects your company.")
+
+    # Stage and revenue should tell the same story: the stage decides the method weights.
+    stage_name = cp.company_stage.replace(" stage", "").replace(" Stage", "")
+    if cp.company_stage in PRE_REVENUE_STAGES and ltm >= STAGE_REVENUE_THRESHOLD:
+        warn("stage_revenue", f"You chose the {stage_name} stage, which is for companies without meaningful "
+             f"revenue, but entered {_eur(ltm)} of revenue in the last 12 months. At this stage the Scorecard "
+             f"(a comparison with typical pre-revenue startups) counts for {_pct(method_values['scorecard'].weight)} "
+             "of the value. If you already sell, the Startup stage probably fits better.")
+    elif cp.company_stage not in PRE_REVENUE_STAGES and ltm == 0:
+        warn("stage_no_revenue", f"You chose the {stage_name} stage, which assumes the company already has "
+             "customers and revenue, but entered no revenue for the last 12 months. The Scorecard, which is built "
+             "for pre-revenue companies, is therefore not used. If you don't sell yet, the Idea or Development "
+             "stage probably fits better.")
+
+    # A round that hands investors most of the company is unusual and worth a second look.
+    post = method_values_post_money(method_values, inputs.funding.capital_needed)
+    if post:
+        stake = inputs.funding.capital_needed / post
+        if stake > INVESTOR_STAKE_WARNING:
+            warn("investor_stake", f"At this valuation, the {_eur(inputs.funding.capital_needed)} you are raising "
+                 f"would buy {_pct(stake)} of the company (post-money {_eur(post)}). Early rounds usually sell well "
+                 "under half of a company, so check the amount you are raising and your plan.")
+
+    vdate = valuation_date_of(cp)
+    today = date.today()
+    if abs((vdate - today).days) > 366:
+        warn("valuation_date", f"The valuation date ({vdate:%d %B %Y}) is more than a year "
+             f"{'before' if vdate < today else 'after'} today, but the market data, tax rates and benchmarks are "
+             "current figures. Check the date.")
+    if cp.year_of_incorporation and cp.year_of_incorporation > vdate.year:
+        warn("incorporation_year", f"The year of incorporation ({cp.year_of_incorporation}) is after the "
+             f"valuation date ({vdate.year}). Check both.")
+
     if method_values["scorecard"].status == "ok" and scorecard.benchmark_to_be_sourced:
         warn("benchmark_to_be_sourced", f"The {cp.country}-specific pre-revenue benchmark is still to be "
              f"sourced, so the Scorecard uses the Europe figure ({_eur(scorecard.benchmark_pre_money_valuation)}) "
@@ -1278,7 +1354,10 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
 
     for key, mv in method_values.items():
         if mv.status == "not_meaningful" and mv.weight > 0:
-            warn(f"nm_{key}", f"{METHOD_NAMES[key]} left out of the blend: {mv.note}")
+            # Without revenue, Comparables can't apply by design (explained by "no_revenue_history"):
+            # a note, not something to fix.
+            expected = key == "comparables" and ltm == 0
+            warn(f"nm_{key}", f"{METHOD_NAMES[key]} left out of the blend: {mv.note}", "info" if expected else "warning")
         elif mv.status == "ok" and mv.note:
             warn(f"zero_{key}", f"{METHOD_NAMES[key]}: {mv.note}")
     debt = inputs.financial_assumptions.existing_debt_balance
