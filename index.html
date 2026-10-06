@@ -209,6 +209,66 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 .landing-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .landing-actions .btn { flex: 1 1 220px; }
 .landing-fineprint { margin: 18px 0 0; font-size: 0.85rem; color: var(--ink-soft); }
+/* ---------- Term explanations (info icons) ---------- */
+.tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0;
+  border: 1px solid var(--ink-soft);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  font: italic 700 11px/1 Georgia, serif;
+  vertical-align: 1px;
+  cursor: help;
+}
+.tip:hover, .tip:focus-visible, .tip[aria-expanded="true"] { border-color: var(--navy); color: #fff; background: var(--navy); outline: none; }
+.tip-bubble {
+  position: absolute;
+  z-index: 30;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--navy-deep);
+  color: #fff;
+  font-size: 13.5px;
+  line-height: 1.45;
+  font-weight: 400;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+.tip-bubble[hidden] { display: none; }
+.read-result {
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--brass-light);
+  border-radius: 6px;
+  background: var(--paper);
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+.read-result h3 { margin: 0 0 6px; font-size: 15px; color: var(--navy); }
+.read-result p { margin: 0; }
+.glossary { margin-top: 28px; font-size: 14px; }
+.glossary summary { cursor: pointer; font-weight: 600; color: var(--navy); }
+.glossary dl { margin: 12px 0 0; }
+.glossary dt { font-weight: 600; margin-top: 10px; }
+.glossary dd { margin: 2px 0 0; color: var(--ink-soft); line-height: 1.5; }
+.form-warning {
+  margin: 0 0 20px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--brass);
+  background: #FBF3E2;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+.form-warning[hidden] { display: none; }
+input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-shadow: 0 0 0 3px rgba(168, 64, 47, 0.15); }
+.running-total { font-weight: 600; }
+.running-total.is-off { color: var(--rust); }
 .demo-note {
   margin: 0 0 24px;
   padding: 10px 14px;
@@ -414,6 +474,8 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
   </div>
 </header>
 
+<div id="tip-bubble" class="tip-bubble" role="tooltip" hidden></div>
+
 <div id="wake-banner" class="wake-banner" role="status" aria-live="polite" hidden>
   Waking up the server, about 30 seconds&hellip;
   <small>The free server sleeps when nobody is using it. The page continues on its own.</small>
@@ -450,10 +512,11 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
       <div class="step-rule"><div id="step-fill" class="step-fill"></div></div>
     </div>
 
-    <p id="form-error" class="form-error" hidden></p>
+    <p id="form-error" class="form-error" role="alert" hidden></p>
+    <p id="form-warning" class="form-warning" role="status" hidden></p>
 
     <!-- Step 1: Company Profile -->
-    <form class="wizard-step is-active" data-step="1" id="step-1">
+    <form class="wizard-step is-active" data-step="1" id="step-1" novalidate>
       <p class="step-intro">General information about the company being valued.</p>
 
       <fieldset class="field-group" style="border-top:none; padding-top:0;">
@@ -549,7 +612,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
         <legend>Financial profile</legend>
         <div class="field-row">
           <div class="field">
-            <label for="committed_capital">Committed capital</label>
+            <label for="committed_capital">Committed capital (&euro;)<button type="button" class="tip" data-term="committed_capital" aria-label="What is committed capital?">i</button></label>
             <input type="number" id="committed_capital" min="0" step="1" value="0">
           </div>
           <div class="field">
@@ -597,7 +660,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
     </form>
 
     <!-- Step 2: Market & Team Assessment -->
-    <form class="wizard-step" data-step="2" id="step-2">
+    <form class="wizard-step" data-step="2" id="step-2" novalidate>
       <p class="step-intro">These qualitative answers drive the Scorecard method. Each dropdown offers exactly the option set the calculation engine recognizes.</p>
       <div id="scorecard-fields"><p class="loading-hint">Loading question set&hellip;</p></div>
 
@@ -621,7 +684,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
     </form>
 
     <!-- Step 3: Operating Performance -->
-    <form class="wizard-step" data-step="3" id="step-3">
+    <form class="wizard-step" data-step="3" id="step-3" novalidate>
       <p class="step-intro">The company's actual (not projected) results for the last 12 months. Projected margins start from these figures, and the Comparables method uses this EBITDA.</p>
 
       <div class="field-row">
@@ -630,7 +693,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
           <input type="number" id="current_revenue_last_12_months" min="0" step="1" required>
         </div>
         <div class="field">
-          <label for="current_ebitda">EBITDA, last 12 months (&euro;)</label>
+          <label for="current_ebitda">EBITDA, last 12 months (&euro;)<button type="button" class="tip" data-term="ebitda" aria-label="What is EBITDA?">i</button></label>
           <input type="number" id="current_ebitda" step="1" required>
           <p class="field-hint">Enter a negative number for a loss.</p>
         </div>
@@ -648,7 +711,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
     </form>
 
     <!-- Step 4: Financial Assumptions -->
-    <form class="wizard-step" data-step="4" id="step-4">
+    <form class="wizard-step" data-step="4" id="step-4" novalidate>
       <p class="step-intro">A 5-year revenue and capital-expenditure plan. The EBITDA margin starts from your last 12 months and moves to the industry margin by Year 5, unless you set your own target below.</p>
 
       <div class="field">
@@ -668,7 +731,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
       </fieldset>
 
       <fieldset class="field-group">
-        <legend>Planned capital expenditure (&euro;)</legend>
+        <legend>Planned capital expenditure (capex, &euro;)<button type="button" class="tip" data-term="capex" aria-label="What is capex?">i</button></legend>
         <div class="field-row field-row-5">
           <div class="field"><label for="capex_y1">Year 1</label><input type="number" id="capex_y1" min="0" step="1" value="0"></div>
           <div class="field"><label for="capex_y2">Year 2</label><input type="number" id="capex_y2" min="0" step="1" value="30000"></div>
@@ -685,7 +748,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
           <p class="field-hint">Subtracted (and cash added) to turn enterprise value into equity value.</p>
         </div>
         <div class="field">
-          <label for="target_ebitda_margin_override">Year-5 EBITDA margin (%, optional)</label>
+          <label for="target_ebitda_margin_override">Year-5 EBITDA margin (%, optional)<button type="button" class="tip" data-term="ebitda_margin" aria-label="What is an EBITDA margin?">i</button></label>
           <input type="number" id="target_ebitda_margin_override" min="-100" max="90" step="0.1" placeholder="Industry margin">
           <p class="field-hint">Leave empty to use the industry's EBITDA margin.</p>
         </div>
@@ -695,12 +758,12 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
     </form>
 
     <!-- Step 5: Ownership & Funding -->
-    <form class="wizard-step" data-step="5" id="step-5">
+    <form class="wizard-step" data-step="5" id="step-5" novalidate>
       <p class="step-intro">The capital being raised, and what it funds.</p>
 
       <div class="field-row">
         <div class="field">
-          <label for="capital_needed">Capital being raised (&euro;)</label>
+          <label for="capital_needed">Capital being raised (&euro;)<button type="button" class="tip" data-term="pre_post_money" aria-label="What is pre-money and post-money?">i</button></label>
           <input type="number" id="capital_needed" min="1" step="1" required>
         </div>
         <div class="field">
@@ -712,7 +775,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 
       <fieldset class="field-group">
         <legend>Ownership structure</legend>
-        <p class="field-hint">Current shareholders and their ownership percentage, before this round. If you fill this in, it must add up to 100%.</p>
+        <p class="field-hint">Current shareholders and their ownership percentage, before this round. Optional; if you fill it in, it should add up to 100%. <span class="running-total" id="ownership-total"></span></p>
         <div class="field-row field-row-3">
           <div class="field"><input type="text" id="shareholder_name_1" placeholder="Shareholder 1 name"><input type="number" id="shareholder_pct_1" min="0" max="100" step="0.1" placeholder="%" style="margin-top:6px"></div>
           <div class="field"><input type="text" id="shareholder_name_2" placeholder="Shareholder 2 name"><input type="number" id="shareholder_pct_2" min="0" max="100" step="0.1" placeholder="%" style="margin-top:6px"></div>
@@ -734,10 +797,10 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
         </div>
         <div class="field-row field-row-3">
           <div class="field"><label for="use_ops">Operations</label><input type="number" id="use_ops" min="0" step="1"></div>
-          <div class="field"><label for="use_capex">Capital expenditures</label><input type="number" id="use_capex" min="0" step="1"></div>
+          <div class="field"><label for="use_capex">Capital expenditure (capex)</label><input type="number" id="use_capex" min="0" step="1"></div>
           <div class="field"><label for="use_other">Others</label><input type="number" id="use_other" min="0" step="1"></div>
         </div>
-        <p class="field-hint">If you fill this in, it must add up to the capital being raised.</p>
+        <p class="field-hint">Optional; if you fill it in, it should add up to the capital being raised. <span class="running-total" id="uof-total"></span></p>
       </fieldset>
     </form>
 
@@ -1114,12 +1177,12 @@ async function updateProjectionPreview() {
         <tbody>
           <tr><td>Revenue</td>${cells((y) => money(y.revenue))}</tr>
           <tr><td>EBITDA margin</td>${cells((y) => pct(y.ebitda_margin))}</tr>
-          <tr class="subtotal-row"><td>EBITDA</td>${cells((y) => money(y.ebitda))}</tr>
+          <tr class="subtotal-row"><td>EBITDA<button type="button" class="tip" data-term="ebitda" aria-label="What is EBITDA?">i</button></td>${cells((y) => money(y.ebitda))}</tr>
           <tr><td>Depreciation &amp; amortisation</td>${cells((y) => money(y.da))}</tr>
           ${stepped ? `<tr><td>Tax rate</td>${cells((y) => pct(y.tax_rate))}</tr>` : ""}
           <tr><td>Tax on EBIT</td>${cells((y) => money(-y.tax_on_ebit))}</tr>
-          <tr><td>Capital expenditure</td>${cells((y) => money(-y.capex))}</tr>
-          <tr><td>Change in working capital</td>${cells((y) => money(-y.change_in_working_capital))}</tr>
+          <tr><td>Capital expenditure<button type="button" class="tip" data-term="capex" aria-label="What is capex?">i</button></td>${cells((y) => money(-y.capex))}</tr>
+          <tr><td>Change in working capital<button type="button" class="tip" data-term="working_capital" aria-label="What is working capital?">i</button></td>${cells((y) => money(-y.change_in_working_capital))}</tr>
           <tr class="subtotal-row"><td>Free cash flow</td>${cells((y) => money(y.unlevered_fcf))}</tr>
         </tbody>
       </table>
@@ -1150,61 +1213,171 @@ function goToStep(step) {
   document.getElementById("btn-calculate").hidden = step !== 5;
 
   if (step === 4) updateProjectionPreview();
+  if (step === 5) updateRunningTotals();
 
   clearFormError();
+  showFormWarnings([]);
 }
 
-// Checks the browser can't express with min/max/required.
+// ------------------------------------------------------------
+// Validation: impossible or missing inputs stop the step with a plain
+// message next to the field; things that are merely unusual (ownership
+// below 100%, use of funds not matching the raise) are shown as a note and
+// listed again under "Checks on your inputs" in the results.
+// ------------------------------------------------------------
+const FIELD_NAMES = {
+  company_name: "Company name", valuation_date: "Valuation date",
+  planned_time_to_exit_years: "Planned time to exit", committed_capital: "Committed capital",
+  current_revenue_last_12_months: "Revenue in the last 12 months", current_ebitda: "EBITDA in the last 12 months",
+  cash_available: "Cash available", current_ppe_value: "Property, plant & equipment",
+  revenue_year1: "Year-1 revenue", existing_debt_balance: "Existing debt",
+  growth_y2: "Revenue growth in Year 2", growth_y3: "Revenue growth in Year 3",
+  growth_y4: "Revenue growth in Year 4", growth_y5: "Revenue growth in Year 5",
+  capex_y1: "Capex in Year 1", capex_y2: "Capex in Year 2", capex_y3: "Capex in Year 3",
+  capex_y4: "Capex in Year 4", capex_y5: "Capex in Year 5",
+  target_ebitda_margin_override: "Year-5 EBITDA margin", dcf_tax_rate_override: "Corporate tax rate",
+  trade_tax_hebesatz: "Hebesatz", capital_needed: "Capital being raised",
+  number_of_existing_shares: "Number of existing shares", benchmark_pre_money_override: "Your own benchmark",
+  num_founders: "Number of founders", num_employees: "Number of employees",
+  year_of_incorporation: "Year incorporated", contact_email: "Contact email",
+};
+
+function fieldName(el) {
+  if (FIELD_NAMES[el.id]) return FIELD_NAMES[el.id];
+  const m = el.id.match(/^shareholder_pct_(\d)$/);
+  if (m) return `Shareholder ${m[1]}'s percentage`;
+  const label = document.querySelector(`label[for="${el.id}"]`);
+  return label ? label.textContent.trim() : "This field";
+}
+
+// A friendly message for a field the browser considers invalid, or null.
+function fieldProblem(el) {
+  if (el.closest("[hidden]") || el.disabled) return null;
+  const v = el.validity;
+  if (v.valid) return null;
+  const name = fieldName(el);
+  const fmt = (x) => Number(x).toLocaleString("en-US");
+  if (v.valueMissing) return `${name} is missing. Please fill it in.`;
+  if (v.badInput) return `${name}: please enter a number (digits only, no currency signs or spaces).`;
+  if (v.rangeUnderflow) {
+    return Number(el.min) === 0 ? `${name} can't be negative.` : `${name} must be at least ${fmt(el.min)}.`;
+  }
+  if (v.rangeOverflow) return `${name} can be at most ${fmt(el.max)}.`;
+  if (v.stepMismatch) return `${name}: please use ${Number(el.step) === 1 ? "whole numbers" : "fewer decimals"}.`;
+  if (v.typeMismatch) return `${name} doesn't look right. Please check it.`;
+  return `${name} doesn't look right. Please check it.`;
+}
+
+function markInvalid(el) {
+  const details = el.closest("details");
+  if (details) details.open = true;
+  el.classList.add("is-invalid");
+  el.addEventListener("input", () => el.classList.remove("is-invalid"), { once: true });
+  el.focus({ preventScroll: true });
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function ownershipTotal() {
+  let total = 0, any = false;
+  for (let i = 1; i <= 6; i++) {
+    const v = val(`shareholder_pct_${i}`);
+    if (v !== "" && Number(v) > 0) { total += Number(v); any = true; }
+  }
+  return any ? total : null;
+}
+
+function useOfFundsTotal() {
+  const uses = ["use_rd", "use_sales", "use_inventory", "use_ops", "use_capex", "use_other"]
+    .map((id) => val(id)).filter((v) => v !== "").map(Number);
+  return uses.length ? uses.reduce((a, b) => a + b, 0) : null;
+}
+
+// Returns { error, field } for something that must be fixed, or { warnings } for things worth a look.
 function extraChecks(step) {
+  const warnings = [];
   if (step === 3) {
     const rev = Number(val("current_revenue_last_12_months") || 0);
     const ebitda = Number(val("current_ebitda") || 0);
-    if (rev > 0 && ebitda > rev) return "EBITDA can't be larger than revenue. Please check both figures.";
+    if (rev > 0 && ebitda > rev) {
+      return { error: "EBITDA can't be larger than revenue (it is what's left of revenue after operating costs). Please check both figures.", field: "current_ebitda" };
+    }
+    if (rev === 0 && ebitda > 0) {
+      return { error: "With no revenue, EBITDA can't be positive. Enter 0 or a negative number (your operating loss).", field: "current_ebitda" };
+    }
   }
   if (step === 4) {
-    if (!(Number(val("revenue_year1")) > 0)) return "Year-1 revenue must be above zero.";
+    if (!(Number(val("revenue_year1")) > 0)) {
+      return { error: "Year-1 revenue must be above zero: the cash-flow methods need a revenue plan to build on.", field: "revenue_year1" };
+    }
   }
   if (step === 5) {
-    const capital = Number(val("capital_needed") || 0);
-    if (!(capital > 0)) return "Please enter the capital being raised.";
-    const owners = [];
+    if (!(Number(val("capital_needed")) > 0)) {
+      return { error: "Please enter the amount you are raising in this round (above zero).", field: "capital_needed" };
+    }
     for (let i = 1; i <= 6; i++) {
       const name = (val(`shareholder_name_${i}`) || "").trim();
       const pctVal = val(`shareholder_pct_${i}`);
-      if (pctVal !== "" && Number(pctVal) > 0 && !name) return `Shareholder ${i} has a percentage but no name.`;
-      if (pctVal !== "" && Number(pctVal) > 0) owners.push(Number(pctVal));
-    }
-    if (owners.length) {
-      const total = owners.reduce((a, b) => a + b, 0);
-      if (Math.abs(total - 100) > 0.5) {
-        return `Ownership adds up to ${total.toFixed(1)}%. It must add up to 100% (add the remaining shareholders, or leave the whole section empty).`;
+      if (pctVal !== "" && Number(pctVal) > 0 && !name) {
+        return { error: `Shareholder ${i} has a percentage but no name. Add a name or clear the percentage.`, field: `shareholder_name_${i}` };
       }
     }
-    const uses = ["use_rd", "use_sales", "use_inventory", "use_ops", "use_capex", "use_other"]
-      .map((id) => val(id)).filter((v) => v !== "").map(Number);
-    if (uses.length) {
-      const total = uses.reduce((a, b) => a + b, 0);
-      if (Math.abs(total - capital) > Math.max(1, 0.005 * capital)) {
-        return `Use of funds adds up to ${money(total)}, but the capital being raised is ${money(capital)}. Please make them match (or leave use of funds empty).`;
-      }
+    const owned = ownershipTotal();
+    if (owned !== null && owned > 100.5) {
+      return { error: `Ownership adds up to ${owned.toFixed(1)}%, which is more than 100%. Please check the percentages.`, field: "shareholder_pct_1" };
+    }
+    if (owned !== null && owned < 99.5) {
+      warnings.push(`Ownership adds up to ${owned.toFixed(1)}%, not 100%. The valuation still runs; add the remaining shareholders if you want the ownership chart in the report to be complete.`);
+    }
+    const capital = Number(val("capital_needed"));
+    const uses = useOfFundsTotal();
+    if (uses !== null && Math.abs(uses - capital) > Math.max(1, 0.005 * capital)) {
+      warnings.push(`Use of funds adds up to ${money(uses)}, but you are raising ${money(capital)}. The valuation still runs; it is just flagged in the report.`);
     }
   }
-  return null;
+  return { warnings };
+}
+
+function showFormWarnings(list) {
+  const el = document.getElementById("form-warning");
+  el.textContent = list.join(" ");
+  el.hidden = list.length === 0;
 }
 
 function validateStep(step) {
   const form = document.getElementById(`step-${step}`);
-  if (form && typeof form.reportValidity === "function" && !form.reportValidity()) {
-    showFormError("Please fix the highlighted field before continuing.");
+  if (form) {
+    for (const el of form.querySelectorAll("input, select")) {
+      const problem = fieldProblem(el);
+      if (problem) {
+        showFormError(problem);
+        markInvalid(el);
+        return false;
+      }
+    }
+  }
+  const { error, field, warnings } = extraChecks(step);
+  if (error) {
+    showFormError(error);
+    if (field) markInvalid(document.getElementById(field));
     return false;
   }
-  const problem = extraChecks(step);
-  if (problem) {
-    showFormError(problem);
-    return false;
-  }
+  showFormWarnings(warnings || []);
   return true;
 }
+
+// Live totals under Ownership and Use of funds.
+function updateRunningTotals() {
+  const owned = ownershipTotal();
+  const ownEl = document.getElementById("ownership-total");
+  ownEl.textContent = owned === null ? "" : `Total so far: ${owned.toFixed(1)}%.`;
+  ownEl.classList.toggle("is-off", owned !== null && Math.abs(owned - 100) > 0.5);
+  const uses = useOfFundsTotal();
+  const capital = Number(val("capital_needed") || 0);
+  const uofEl = document.getElementById("uof-total");
+  uofEl.textContent = uses === null ? "" : `Total so far: ${money(uses)}${capital > 0 ? ` of ${money(capital)}` : ""}.`;
+  uofEl.classList.toggle("is-off", uses !== null && capital > 0 && Math.abs(uses - capital) > Math.max(1, 0.005 * capital));
+}
+document.getElementById("step-5").addEventListener("input", updateRunningTotals);
 
 document.getElementById("btn-next").addEventListener("click", () => {
   if (!validateStep(currentStep)) return;
@@ -1322,9 +1495,8 @@ document.getElementById("btn-calculate").addEventListener("click", async () => {
   for (const step of [1, 2, 3, 4, 5]) {
     if (!validateStep(step)) {
       if (step !== currentStep) {
-        const msg = document.getElementById("form-error").textContent;
         goToStep(step);
-        showFormError(msg);
+        validateStep(step); // again, now that the step is visible, to point at the field
       }
       return;
     }
@@ -1448,6 +1620,105 @@ function checksBlock(warnings) {
   `;
 }
 
+// ------------------------------------------------------------
+// Plain-language explanations of financial terms, shown from the (i)
+// buttons next to them and listed together under "Key terms" in the results.
+// ------------------------------------------------------------
+const TERMS = {
+  ebitda: ["EBITDA",
+    "Earnings before interest, taxes, depreciation and amortisation: your revenue minus operating costs such as COGS (cost of goods sold: materials, production, hosting) and SG&A (selling, general and administrative costs: salaries, marketing, rent). It shows what the business itself earns before financing and accounting write-downs. A loss is a negative number."],
+  ebitda_margin: ["EBITDA margin",
+    "EBITDA as a percentage of revenue. A 15% margin means €15 of EBITDA for every €100 of revenue. If you leave this empty, the projection moves towards the typical margin of your industry by Year 5."],
+  working_capital: ["Working capital",
+    "Cash tied up in day-to-day business: receivables (invoices customers haven't paid yet) plus inventory (stock not yet sold) minus payables (bills you haven't paid yet). When revenue grows, more cash gets tied up, which lowers free cash flow. The app uses typical levels for your industry."],
+  capex: ["Capex (capital expenditure)",
+    "Money spent on things the company uses for several years, such as machines, equipment, vehicles or building software it capitalises. It isn't an operating cost, so it doesn't reduce EBITDA, but it does use cash."],
+  hurdle_rate: ["Target return (hurdle rate)",
+    "The yearly return an investor expects at your stage to make up for the risk that many startups fail: from 65% a year at the Idea stage down to 20% for mature companies. The Venture Capital method discounts your future exit value at this rate."],
+  pre_post_money: ["Pre-money and post-money",
+    "Pre-money is what the company is worth just before the new investment; post-money is pre-money plus the money raised. Example: €250,000 invested at a €1,000,000 pre-money valuation gives a €1,250,000 post-money valuation, and the investor owns 250,000 / 1,250,000 = 20%."],
+  ev_ebitda: ["EV/EBITDA multiple",
+    "Enterprise value divided by EBITDA: how many years of EBITDA buyers pay for listed companies in your industry. The Comparables method applies it to your EBITDA, then takes a discount because a young private company is harder to sell."],
+  dcf: ["Discounted cash flow (DCF)",
+    "Adds up the cash your plan generates over five years plus a value for the years after, each discounted to today at the cost of capital (WACC), then weighs it by the chance that a company at your stage survives."],
+  committed_capital: ["Committed capital",
+    "Money that founders and investors have already paid in or firmly promised, such as share capital or signed angel commitments. It appears in the report for context and doesn't change the valuation."],
+};
+const METHOD_TIPS = {
+  venture_capital: ["hurdle_rate", "a target return"],
+  comparables: ["ev_ebitda", "an EV/EBITDA multiple"],
+  dcf: ["dcf", "a DCF"],
+};
+
+function tipButton(term, what) {
+  return `<button type="button" class="tip" data-term="${term}" aria-label="What is ${escapeHtml(what)}?">i</button>`;
+}
+
+function glossaryBlock() {
+  const order = ["pre_post_money", "ebitda", "ebitda_margin", "working_capital", "capex", "hurdle_rate", "ev_ebitda", "dcf", "committed_capital"];
+  return `
+    <details class="glossary">
+      <summary>Key terms explained</summary>
+      <dl>${order.map((k) => `<dt>${escapeHtml(TERMS[k][0])}</dt><dd>${escapeHtml(TERMS[k][1])}</dd>`).join("")}</dl>
+    </details>`;
+}
+
+function readResultBox(result, scenarios) {
+  const used = Object.entries(result.method_values).filter(([, mv]) => mv.status === "ok" && mv.weight_used > 0);
+  const weights = used.map(([key, mv]) => `${METHOD_LABELS[key].replace(/ \(.*\)$/, "")} ${pct(mv.weight_used)}`).join(", ");
+  const hasScenarios = scenarios && Object.keys(scenarios).length > 0;
+  return `
+    <div class="read-result">
+      <h3>How to read your result</h3>
+      <p>The four methods look at your company from different angles: how your team and market compare with a typical startup (Scorecard), what an investor could earn at exit (Venture Capital), what similar listed companies are worth (Comparables) and the cash your plan generates (DCF). That is why they rarely agree.
+      ${used.length > 1
+        ? `The blended value weights them by your company's stage (here: ${escapeHtml(weights)}); a method that doesn't fit your company is left out.`
+        : `The blended value normally weights them by your company's stage, but with these inputs only ${escapeHtml(weights.replace(/ [\d.]+%$/, ""))} gives a meaningful value, so it carries the whole result; the checks below say why the others were left out.`}
+      ${hasScenarios ? "The revenue scenario slider further down shows how the value moves if Year-1 revenue comes in lower or higher than planned. " : ""}Treat the result as a well-reasoned starting point for a conversation with investors, not as a fixed price.</p>
+    </div>`;
+}
+
+// One shared bubble; opens on click/tap or keyboard focus, closes on Escape,
+// outside click or scroll. Works on touch screens where hover doesn't exist.
+const tipBubble = document.getElementById("tip-bubble");
+let openTip = null;
+
+function closeTip() {
+  if (!openTip) return;
+  openTip.setAttribute("aria-expanded", "false");
+  openTip = null;
+  tipBubble.hidden = true;
+}
+
+function showTip(btn) {
+  const term = TERMS[btn.dataset.term];
+  if (!term) return;
+  if (openTip && openTip !== btn) openTip.setAttribute("aria-expanded", "false");
+  openTip = btn;
+  btn.setAttribute("aria-expanded", "true");
+  tipBubble.innerHTML = `<strong>${escapeHtml(term[0])}</strong><br>${escapeHtml(term[1])}`;
+  tipBubble.hidden = false;
+  const r = btn.getBoundingClientRect();
+  const w = tipBubble.offsetWidth;
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), document.documentElement.clientWidth - w - 8);
+  const below = r.bottom + 8;
+  const fitsBelow = below + tipBubble.offsetHeight < window.innerHeight;
+  tipBubble.style.left = `${left + window.scrollX}px`;
+  tipBubble.style.top = `${(fitsBelow ? below : r.top - tipBubble.offsetHeight - 8) + window.scrollY}px`;
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".tip");
+  if (btn) {
+    e.preventDefault();
+    if (openTip === btn) closeTip(); else showTip(btn);
+  } else if (!e.target.closest("#tip-bubble")) {
+    closeTip();
+  }
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeTip(); });
+window.addEventListener("resize", closeTip);
+
 function renderResults(result, scenarios) {
   document.getElementById("results-loading").hidden = true;
   const panel = document.getElementById("results-panel");
@@ -1456,7 +1727,7 @@ function renderResults(result, scenarios) {
 
   const rows = Object.entries(result.method_values).map(([key, mv]) => `
     <tr>
-      <td>${METHOD_LABELS[key] || key}<p class="method-notes">${escapeHtml(methodExplanation(key, result))}</p></td>
+      <td>${METHOD_LABELS[key] || key}${METHOD_TIPS[key] ? tipButton(...METHOD_TIPS[key]) : ""}<p class="method-notes">${escapeHtml(methodExplanation(key, result))}</p></td>
       <td>${pct(mv.weight_used)}</td>
       <td class="${mv.status === "ok" ? "" : "muted"}">${methodValueCell(mv)}</td>
       <td>${mv.status === "ok" ? money(mv.weighted_value) : "—"}</td>
@@ -1466,11 +1737,12 @@ function renderResults(result, scenarios) {
   const leftOut = Object.values(result.method_values).some((mv) => mv.status === "not_meaningful");
 
   panel.innerHTML = `
+    ${readResultBox(result, scenarios)}
     <h2 class="ledger-title">Valuation summary</h2>
     <p class="ledger-subtitle">Pre-money equity value as of ${escapeHtml(new Date(result.valuation_date + "T00:00:00").toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }))}, blended across four methods with weights for the company's stage.${leftOut ? " Methods that can't give a meaningful value for this company are left out and the other weights scaled up." : ""}</p>
     <table class="ledger-table">
       <thead>
-        <tr><th>Method</th><th>Weight</th><th>Pre-money value</th><th>Weighted value</th></tr>
+        <tr><th>Method</th><th>Weight</th><th>Pre-money value${tipButton("pre_post_money", "pre-money value")}</th><th>Weighted value</th></tr>
       </thead>
       <tbody>
         ${rows}
@@ -1481,7 +1753,7 @@ function renderResults(result, scenarios) {
       </tbody>
     </table>
     <div class="ledger-postmoney">
-      <span class="ledger-postmoney-label">Post-money (+ ${money(result.capital_needed)} raised)</span>
+      <span class="ledger-postmoney-label">Post-money (+ ${money(result.capital_needed)} raised)${tipButton("pre_post_money", "post-money value")}</span>
       <span class="ledger-postmoney-value">${money(result.post_money_valuation)}</span>
     </div>
     ${checksBlock(result.warnings)}
@@ -1490,10 +1762,12 @@ function renderResults(result, scenarios) {
       <button class="btn btn-primary" id="btn-pdf">Download PDF report</button>
       <button class="btn btn-ghost" id="btn-restart">Start a new valuation</button>
     </div>
+    ${glossaryBlock()}
   `;
 
   document.getElementById("btn-pdf").addEventListener("click", downloadResultsPdf);
-  document.getElementById("btn-restart").addEventListener("click", () => {
+  document.getElementById("btn-restart").addEventListener("click", async () => {
+    if (sampleLoaded) await clearSample();
     lastResult = null;
     goToStep(1);
   });
