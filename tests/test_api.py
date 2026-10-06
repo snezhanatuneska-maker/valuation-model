@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app as api
-from recompute import REFERENCE_CASE
+from recompute import GERMAN_CASE, REFERENCE_CASE
 
 
 @pytest.fixture()
@@ -76,6 +76,21 @@ def test_no_applicable_method_is_422(client):
 def test_pdf_report(client):
     r = client.post("/valuations/preview/report", json=REFERENCE_CASE)
     assert r.status_code == 200 and r.content[:4] == b"%PDF"
+
+
+@pytest.mark.parametrize("stage", ["Startup stage", "Idea stage"])
+def test_german_pdf_report(client, stage):
+    case = copy.deepcopy(GERMAN_CASE)
+    case["company_profile"]["company_stage"] = stage
+    r = client.post("/valuations/preview/report", json=case)
+    assert r.status_code == 200 and r.content[:4] == b"%PDF"
+
+
+def test_german_country_detail_includes_specific_inputs(client):
+    body = client.get("/reference-data/countries/Germany").json()
+    assert body["country_risk_premium"] == 0
+    assert body["country_specific"]["tax"]["average_hebesatz"] > 0
+    assert "country_specific" not in client.get("/reference-data/countries/Tanzania").json()
 
 
 def test_pdf_report_for_edge_cases(client):

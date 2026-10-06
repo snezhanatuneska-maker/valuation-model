@@ -103,6 +103,12 @@ def categorical_options() -> dict:
     return _all_reference_data()["categorical_options"]
 
 
+def country_specific(country: str) -> dict:
+    """Inputs that replace the generic ones for this country (today: Germany's
+    risk-free rate, tax schedule and stage benchmarks). Empty for other countries."""
+    return _all_reference_data().get("country_specific", {}).get(country, {})
+
+
 def _is_usable_number(v: Any, min_valid: Optional[float] = None) -> bool:
     """True for a real, finite number that's at or above min_valid (if given).
     False for Damodaran's raw source artifacts - "NA", "#N/A", "#VALUE!",
@@ -298,8 +304,13 @@ class CompanyProfile(BaseModel):
     valuation_date: Optional[date] = None
 
     # Tax rate used for the free cash flows AND the WACC. Leave empty to use
-    # the country's statutory corporate tax rate. (Name kept for saved data.)
+    # the country's statutory corporate tax rate (Germany: the year-by-year
+    # schedule). (Name kept for saved data.)
     dcf_tax_rate_override: Optional[float] = Field(default=None, ge=0, le=0.6)
+
+    # Germany only: the municipality's trade-tax multiplier as a percentage
+    # (e.g. 490 for Munich). Leave empty for the national average.
+    trade_tax_hebesatz: Optional[float] = Field(default=None, ge=200, le=1000)
 
     # Optional replacement for the regional "typical pre-revenue pre-money"
     # benchmark used by the Scorecard method (built-in: Equidam H1 2026 medians).
@@ -417,13 +428,6 @@ class ValuationInput(BaseModel):
 # ============================================================================
 
 
-def effective_tax_rate(company: CompanyProfile) -> float:
-    """One tax rate for the whole valuation: the user's, else the country's statutory rate."""
-    if company.dcf_tax_rate_override is not None:
-        return company.dcf_tax_rate_override
-    return get_country(company.country)["corporate_tax_rate"]
-
-
 def _add_years(d: date, years: int) -> date:
     try:
         return d.replace(year=d.year + years)
@@ -433,6 +437,93 @@ def _add_years(d: date, years: int) -> date:
 
 def valuation_date_of(company: CompanyProfile) -> date:
     return company.valuation_date or date.today()
+
+
+PROJECTION_YEARS = 5
+
+
+@dataclass
+class TaxSchedule:
+    """The tax rate for each projection year, and the long-run rate used for the
+    terminal value and the WACC. One flat rate everywhere except where a country
+    has a legislated schedule (Germany) and the user hasn't entered their own rate."""
+    basis: str  # "user_override" | "country_statutory" | "germany_schedule"
+    rates_by_year: list[float]
+    long_run_rate: float
+    # Germany only: the Hebesatz used and the combined rate per calendar year.
+    hebesatz: Optional[float] = None  # e.g. 4.09 for 409%
+    hebesatz_source: Optional[str] = None  # "national_average" | "user"
+    calendar_years: list[dict] = field(default_factory=list)
+
+
+def _german_rate_for_calendar_year(tax: dict, year: int, hebesatz: float) -> dict:
+    schedule = {int(y): r for y, r in tax["corporate_tax_by_year"].items()}
+    first, last = min(schedule), max(schedule)
+    kst = schedule[min(max(year, first), last)]
+    soli = kst * tax["solidarity_surcharge"]
+    trade = tax["trade_tax_base_rate"] * hebesatz
+    return {"year": year, "corporate_tax": kst, "solidarity_surcharge": soli,
+            "trade_tax": trade, "combined": kst + soli + trade}
+
+
+def _german_tax_schedule(company: CompanyProfile, tax: dict) -> TaxSchedule:
+    if company.trade_tax_hebesatz is not None:
+        hebesatz, hebesatz_source = company.trade_tax_hebesatz / 100, "user"
+    else:
+        hebesatz, hebesatz_source = tax["average_hebesatz"], "national_average"
+    vdate = valuation_date_of(company)
+    last_scheduled = max(int(y) for y in tax["corporate_tax_by_year"])
+    last_year = max(_add_years(vdate, PROJECTION_YEARS).year, last_scheduled)
+    by_year = {y: _german_rate_for_calendar_year(tax, y, hebesatz) for y in range(vdate.year, last_year + 1)}
+
+    # A projection year usually spans two calendar years; its rate is the two
+    # years' rates weighted by the number of days falling in each.
+    rates = []
+    for i in range(PROJECTION_YEARS):
+        start, end = _add_years(vdate, i), _add_years(vdate, i + 1)
+        weighted = 0.0
+        for y in range(start.year, end.year + 1):
+            days = (min(end, date(y + 1, 1, 1)) - max(start, date(y, 1, 1))).days
+            if days > 0:
+                weighted += days * by_year[y]["combined"]
+        rates.append(weighted / (end - start).days)
+
+    return TaxSchedule(
+        basis="germany_schedule",
+        rates_by_year=rates,
+        long_run_rate=by_year[last_year]["combined"],
+        hebesatz=hebesatz,
+        hebesatz_source=hebesatz_source,
+        calendar_years=list(by_year.values()),
+    )
+
+
+def tax_schedule(company: CompanyProfile) -> TaxSchedule:
+    """The user's flat rate if given; else the country's legislated schedule
+    (Germany); else the country's single statutory rate."""
+    if company.dcf_tax_rate_override is not None:
+        rate = company.dcf_tax_rate_override
+        return TaxSchedule("user_override", [rate] * PROJECTION_YEARS, rate)
+    german_tax = country_specific(company.country).get("tax")
+    if german_tax:
+        return _german_tax_schedule(company, german_tax)
+    rate = get_country(company.country)["corporate_tax_rate"]
+    return TaxSchedule("country_statutory", [rate] * PROJECTION_YEARS, rate)
+
+
+def effective_tax_rate(company: CompanyProfile) -> float:
+    """The long-run tax rate (used for the WACC and the terminal value). Equal to
+    the single rate everywhere except under a stepped schedule (Germany)."""
+    return tax_schedule(company).long_run_rate
+
+
+def risk_free_rate_for(company: CompanyProfile) -> tuple[float, str]:
+    """(rate, source): the country's own government-bond yield where one is
+    configured (Germany: 10-year Bund), else the default long-term US Treasury rate."""
+    own = country_specific(company.country).get("risk_free_rate")
+    if own:
+        return own["value"], own["source"]
+    return market_parameters()["risk_free_rate"], data_sources()["risk_free_rate"]
 
 
 @dataclass
@@ -469,6 +560,7 @@ class YearProjection:
     ebitda: float
     da: float
     ebit: float
+    tax_rate: float
     tax_on_ebit: float
     accounts_receivable: float
     inventory: float
@@ -486,9 +578,13 @@ class FinancialProjections:
     starting_margin_source: str  # "company" | "industry" (no revenue history)
     target_ebitda_margin: float
     target_margin_source: str  # "industry" | "user_override"
-    tax_rate: float
+    tax_rate: float  # long-run rate (terminal value, WACC); the single rate unless taxes are stepped
     opening_working_capital: float
     years: list[YearProjection] = field(default_factory=list)
+    tax_schedule: Optional[TaxSchedule] = None
+    # Year-5 free cash flow re-taxed at the long-run rate: the base of the
+    # terminal value. Equal to Year 5's free cash flow when the rate is flat.
+    terminal_fcf: Optional[float] = None
 
     def revenue(self) -> list[float]:
         return [y.revenue for y in self.years]
@@ -529,7 +625,7 @@ def build_projections(
     inv_pct = bench.used["inventory_pct_revenue"].value
     ap_pct = bench.used["acc_payable_pct_revenue"].value
 
-    tax_rate = effective_tax_rate(company)
+    taxes = tax_schedule(company)
     vdate = valuation_date_of(company)
 
     revenues = [assumptions.revenue_year1]
@@ -548,19 +644,22 @@ def build_projections(
         ebit = ebitda - da
 
         # Unlevered tax on EBIT; losses are carried forward against later profits.
+        tax_rate = taxes.rates_by_year[i]
+        taxable = 0.0
         if ebit <= 0:
-            tax = 0.0
             loss_carryforward += -ebit
         else:
             used = min(loss_carryforward, ebit)
             loss_carryforward -= used
-            tax = (ebit - used) * tax_rate
+            taxable = ebit - used
+        tax = taxable * tax_rate
 
         working_capital = revenue * wc_pct
         change_in_wc = working_capital - prior_wc
         prior_wc = working_capital
         capex = assumptions.capex_by_year[i]
         fcf = ebit - tax + da - capex - change_in_wc
+        terminal_fcf = ebit - taxable * taxes.long_run_rate + da - capex - change_in_wc
 
         period_end = _add_years(vdate, i + 1) - timedelta(days=1)
         years.append(YearProjection(
@@ -571,6 +670,7 @@ def build_projections(
             ebitda=ebitda,
             da=da,
             ebit=ebit,
+            tax_rate=tax_rate,
             tax_on_ebit=tax,
             accounts_receivable=ar_pct * revenue,
             inventory=inv_pct * revenue,
@@ -587,9 +687,11 @@ def build_projections(
         starting_margin_source=start_src,
         target_ebitda_margin=target_margin,
         target_margin_source=target_src,
-        tax_rate=tax_rate,
+        tax_rate=taxes.long_run_rate,
         opening_working_capital=opening_wc,
         years=years,
+        tax_schedule=taxes,
+        terminal_fcf=terminal_fcf,
     )
 
 
@@ -615,12 +717,13 @@ class WaccResult:
     equity_pct_capital: float
     debt_pct_capital: float
     wacc: float
+    risk_free_rate_source: str = ""
 
 
 def compute_wacc(company: CompanyProfile, bench: Optional[_BenchmarkRecorder] = None) -> WaccResult:
     bench = bench or _BenchmarkRecorder(company.industry, company.business_territory_region)
     country = get_country(company.country)
-    rf = market_parameters()["risk_free_rate"]
+    rf, rf_source = risk_free_rate_for(company)
 
     beta = bench.get("beta")
     # Total equity risk premium for the country (mature-market premium plus the
@@ -650,6 +753,7 @@ def compute_wacc(company: CompanyProfile, bench: Optional[_BenchmarkRecorder] = 
         equity_pct_capital=we,
         debt_pct_capital=wd,
         wacc=wacc,
+        risk_free_rate_source=rf_source,
     )
 
 
@@ -693,15 +797,26 @@ class ScorecardCriterionResult:
 class ScorecardResult:
     criteria: dict[str, ScorecardCriterionResult]
     benchmark_pre_money_valuation: float
-    benchmark_source: str  # "table" | "user_override"
+    benchmark_source: str  # "table" | "country_table" | "user_override"
     benchmark_basis: str  # where the built-in figure comes from
     total_factor: float
     pre_money_valuation: float
+    benchmark_to_be_sourced: bool = False  # the country table still holds placeholder figures
+
+
+def country_stage_benchmark(country: str, stage: str) -> Optional[dict]:
+    """The country's own typical pre-money for this stage (Germany), or None."""
+    return country_specific(country).get("stage_benchmarks", {}).get("stages", {}).get(stage)
 
 
 def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) -> ScorecardResult:
+    to_be_sourced = False
+    country_row = country_stage_benchmark(company.country, company.company_stage)
     if company.benchmark_pre_money_override is not None:
         benchmark, source, basis = company.benchmark_pre_money_override, "user_override", "Your own benchmark"
+    elif country_row:
+        benchmark, source, basis = country_row["eur"], "country_table", country_row["basis"]
+        to_be_sourced = bool(country_row.get("to_be_sourced"))
     else:
         try:
             row = scorecard_benchmarks()[company.business_territory_region]
@@ -725,6 +840,7 @@ def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) 
         benchmark_basis=basis,
         total_factor=total_factor,
         pre_money_valuation=benchmark * total_factor,
+        benchmark_to_be_sourced=to_be_sourced,
     )
 
 
@@ -914,6 +1030,7 @@ class DCFResult:
     discount_rate: float
     perpetual_growth_rate: float
     unlevered_fcf_by_year: list[float]
+    terminal_fcf: float
     pv_of_fcf: float
     terminal_value: float
     pv_of_terminal_value: float
@@ -951,7 +1068,8 @@ def compute_dcf(
     tv_rate = max(r, g + MIN_DISCOUNT_GROWTH_SPREAD)
     floor_applied = tv_rate != r
     pv_fcf = _npv(r, fcf)
-    tv = fcf[-1] * (1 + g) / (tv_rate - g)
+    terminal_fcf = projections.terminal_fcf if projections.terminal_fcf is not None else fcf[-1]
+    tv = terminal_fcf * (1 + g) / (tv_rate - g)
     pv_tv = tv / (1 + r) ** n
     ev = pv_fcf + pv_tv
     risk_adj_ev = ev * p
@@ -971,6 +1089,7 @@ def compute_dcf(
         discount_rate=r,
         perpetual_growth_rate=g,
         unlevered_fcf_by_year=fcf,
+        terminal_fcf=terminal_fcf,
         pv_of_fcf=pv_fcf,
         terminal_value=tv,
         pv_of_terminal_value=pv_tv,
@@ -1126,6 +1245,22 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
         warn("benchmark_global", f"There is no separate published pre-revenue benchmark for "
              f"{region_name}, so the Scorecard uses the all-region median. Enter a local benchmark if you "
              "have one.", "info")
+    if method_values["scorecard"].status == "ok" and scorecard.benchmark_to_be_sourced:
+        warn("benchmark_to_be_sourced", f"The {cp.country}-specific pre-revenue benchmark is still to be "
+             f"sourced, so the Scorecard uses the Europe figure ({_eur(scorecard.benchmark_pre_money_valuation)}) "
+             "as a placeholder. Enter a local benchmark if you have one.", "info")
+
+    taxes = projections.tax_schedule
+    if taxes is not None and taxes.basis == "germany_schedule":
+        rates = ", ".join(f"{y.year_label} {_pct(y.tax_rate)}" for y in projections.years)
+        hebesatz = (f"your Hebesatz of {taxes.hebesatz * 100:.0f}%" if taxes.hebesatz_source == "user"
+                    else f"the national average Hebesatz of {taxes.hebesatz * 100:.0f}% (enter your "
+                         "municipality's for a more precise figure)")
+        kst = taxes.calendar_years
+        warn("german_tax_schedule", f"German corporate tax falls from {kst[0]['corporate_tax']:.0%} to "
+             f"{kst[-1]['corporate_tax']:.0%} by {kst[-1]['year']}, so each projection year uses its own combined "
+             f"rate including solidarity surcharge and trade tax ({rates}; {_pct(taxes.long_run_rate)} after "
+             f"Year 5). Trade tax uses {hebesatz}.", "info")
 
     for key, mv in method_values.items():
         if mv.status == "not_meaningful" and mv.weight > 0:

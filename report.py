@@ -595,10 +595,28 @@ def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Op
     return story
 
 
+def _german_taxes(output: dict) -> Optional[dict]:
+    """The German stepped tax schedule from the output, or None if a flat rate was used."""
+    taxes = g(g(output, "projections", {}), "tax_schedule") or {}
+    return taxes if taxes.get("basis") == "germany_schedule" else None
+
+
+def _hebesatz_text(taxes: dict) -> str:
+    who = "your municipality" if taxes.get("hebesatz_source") == "user" else "national average"
+    return f"{(taxes.get('hebesatz') or 0) * 100:.0f}% ({who})"
+
+
 def _company_summary_page(cp: dict, mkt: dict, ops: dict, output: dict) -> list:
     story = [P("Company summary", STYLES["h2"])]
     proj = g(output, "projections", {})
     tax_note = "your input" if g(cp, "dcf_tax_rate_override") is not None else "country statutory rate"
+    german = _german_taxes(output)
+    if german:
+        rates = [y.get("tax_rate") for y in proj.get("years", [])]
+        tax_text = (f"{pct(rates[0])} in Year 1 falling to {pct(rates[-1])} in Year 5 and "
+                    f"{pct(german.get('long_run_rate'))} after (German schedule)")
+    else:
+        tax_text = f"{pct(g(proj, 'tax_rate'))} ({tax_note})"
 
     general = info_table([
         ("Company name", g(cp, "company_name")),
@@ -620,7 +638,7 @@ def _company_summary_page(cp: dict, mkt: dict, ops: dict, output: dict) -> list:
         ("Committed capital", money(g(cp, "committed_capital", 0))),
         ("Exit strategy", g(cp, "exit_strategy")),
         ("Planned time to exit", f"{g(cp, 'planned_time_to_exit_years')} years"),
-        ("Tax rate", f"{pct(g(proj, 'tax_rate'))} ({tax_note})"),
+        ("Tax rate", tax_text),
     ], col_widths=[HALF_W * 0.4, HALF_W * 0.6])
 
     story.append(side_by_side([P("General info", STYLES["h3"]), general],
@@ -846,10 +864,12 @@ def _scorecard_page(sc: dict, cp: dict, mv: Optional[dict] = None) -> list:
     story += _method_value_header("Pre-money valuation", money(g(sc, "pre_money_valuation")))
     bench = g(sc, "benchmark_pre_money_valuation")
     factor = g(sc, "total_factor")
-    bench_src = ("your own benchmark" if g(sc, "benchmark_source") == "user_override"
+    source = g(sc, "benchmark_source")
+    bench_src = ("your own benchmark" if source == "user_override"
                  else f"{g(sc, 'benchmark_basis')}, converted to euros")
+    where = g(cp, "country") if source == "country_table" else short_region(g(cp, "business_territory_region"))
     story += _how(
-        f"A typical pre-revenue company in {short_region(g(cp, 'business_territory_region'))} "
+        f"A typical pre-revenue company in {where} "
         f"is valued at about {money(bench)} before investment ({bench_src}). Your answers score this company at "
         f"{pct(factor)} of that typical company overall, so {money(bench)} × {pct(factor)} = "
         f"{money(g(sc, 'pre_money_valuation'))}.")
@@ -863,6 +883,9 @@ def _scorecard_page(sc: dict, cp: dict, mv: Optional[dict] = None) -> list:
     ))
     story.append(P("Method: Bill Payne's Scorecard (Ohio TechAngels). A score above 100% means stronger than "
                    "the typical company on that criterion.", STYLES["sub"]))
+    if g(sc, "benchmark_to_be_sourced"):
+        story.append(P(f"Note: a {safe(g(cp, 'country'))}-specific benchmark by stage is still to be sourced; "
+                       "the Europe figure is used as a placeholder until it is.", STYLES["sub"]))
     return story
 
 
@@ -949,7 +972,7 @@ def _comparables_page(cm: dict, cp: dict) -> list:
     return story
 
 
-def _dcf_page(dcf: dict, wacc: dict, years: list) -> list:
+def _dcf_page(dcf: dict, wacc: dict, years: list, german: Optional[dict] = None) -> list:
     story = [P("Discounted cash flow (DCF) method", STYLES["h2"])]
     story += _method_value_header("Pre-money valuation", money(g(dcf, "pre_money_valuation")))
     story += _not_meaningful(g(dcf, "not_meaningful_reason"))
@@ -965,6 +988,7 @@ def _dcf_page(dcf: dict, wacc: dict, years: list) -> list:
     headers = [""] + [y.get("year_label", "") for y in years]
     rows = [
         ["EBIT"] + [money(y.get("ebit")) for y in years],
+        *([["Tax rate (German schedule)"] + [pct(y.get("tax_rate")) for y in years]] if german else []),
         ["Tax on EBIT"] + [money(-y.get("tax_on_ebit", 0)) for y in years],
         ["Add back D&A"] + [money(y.get("da")) for y in years],
         ["Capital expenditure"] + [money(-y.get("capex", 0)) for y in years],
@@ -990,7 +1014,7 @@ def _dcf_page(dcf: dict, wacc: dict, years: list) -> list:
         ("Equity value (pre-money)", money(g(dcf, "equity_value"))),
     ], col_widths=[HALF_W * 0.68, HALF_W * 0.32])
     rate_rows = info_table([
-        ("Risk-free rate", pct2(g(wacc, "risk_free_rate"))),
+        ("Risk-free rate (10-year Bund)" if german else "Risk-free rate", pct2(g(wacc, "risk_free_rate"))),
         ("Beta (industry)", f"{g(wacc, 'beta', 0):.2f}"),
         ("Country equity risk premium", pct2(g(wacc, "country_equity_risk_premium"))),
         ("Cost of equity", pct2(g(wacc, "cost_of_equity"))),
@@ -998,17 +1022,67 @@ def _dcf_page(dcf: dict, wacc: dict, years: list) -> list:
         ("Equity / debt weights", f"{pct(g(wacc, 'equity_pct_capital'))} / {pct(g(wacc, 'debt_pct_capital'))}"),
         ("Discount rate (WACC)", pct2(r)),
         ("Long-run growth after Year 5", pct2(g(dcf, "perpetual_growth_rate"))),
-        ("Tax rate", pct2(g(dcf, "tax_rate"))),
+        ("Tax rate after Year 5 (also in WACC)" if german else "Tax rate", pct2(g(dcf, "tax_rate"))),
     ], col_widths=[HALF_W * 0.62, HALF_W * 0.38])
     story.append(side_by_side([P("From cash flows to equity value", STYLES["h3"]), value_rows],
                               [P("Discount rate", STYLES["h3"]), rate_rows]))
+    if german:
+        story.append(P(f"The terminal value starts from Year-5 free cash flow taxed at the long-run rate of "
+                       f"{pct(g(dcf, 'tax_rate'))} ({money(g(dcf, 'terminal_fcf'))}), because German corporate tax "
+                       "keeps falling after Year 5 under the enacted schedule.", STYLES["sub"]))
     if g(dcf, "terminal_value_floor_applied"):
         story.append(P("Note: the discount rate is close to the long-run growth rate, so the terminal value uses "
                        "a minimum 2-point gap between them.", STYLES["sub"]))
     return story
 
 
-def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Optional[str]) -> list:
+def _country_inputs_section(country: str, specific: dict, output: dict) -> list:
+    """Germany: the Bund rate, the tax schedule year by year and the stage benchmarks, with sources."""
+    story = [P(f"{esc(country)}-specific inputs", STYLES["h3"])]
+    wacc = g(output, "wacc", {})
+    rf = specific.get("risk_free_rate")
+    if rf:
+        story.append(P(f"<b>Risk-free rate:</b> {pct2(g(wacc, 'risk_free_rate'))} (as of "
+                       f"{esc(format_date(rf.get('as_of')))}). {esc(rf.get('source'))}", STYLES["td_label"], raw=True))
+        story.append(P(f"<b>Country risk:</b> {esc(country)} is rated Aaa, so its country risk premium is 0 and "
+                       f"the equity risk premium is the mature-market premium of "
+                       f"{pct2(g(wacc, 'country_equity_risk_premium'))}.", STYLES["td_label"], raw=True))
+        story.append(Spacer(1, 3))
+
+    taxes = _german_taxes(output)
+    tax = specific.get("tax")
+    if taxes and tax:
+        rows = [[str(y.get("year")), pct(y.get("corporate_tax")), pct2(y.get("solidarity_surcharge")),
+                 pct2(y.get("trade_tax")), pct2(y.get("combined"))] for y in taxes.get("calendar_years", [])]
+        story.append(P(f"Tax by calendar year (trade-tax Hebesatz {_hebesatz_text(taxes)}); the last year's rate "
+                       "applies to the terminal value and the WACC", STYLES["td_label"]))
+        story.append(data_table(["Year", "Corporate tax", "Solidarity surcharge", "Trade tax", "Combined"], rows,
+                                col_widths=[CONTENT_W * 0.12, CONTENT_W * 0.22, CONTENT_W * 0.24,
+                                            CONTENT_W * 0.2, CONTENT_W * 0.22]))
+        years = g(g(output, "projections", {}), "years", [])
+        story.append(P("Projection years span two calendar years, so each uses the two years' rates weighted by "
+                       "days: " + ", ".join(f"{y.get('year_label')} {pct2(y.get('tax_rate'))}" for y in years)
+                       + ".", STYLES["sub"]))
+        for key in ("corporate_tax_source", "solidarity_surcharge_source", "trade_tax_base_rate_source",
+                    "average_hebesatz_source", "simplification"):
+            if tax.get(key):
+                story.append(P(esc(tax[key]), STYLES["sub"]))
+        story.append(Spacer(1, 3))
+    elif tax:
+        story.append(P("Tax: your own flat rate was used instead of the German schedule.", STYLES["td_label"]))
+
+    sb = specific.get("stage_benchmarks")
+    if sb:
+        flag = (" <b>To be sourced:</b> the figures are placeholders."
+                if any(r.get("to_be_sourced") for r in sb.get("stages", {}).values()) else "")
+        story.append(P(f"<b>Scorecard benchmark by stage (Idea, Development):</b> {esc(sb.get('source'))}{flag}",
+                       STYLES["td_label"], raw=True))
+    return story
+
+
+def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Optional[str],
+                      country: Optional[str] = None, country_inputs: Optional[dict] = None,
+                      output: Optional[dict] = None) -> list:
     story = [P("Methods, data sources & disclaimer", STYLES["h2"])]
     story.append(P("Methods", STYLES["h3"]))
     for text in (
@@ -1034,11 +1108,15 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
             ("Probability of survival (DCF)", pct(stage_params.get("survival_probability"))),
         ]))
 
+    if country_inputs:
+        story += _country_inputs_section(country or "", country_inputs, output or {})
+
     story.append(P("Data sources", STYLES["h3"]))
     labels = [
         ("industry_benchmarks", "Industry benchmarks"),
         ("country_data", "Country risk and tax"),
-        ("risk_free_rate", "Risk-free rate"),
+        ("risk_free_rate", "Risk-free rate (other countries)" if country_inputs and "risk_free_rate" in country_inputs
+         else "Risk-free rate"),
         ("perpetual_growth_rate", "Long-run growth"),
         ("vc_target_return", "VC target returns"),
         ("private_company_discount", "Private-company discount"),
@@ -1081,6 +1159,7 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
 def build_pdf_bytes(
     payload: dict, output: dict, benchmark: Optional[dict] = None, scenarios: Optional[dict] = None,
     sources: Optional[dict] = None, stage_params: Optional[dict] = None,
+    country_inputs: Optional[dict] = None,
 ) -> bytes:
     """
     payload:   a ValuationInput.model_dump(mode="json") dict.
@@ -1089,6 +1168,7 @@ def build_pdf_bytes(
     scenarios: optional {"80%": <asdict ValuationOutput>, ...} for the Scenario page.
     sources:   optional data-source notes (reference_data.json "sources").
     stage_params: optional stage parameters for the company's stage.
+    country_inputs: optional country-specific inputs (reference_data.json "country_specific", e.g. Germany).
     """
     cp = g(payload, "company_profile", {}) or {}
     mkt = g(payload, "market_and_team_assessment", {}) or {}
@@ -1138,9 +1218,10 @@ def build_pdf_bytes(
     story.append(PageBreak())
     story += _comparables_page(g(output, "comparables", {}), cp)
     story.append(PageBreak())
-    story += _dcf_page(g(output, "dcf", {}), g(output, "wacc", {}), years)
+    story += _dcf_page(g(output, "dcf", {}), g(output, "wacc", {}), years, _german_taxes(output))
     story.append(PageBreak())
-    story += _methodology_page(sources, stage_params, g(cp, "company_stage"))
+    story += _methodology_page(sources, stage_params, g(cp, "company_stage"), g(cp, "country"),
+                               country_inputs, output)
 
     doc.build(story)
     return buffer.getvalue()

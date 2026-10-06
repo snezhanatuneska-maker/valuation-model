@@ -86,6 +86,22 @@ REFERENCE_CASE = {
     "vc_assumptions": {"number_of_existing_shares": 1000000},
 }
 
+# ---------------------------------------------------------------------------
+# German example: a Berlin SaaS company with no tax-rate override, so it uses
+# the Bund rate, the stepped German tax schedule (average Hebesatz) and the
+# German Scorecard table. Same valuation date as the reference case.
+# ---------------------------------------------------------------------------
+EU = "Europe (EU, UK, Switzerland & Scandinavia)"
+GERMAN_CASE = copy.deepcopy(REFERENCE_CASE)
+GERMAN_CASE["company_profile"].update({
+    "company_name": "Beispiel Software GmbH",
+    "country": "Germany",
+    "business_territory_region": EU,
+    "industry": "Software (System & Application)",
+    "dcf_tax_rate_override": None,
+})
+GERMAN_CASE["operating_performance"].update({"current_ppe_value": 60000})
+
 
 
 # ---------------------------------------------------------------------------
@@ -122,16 +138,45 @@ FINANCIALS = {"Bank (Money Center)", "Banks (Regional)", "Brokerage & Investment
               "Insurance (Prop/Cas.)", "Investments & Asset Management", "Reinsurance"}
 
 
+def german_rate(year, hebesatz):
+    """KSt for the calendar year x (1 + soli) + 3.5% x Hebesatz."""
+    t = REF["country_specific"]["Germany"]["tax"]
+    sched = {int(y): r for y, r in t["corporate_tax_by_year"].items()}
+    kst = sched[min(max(year, min(sched)), max(sched))]
+    return kst * (1 + t["solidarity_surcharge"]) + t["trade_tax_base_rate"] * hebesatz
+
+
+def yearly_tax_rates(cp, country):
+    """(rates for Y1..Y5, long-run rate)."""
+    import datetime as dt
+    tax = cp.get("dcf_tax_rate_override")
+    special = REF.get("country_specific", {}).get(cp["country"], {}).get("tax")
+    if tax is not None or not special:
+        tax = country["corporate_tax_rate"] if tax is None else tax
+        return [tax] * 5, tax
+    h = cp.get("trade_tax_hebesatz")
+    h = special["average_hebesatz"] if h is None else h / 100
+    v = dt.date.fromisoformat(str(cp["valuation_date"]))
+    rates = []
+    for i in range(5):  # time-weighted over the calendar years each projection year touches
+        a, b = v.replace(year=v.year + i), v.replace(year=v.year + i + 1)
+        mid = dt.date(b.year, 1, 1)
+        rates.append(((mid - a).days * german_rate(a.year, h) + (b - mid).days * german_rate(b.year, h))
+                     / (b - a).days)
+    return rates, german_rate(9999, h)
+
+
 def recompute(case):
     """Textbook recomputation of every figure, written independently of the engine."""
     cp, fa, op = case["company_profile"], case["financial_assumptions"], case["operating_performance"]
     ind, reg = cp["industry"], cp["business_territory_region"]
     stage = REF["stage_parameters"][cp["company_stage"]]
     country = REF["country_data"][cp["country"]]
+    special = REF.get("country_specific", {}).get(cp["country"], {})
     mkt = REF["market_parameters"]
     out = {}
-    tax = cp.get("dcf_tax_rate_override")
-    tax = country["corporate_tax_rate"] if tax is None else tax
+    tax_by_year, tax = yearly_tax_rates(cp, country)
+    rf = special["risk_free_rate"]["value"] if "risk_free_rate" in special else mkt["risk_free_rate"]
     debt, cash = fa.get("existing_debt_balance", 0), op.get("cash_available", 0)
 
     # --- projections: margin glides from the company's own to the target by Y5 ---
@@ -150,20 +195,22 @@ def recompute(case):
         ebitda = r * (start + (target - start) * (i + 1) / 5)
         ebit = ebitda - r * da_pct
         if ebit <= 0:
-            t, nol = 0.0, nol - ebit
+            taxable, nol = 0.0, nol - ebit
         else:
             used = min(nol, ebit)
             nol -= used
-            t = (ebit - used) * tax
+            taxable = ebit - used
         wc = r * wc_pct
-        fcf.append(ebit - t + r * da_pct - fa["capex_by_year"][i] - (wc - prev_wc))
+        other = r * da_pct - fa["capex_by_year"][i] - (wc - prev_wc)
+        fcf.append(ebit - taxable * tax_by_year[i] + other)
+        terminal_fcf = ebit - taxable * tax + other  # Year 5 re-taxed at the long-run rate
         prev_wc = wc
         ebitdas.append(ebitda)
-    out.update(ebitda=ebitdas, fcf=fcf, start_margin=start, target_margin=target)
+    out.update(ebitda=ebitdas, fcf=fcf, start_margin=start, target_margin=target, tax_by_year=tax_by_year)
 
     # --- WACC (CAPM with the country's total equity risk premium) ---
     beta = bench(ind, "beta", reg)[0]
-    ke = mround(mkt["risk_free_rate"] + beta * country["equity_risk_premium"], 0.0025)
+    ke = mround(rf + beta * country["equity_risk_premium"], 0.0025)
     we, wd = bench(ind, "equity_pct_capital", reg)[0], bench(ind, "debt_pct_capital", reg)[0]
     we, wd = we / (we + wd), wd / (we + wd)
     wacc = mround(wd * (1 - tax) * bench(ind, "cost_of_debt", reg)[0] + we * ke, 0.0025)
@@ -183,7 +230,9 @@ def recompute(case):
         "strategic_relationships_with_partners": (0.10, ["sales_channels_partners", "marketing_partners"]),
         "funding_required": (0.10, ["need_for_additional_funding_rounds"]),
     }
-    benchmark = cp.get("benchmark_pre_money_override") or REF["scorecard_benchmarks"]["regions"][reg]["eur"]
+    own = special.get("stage_benchmarks", {}).get("stages", {}).get(cp["company_stage"])
+    benchmark = (cp.get("benchmark_pre_money_override") or (own and own["eur"])
+                 or REF["scorecard_benchmarks"]["regions"][reg]["eur"])
     out["scorecard_amounts"] = {k: benchmark * w * sum(s(q) for q in qs) / len(qs) for k, (w, qs) in groups.items()}
     out["scorecard"] = sum(out["scorecard_amounts"].values())
 
@@ -210,7 +259,7 @@ def recompute(case):
     # --- DCF at WACC, Gordon terminal value, x survival, - debt + cash ---
     g = mkt["perpetual_growth_rate"]
     pv = sum(f / (1 + wacc) ** (i + 1) for i, f in enumerate(fcf))
-    pv_tv = fcf[-1] * (1 + g) / (max(wacc, g + 0.02) - g) / (1 + wacc) ** 5
+    pv_tv = terminal_fcf * (1 + g) / (max(wacc, g + 0.02) - g) / (1 + wacc) ** 5
     ev = pv + pv_tv
     eq = ev * stage["survival_probability"] - debt + cash
     out.update(dcf_pv_fcf=pv, dcf_pv_tv=pv_tv, dcf_ev=ev)
@@ -245,6 +294,7 @@ def compare(case, mine=None):
         ("WACC", mine["wacc"], e.wacc.wacc),
         ("Cost of equity", mine["cost_of_equity"], e.wacc.cost_of_equity),
         *[(f"EBITDA Y{i+1}", v, e.projections.years[i].ebitda) for i, v in enumerate(mine["ebitda"])],
+        *[(f"Tax rate Y{i+1}", v, e.projections.years[i].tax_rate) for i, v in enumerate(mine["tax_by_year"])],
         *[(f"FCF Y{i+1}", v, e.projections.years[i].unlevered_fcf) for i, v in enumerate(mine["fcf"])],
         *[(f"Scorecard amount: {k}", v, e.scorecard.criteria[k].amount_assigned)
           for k, v in mine["scorecard_amounts"].items()],
@@ -260,7 +310,8 @@ def compare(case, mine=None):
     ]
     rows = []
     for name, a, b in pairs:
-        ok = (a is None and b is None) or (a is not None and b is not None and abs(a - b) <= 0.01 + 1e-9 * abs(a))
+        tolerance = 1e-9 if name.startswith("Tax rate") else 0.01  # rates are fractions, the rest euros
+        ok = (a is None and b is None) or (a is not None and b is not None and abs(a - b) <= tolerance + 1e-9 * abs(a))
         rows.append((name, a, b, ok))
     return rows
 
@@ -367,6 +418,8 @@ def sweep():
 if __name__ == "__main__":
     print("=== Reference case: Valuativa DOO ===\n")
     bad = diff_against_engine(REFERENCE_CASE)
+    print("=== German example: Beispiel Software GmbH ===\n")
+    bad += diff_against_engine(GERMAN_CASE)
     bad += edge_cases()
     problems = sweep()
     sys.exit(1 if bad or problems else 0)

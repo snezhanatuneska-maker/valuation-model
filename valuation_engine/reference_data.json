@@ -14975,5 +14975,52 @@
         "regional_figure": false
       }
     }
+  },
+  "country_specific": {
+    "_note": "Country-specific inputs that replace the generic ones when the company's country matches. Review every figure once a year; each carries its own source and date.",
+    "Germany": {
+      "risk_free_rate": {
+        "value": 0.035,
+        "as_of": "2026-10-05",
+        "source": "Yield on 10-year German Federal bonds (Bund), 3.50% on 5 October 2026, as reported by market data (cbonds, ariva.de / dpa-AFX). The official daily series is published by the Deutsche Bundesbank ('Tägliche Renditen der jeweils jüngsten Bundeswertpapiere', 10-year); check it there when updating."
+      },
+      "tax": {
+        "corporate_tax_by_year": {
+          "2027": 0.15,
+          "2028": 0.14,
+          "2029": 0.13,
+          "2030": 0.12,
+          "2031": 0.11,
+          "2032": 0.1
+        },
+        "corporate_tax_note": "Years before the first listed year use the first rate; years after the last listed year use the last rate.",
+        "corporate_tax_source": "Körperschaftsteuer: § 23 (1) KStG as amended by the Gesetz für ein steuerliches Investitionssofortprogramm zur Stärkung des Wirtschaftsstandorts Deutschland of 14 July 2025 (BGBl. I 2025 Nr. 161, published 18 July 2025): 15% up to 2027, 14% in 2028, 13% in 2029, 12% in 2030, 11% in 2031, 10% from 2032.",
+        "solidarity_surcharge": 0.055,
+        "solidarity_surcharge_source": "Solidaritätszuschlag: 5.5% of the corporate tax (§ 4 SolzG 1995), unchanged.",
+        "trade_tax_base_rate": 0.035,
+        "trade_tax_base_rate_source": "Gewerbesteuer: tax base rate (Steuermesszahl) of 3.5% (§ 11 (2) GewStG), multiplied by the municipality's Hebesatz.",
+        "average_hebesatz": 4.09,
+        "average_hebesatz_as_of": "2024",
+        "average_hebesatz_source": "Statistisches Bundesamt (Destatis), press release of 21 August 2025: average trade-tax Hebesatz of all German municipalities in 2024 was 409%. Users can enter their own municipality's Hebesatz.",
+        "simplification": "Trade-tax add-backs and deductions (Hinzurechnungen / Kürzungen) and the trade-tax loss rules are not modelled; trade tax is applied to the same profit as corporate tax."
+      },
+      "stage_benchmarks": {
+        "_note": "Typical pre-money valuation by stage for German startups, used by the Scorecard method (Idea and Development stages only) when the country is Germany. TO BE SOURCED: no credible public German figure by stage was found (October 2026). The values below are placeholders equal to the current Europe figure.",
+        "source": "To be sourced. Placeholder: Equidam, Startup Valuation Delta H1 2026, median pre-seed valuation for Europe ($3.30M = €2.90M), the same figure the app uses for the Europe region.",
+        "as_of": "2026-07-01",
+        "stages": {
+          "Idea stage": {
+            "eur": 2899000.0,
+            "basis": "Germany table (to be sourced); placeholder: Equidam H1 2026 median, Europe",
+            "to_be_sourced": true
+          },
+          "Development stage": {
+            "eur": 2899000.0,
+            "basis": "Germany table (to be sourced); placeholder: Equidam H1 2026 median, Europe",
+            "to_be_sourced": true
+          }
+        }
+      }
+    }
   }
 }
