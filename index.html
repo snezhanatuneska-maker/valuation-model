@@ -731,7 +731,7 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
         <div class="field">
           <label for="benchmark_pre_money_override">Typical pre-money valuation of a pre-revenue startup in your region (&euro;)</label>
           <input type="number" id="benchmark_pre_money_override" min="1" step="1" placeholder="Use the built-in benchmark">
-          <p class="field-hint" id="benchmark-hint">Used only for pre-revenue companies (Idea and Development stages). The built-in figure is the median pre-seed valuation for your region from Equidam's Startup Valuation Delta, H1 2026 (US &euro;4.53M, Europe &euro;2.90M, Emerging Markets &euro;2.37M, elsewhere the all-region median &euro;4.57M). Germany has its own table by stage; until German figures are sourced it uses the Europe figure. If you know a better local figure, enter it here.</p>
+          <p class="field-hint" id="benchmark-hint">Used only for pre-revenue companies (Idea and Development stages). The built-in figure is the median pre-seed valuation for your region from Equidam's Startup Valuation Delta, H1 2026 (US &euro;4.53M, Europe &euro;2.90M, Emerging Markets &euro;2.37M, elsewhere the all-region median &euro;4.57M). For Germany it uses Equidam's July 2026 average for German angel, pre-seed and seed rounds (&euro;6.55M). If you know a better local figure, enter it here.</p>
         </div>
       </fieldset>
       <fieldset class="field-group">
@@ -1273,7 +1273,9 @@ async function updateProjectionPreview() {
   wrap.innerHTML = `
     <div class="suggested-data-wrap">
       <h3>Projection used in the valuation</h3>
-      <p class="suggested-data-hint">The EBITDA margin starts from ${startText} and moves in equal steps to ${targetText} by Year 5. ${stepped ? `Tax steps down year by year under the German schedule (${pct(proj.tax_rate)} after Year 5).` : `Tax rate ${pct(proj.tax_rate)}.`}</p>
+      <p class="suggested-data-hint">${proj.starting_margin_source === "company"
+        ? `The EBITDA margin starts from ${startText} and moves in equal steps to ${targetText} by Year 5.`
+        : `With no revenue history, the projection uses ${targetText} as the EBITDA margin from Year 1.`} ${stepped ? `Tax steps down year by year under the German schedule (${pct(proj.tax_rate)} after Year 5).` : `Tax rate ${pct(proj.tax_rate)}.`}</p>
       <div style="overflow-x:auto">
       <table class="suggested-table">
         <thead><tr><th>&nbsp;</th>${years.map((y) => `<th>${y.year_label}<br><span style="font-weight:400">${escapeHtml(y.period_label)}</span></th>`).join("")}</tr></thead>
@@ -1655,10 +1657,11 @@ function methodExplanation(key, o) {
   if (key === "scorecard") {
     const sc = o.scorecard;
     if (o.method_values.scorecard.status === "not_used") return "Used only for pre-revenue companies (Idea and Development stages).";
-    const where = sc.benchmark_source === "country_table" ? `in ${escapeHtml(val("country"))}` : "in this region";
+    // Plain text: the caller escapes the whole explanation once.
+    const where = sc.benchmark_source === "country_table" ? `in ${val("country")}` : "in this region";
     const basis = sc.benchmark_source === "user_override" ? " (your benchmark)"
       : sc.benchmark_to_be_sourced ? " (placeholder: Europe figure, local benchmark to be sourced)"
-      : sc.benchmark_source === "country_table" ? ` (${escapeHtml(sc.benchmark_basis)})`
+      : sc.benchmark_source === "country_table" ? ` (${sc.benchmark_basis})`
       : " (Equidam H1 2026 median)";
     return `A typical pre-revenue company ${where} is valued at ${money(sc.benchmark_pre_money_valuation)}${basis}; your answers score ${pct(sc.total_factor)} of that company.`;
   }
@@ -1685,7 +1688,7 @@ function scenarioBlock(scenarios) {
   const labels = Object.keys(scenarios).map((l) => Number(l.replace("%", "")));
   return `
     <h2 class="ledger-title" style="margin-top:32px">Scenario &amp; sensitivity</h2>
-    <p class="ledger-subtitle">How the valuation shifts if Year-1 revenue comes in above or below plan. Scorecard and Comparables don't move: they use your answers and last-12-month EBITDA, not projected revenue.</p>
+    <p class="ledger-subtitle">How the valuation shifts if Year-1 revenue comes in above or below plan. Scorecard and Comparables don't move: they use your answers and last-12-month EBITDA, not projected revenue. The weights stay as in your result above; a method that gives no positive value in a scenario counts as €0.</p>
     <div class="scenario-slider-row">
       <label for="scenario-slider">Revenue scenario</label>
       <input type="range" id="scenario-slider" min="${Math.min(...labels)}" max="${Math.max(...labels)}" step="10" value="100">
@@ -2051,8 +2054,9 @@ async function findCleanSample() {
       if (!sampleIsClean(candidate, result)) continue;
       // The revenue slider should move smoothly: the same methods must apply in every scenario.
       const scenarios = await apiFetch("/valuations/preview/scenarios", { method: "POST", body });
-      const usedIn = (r) => Object.keys(r.method_values).filter((k) => r.method_values[k].status === "ok").join();
-      if (Object.keys(scenarios).length === 6 && Object.values(scenarios).every((r) => usedIn(r) === usedIn(result))) {
+      // ...and every method keeps a positive value in every scenario (none falls to €0).
+      const positive = (r) => Object.values(r.method_values).every((mv) => mv.status !== "ok" || mv.pre_money_value > 0);
+      if (Object.keys(scenarios).length === 6 && Object.values(scenarios).every(positive)) {
         return candidate;
       }
     } catch (_) { /* try another */ }

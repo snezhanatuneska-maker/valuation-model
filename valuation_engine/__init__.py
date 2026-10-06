@@ -1190,6 +1190,10 @@ def _eur(x: float) -> str:
 PRE_REVENUE_STAGES = {"Idea stage", "Development stage"}
 # Revenue (last 12 months) above which an Idea/Development stage choice is questioned.
 STAGE_REVENUE_THRESHOLD = 100_000
+# Fall from last-12-month revenue to Year-1 revenue above which the plan is questioned.
+REVENUE_DROP_WARNING = 0.2
+# VC pre-money below this share of the raise is explained (the raise nearly uses up the exit value).
+VC_LOW_SHARE_OF_RAISE = 0.25
 # Share of the company the new investors would own above which the round is questioned.
 INVESTOR_STAKE_WARNING = 0.5
 
@@ -1218,6 +1222,10 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
             warn("revenue_jump", f"Year-1 revenue ({_eur(fa.revenue_year1)}) is {jump:.0%} above the last "
                  f"12 months ({_eur(ltm)}). Check that this growth is realistic; every cash-flow method "
                  "builds on it.")
+        elif jump < -REVENUE_DROP_WARNING:
+            warn("revenue_drop", f"Year-1 revenue ({_eur(fa.revenue_year1)}) is {-jump:.0%} below the last "
+                 f"12 months ({_eur(ltm)}). If you don't expect sales to fall, check both figures: every "
+                 "cash-flow method builds on the Year-1 plan.")
     else:
         warn("no_revenue_history", "No revenue in the last 12 months: projected margins use the industry "
              "average from Year 1, and the Comparables method can't be applied.", "info")
@@ -1325,6 +1333,15 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                  f"would buy {_pct(stake)} of the company (post-money {_eur(post)}). Early rounds usually sell well "
                  "under half of a company, so check the amount you are raising and your plan.")
 
+    vc_mv = method_values["venture_capital"]
+    raise_amount = inputs.funding.capital_needed
+    if vc_mv.status == "ok" and vc_mv.weight_used > 0 and vc_mv.pre_money_value < VC_LOW_SHARE_OF_RAISE * raise_amount:
+        warn("vc_low", f"The Venture Capital method values the company at only {_eur(vc_mv.pre_money_value)} before "
+             f"the round: the {_eur(raise_amount)} you are raising nearly uses up the value the projected exit "
+             "supports today at the return investors at your stage expect. It counts for "
+             f"{_pct(vc_mv.weight_used)} of the blend and pulls it down; a smaller round, a later exit or a "
+             "stronger plan would raise it.")
+
     vdate = valuation_date_of(cp)
     today = date.today()
     if abs((vdate - today).days) > 366:
@@ -1354,10 +1371,11 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
 
     for key, mv in method_values.items():
         if mv.status == "not_meaningful" and mv.weight > 0:
-            # Without revenue, Comparables can't apply by design (explained by "no_revenue_history"):
-            # a note, not something to fix.
-            expected = key == "comparables" and ltm == 0
-            warn(f"nm_{key}", f"{METHOD_NAMES[key]} left out of the blend: {mv.note}", "info" if expected else "warning")
+            # Without revenue, Comparables can't apply by design, and the "no_revenue_history"
+            # note already says so: no second message.
+            if key == "comparables" and ltm == 0:
+                continue
+            warn(f"nm_{key}", f"{METHOD_NAMES[key]} left out of the blend: {mv.note}")
         elif mv.status == "ok" and mv.note:
             warn(f"zero_{key}", f"{METHOD_NAMES[key]}: {mv.note}")
     debt = inputs.financial_assumptions.existing_debt_balance
@@ -1523,13 +1541,43 @@ def run_valuation_scenarios(
     """
     multipliers = multipliers if multipliers is not None else SCENARIO_REVENUE_MULTIPLIERS
     base_revenue = inputs.financial_assumptions.revenue_year1
+    try:
+        base = run_valuation(inputs)
+    except ValuationError:
+        return {}
 
     results: dict[str, ValuationOutput] = {}
     for m in multipliers:
         scaled_inputs = inputs.model_copy(deep=True)
         scaled_inputs.financial_assumptions.revenue_year1 = base_revenue * m
         try:
-            results[scenario_label(m)] = run_valuation(scaled_inputs)
+            results[scenario_label(m)] = _with_base_weights(run_valuation(scaled_inputs), base)
         except ValuationError:
             continue
     return results
+
+
+def _with_base_weights(scenario: ValuationOutput, base: ValuationOutput) -> ValuationOutput:
+    """Re-blends a scenario with the main result's weights, so moving revenue only moves the
+    values, never the mix of methods. (Otherwise a method that stops working at lower revenue
+    would drop out, the others would be re-weighted, and the blend could rise as revenue falls.)
+    A method used in the main result that gives no positive value in the scenario counts as 0;
+    a method left out of the main result is left out here too."""
+    blended = 0.0
+    for key, mv in scenario.method_values.items():
+        base_mv = base.method_values[key]
+        if base_mv.status == "ok" and base_mv.weight_used > 0:
+            value = mv.pre_money_value if mv.status == "ok" else 0.0
+            note = mv.note if mv.status == "ok" else (
+                "Gives no positive value in this scenario, so it counts as €0 (weights as in your main result).")
+            scenario.method_values[key] = MethodValue(
+                pre_money_value=value, weight=base_mv.weight, weight_used=base_mv.weight_used,
+                weighted_value=value * base_mv.weight_used, status="ok", note=note)
+            blended += value * base_mv.weight_used
+        else:
+            scenario.method_values[key] = MethodValue(
+                pre_money_value=None, weight=base_mv.weight, weight_used=0.0, weighted_value=None,
+                status=base_mv.status, note=base_mv.note)
+    scenario.blended_pre_money_valuation = blended
+    scenario.post_money_valuation = blended + scenario.capital_needed
+    return scenario

@@ -687,13 +687,16 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
     proj = g(output, "projections", {})
     years = proj.get("years", [])
     labels = [y.get("year_label", "") for y in years]
+    target_name = "your target margin" if proj.get("target_margin_source") == "user_override" else "the industry margin"
+    if proj.get("starting_margin_source") == "company":
+        margin_text = (f"The EBITDA margin starts from your last-12-month margin ({pct(proj.get('starting_ebitda_margin'))}) "
+                       f"and moves in equal steps to {target_name} ({pct(proj.get('target_ebitda_margin'))}) by Year 5.")
+    else:
+        margin_text = (f"With no revenue history, the projection uses {target_name} "
+                       f"({pct(proj.get('target_ebitda_margin'))}) as the EBITDA margin from Year 1.")
     story.append(P(
-        f"Year 1 is the 12 months after the valuation date ({format_date(proj.get('valuation_date'))}). "
-        f"The EBITDA margin starts from "
-        f"{'your last-12-month margin' if proj.get('starting_margin_source') == 'company' else 'the industry margin'} "
-        f"({pct(proj.get('starting_ebitda_margin'))}) and moves in equal steps to "
-        f"{'your target margin' if proj.get('target_margin_source') == 'user_override' else 'the industry margin'} "
-        f"({pct(proj.get('target_ebitda_margin'))}) by Year 5.", STYLES["sub"]))
+        f"Year 1 is the 12 months after the valuation date ({format_date(proj.get('valuation_date'))}). {margin_text}",
+        STYLES["sub"]))
 
     headers = [""] + [f"{y.get('year_label')} ({y.get('period_label', '').replace('to ', '')})" for y in years]
     rows = [
@@ -863,9 +866,11 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
     total_row = ["Blended pre-money"] + [money(scenarios[l].get("blended_pre_money_valuation")) for l in labels]
     col_w = [CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n
     story.append(data_table(["Method"] + labels, rows, total_row=total_row, col_widths=col_w))
-    if any(scenarios[l].get("method_values", {}).get(k, {}).get("status") == "not_meaningful"
-           for l in labels for k in ("scorecard", "venture_capital", "comparables", "dcf")):
-        story.append(P("n/m = not meaningful in that scenario (left out of the blend).", STYLES["sub"]))
+    story.append(P("The weights stay as in the main result; a method that gives no positive value in a scenario "
+                   "counts as €0." + (" n/m = left out of the blend, as in the main result."
+                                      if any(scenarios[l].get("method_values", {}).get(k, {}).get("status") == "not_meaningful"
+                                             for l in labels for k in ("scorecard", "venture_capital", "comparables", "dcf"))
+                                      else ""), STYLES["sub"]))
     story.append(Spacer(1, 10))
     story.append(P("Blended pre-money valuation across scenarios", STYLES["h3"]))
     story.append(bar_chart(labels, [scenarios[l].get("blended_pre_money_valuation") or 0 for l in labels],
@@ -922,7 +927,7 @@ def _benchmark_source_note(source: str, label: str = "EV/EBITDA multiple") -> Op
     return None
 
 
-def _vc_page(vc: dict) -> list:
+def _vc_page(vc: dict, output: Optional[dict] = None) -> list:
     story = [P("Venture Capital method", STYLES["h2"])]
     story += _method_value_header("Pre-money valuation", money(g(vc, "pre_money_valuation")))
     T = g(vc, "time_to_exit")
@@ -934,8 +939,11 @@ def _vc_page(vc: dict) -> list:
             f"× the industry EV/EBITDA multiple of {multiple(g(vc, 'ev_ebitda_multiple'))} gives an exit value of "
             f"{money(g(vc, 'exit_value'))}. An investor who needs a {pct(r)} annual return values that today at "
             f"{money(g(vc, 'exit_value'))} ÷ (1 + {pct(r)})^{T} = {money(g(vc, 'post_money_valuation'))} "
-            f"after the investment. Minus the {money(g(vc, 'investment_amount'))} being raised = "
-            f"{money(g(vc, 'pre_money_valuation'))} before it.")
+            + (f"after the investment. Minus the {money(g(vc, 'investment_amount'))} being raised = "
+               f"{money(g(vc, 'pre_money_valuation'))} before it."
+               if g(vc, "pre_money_valuation") is not None else
+               f"after the investment. That is less than the {money(g(vc, 'investment_amount'))} being raised, "
+               "so this method leaves no positive value before the investment and is left out of the blend."))
     story.append(P("Exit value", STYLES["h3"]))
     story.append(info_table([
         (f"Exit-year ({g(vc, 'exit_year_label')}) revenue", money(g(vc, "exit_year_revenue"))),
@@ -955,13 +963,20 @@ def _vc_page(vc: dict) -> list:
         ("Post-money valuation", money(g(vc, "post_money_valuation"))),
         ("Investment", money(g(vc, "investment_amount"))),
         ("Pre-money valuation", money(g(vc, "pre_money_valuation"))),
-        ("Investor ownership after the round", pct(g(vc, "ownership_fraction_investors"))),
-        ("Existing shareholders after the round", pct(g(vc, "ownership_fraction_entrepreneurs"))),
+        ("Investor ownership after the round (this method alone)", pct(g(vc, "ownership_fraction_investors"))),
+        ("Existing shareholders after the round (this method alone)", pct(g(vc, "ownership_fraction_entrepreneurs"))),
         ("Existing shares (count)", f"{g(vc, 'number_of_existing_shares', 0):,.0f}"),
         ("New shares to issue (count)",
          f"{round(g(vc, 'number_of_new_shares')):,}" if g(vc, "number_of_new_shares") is not None else "—"),
         ("Price per new share", money2(g(vc, "price_per_share"))),
     ]))
+    post = g(output or {}, "post_money_valuation")
+    capital = g(output or {}, "capital_needed")
+    if post and capital and g(vc, "ownership_fraction_investors") is not None:
+        story.append(P(
+            f"These shares and stakes are what this method alone implies. At the blended valuation used in the rest "
+            f"of this report (post-money {money(post)}), the {money(capital)} being raised buys "
+            f"{pct(capital / post)} of the company.", STYLES["sub"]))
     return story
 
 
@@ -1101,7 +1116,7 @@ def _country_inputs_section(country: str, specific: dict, output: dict) -> list:
     if sb:
         flag = (" <b>The German figures are still to be sourced; these are placeholders.</b>"
                 if any(r.get("to_be_sourced") for r in sb.get("stages", {}).values()) else "")
-        story.append(P(f"<b>Scorecard benchmark by stage (Idea, Development):</b> {esc(sb.get('source'))}{flag}",
+        story.append(P(f"<b>Scorecard benchmark (Idea and Development stages):</b> {esc(sb.get('source'))}{flag}",
                        STYLES["td_label"], raw=True))
     return story
 
@@ -1242,7 +1257,7 @@ def build_pdf_bytes(
     story.append(PageBreak())
     story += _scorecard_page(g(output, "scorecard", {}), cp, g(output, "method_values", {}).get("scorecard"))
     story.append(PageBreak())
-    story += _vc_page(g(output, "venture_capital", {}))
+    story += _vc_page(g(output, "venture_capital", {}), output)
     story.append(PageBreak())
     story += _comparables_page(g(output, "comparables", {}), cp)
     story.append(PageBreak())
