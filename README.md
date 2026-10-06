@@ -22,6 +22,7 @@ rather than being split across many modules.
 | `app.py` | FastAPI backend — persistence, calculation endpoints, and PDF report endpoints |
 | `report.py` | Builds the branded PDF report (reportlab) from a valuation's input/output |
 | `index.html` | The web wizard — one file with CSS and JS inlined |
+| `refresh_industry_benchmarks.py` | Offline tool (not used by the app) that rebuilds the industry benchmarks in `reference_data.json` from Damodaran's regional spreadsheets |
 
 ## How to run it
 
