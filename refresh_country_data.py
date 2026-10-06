@@ -40,16 +40,30 @@ import openpyxl
 
 # file name -> app name, where Damodaran's spelling differs from the app's.
 NAME_ALIASES = {
-    "North Macedonia": "Macedonia",
+    "Macedonia": "North Macedonia",
     "Cote d'Ivoire": "Côte d'Ivoire",
     "Ivory Coast": "Côte d'Ivoire",
-    "Eswatini": "Swaziland",
-    "Türkiye": "Turkey",
-    "Turkiye": "Turkey",
-    "Korea, Republic of": "Korea",
-    "South Korea": "Korea",
+    "Swaziland": "Eswatini",
+    "Turkey": "Türkiye",
+    "Turkiye": "Türkiye",
+    "Korea": "South Korea",
+    "Korea, Republic of": "South Korea",
     "Czechia": "Czech Republic",
+    "Abu Dhabi": "Abu Dhabi (UAE)",
+    "Sharjah": "Sharjah (UAE)",
+    "Ras Al Khaimah (Emirate of)": "Ras Al Khaimah (UAE)",
+    "Andorra (Principality of)": "Andorra",
+    "Guernsey (States of)": "Guernsey",
+    "Jersey (States of)": "Jersey",
+    "Congo (Democratic Republic of)": "Congo (Democratic Republic)",
+    "Congo (Republic of)": "Congo (Republic)",
 }
+
+
+def name_sort_key(name: str) -> str:
+    """Alphabetical order ignoring accents (same as the app's country list)."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", name) if not unicodedata.combining(c)).casefold()
 
 # field in the app -> (header pattern, required?), for the rated-countries table
 RATED_COLUMNS = {
@@ -220,8 +234,8 @@ def main():
     if write:
         merged = dict(current)
         merged.update(plan["records"])
-        ref["country_data"] = dict(sorted(merged.items()))
-        ref["categorical_options"]["country"] = sorted(merged)
+        ref["country_data"] = dict(sorted(merged.items(), key=lambda kv: name_sort_key(kv[0])))
+        ref["categorical_options"]["country"] = sorted(merged, key=name_sort_key)
         mp = ref.setdefault("market_parameters", {})
         if data["mature_premium"] is not None:
             mp["mature_market_premium"] = data["mature_premium"]

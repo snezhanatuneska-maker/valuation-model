@@ -36,7 +36,7 @@ def test_aaa_countries_have_no_country_premium():
 
 
 def test_every_wizard_country_has_data():
-    assert sorted(ve.country_data()) == ve.categorical_options()["country"]
+    assert sorted(ve.country_data(), key=ve.name_sort_key) == ve.categorical_options()["country"]
     for country, c in ve.country_data().items():
         assert isinstance(c["corporate_tax_rate"], float) and 0 <= c["corporate_tax_rate"] <= 0.6, country
 
@@ -76,14 +76,14 @@ def _write_workbook(path: Path, rated: dict, frontier: dict, mature=0.042):
 def test_refresh_tool_updates_adds_and_keeps(tmp_path):
     current = ve.country_data()
     rated = {"Tanzania": dict(current["Tanzania"], equity_risk_premium=0.11, country_risk_premium=0.068),
-             "North Macedonia": current["Macedonia"],
+             "Macedonia": current["North Macedonia"],  # Damodaran's spelling
              "Atlantis": dict(current["Tanzania"], region_grouping="Africa")}
     frontier = {"Russia": dict(current["Russia"], equity_risk_premium=0.09), "Iran": current["Russia"]}
     xlsx = tmp_path / "ctryprem.xlsx"
     _write_workbook(xlsx, rated, frontier)
     data = rcd.read_workbook(xlsx)
     assert data["mature_premium"] == 0.042 and str(data["update_date"]) == "2026-07-01"
-    assert "Macedonia" in data["rated"]  # name alias applied
+    assert "North Macedonia" in data["rated"]  # name alias applied
 
     ref = tmp_path / "reference_data.json"
     ref.write_text(json.dumps(ve._all_reference_data()), encoding="utf-8")
