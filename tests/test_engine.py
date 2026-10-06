@@ -186,7 +186,7 @@ def test_no_applicable_method_gives_clear_error():
     case = variant(operating_performance__current_ebitda=-500_000,            # Comparables: no positive EBITDA
                    funding__capital_needed=50_000_000,                        # VC: raise exceeds what the exit supports
                    financial_assumptions__target_ebitda_margin_override=-0.5)  # DCF: negative cash flows
-    with pytest.raises(ve.ValuationError, match="None of the methods"):
+    with pytest.raises(ve.ValuationError, match="None of the methods for this stage"):
         run(case)
 
 
@@ -411,3 +411,46 @@ def test_german_scorecard_uses_equidam_country_average():
         assert r.scorecard.benchmark_source == "country_table" and "Equidam" in r.scorecard.benchmark_basis
         assert not r.scorecard.benchmark_to_be_sourced
         assert "benchmark_to_be_sourced" not in {w.code for w in r.warnings}
+
+
+def messages(case):
+    return {w.code: w.message for w in run(case).warnings}
+
+
+def test_wording_follows_the_inputs():
+    no_rev = dict(operating_performance__current_revenue_last_12_months=0, operating_performance__current_ebitda=-50_000,
+                  company_profile__company_stage="Idea stage")
+    m = messages(german(**no_rev, financial_assumptions__target_ebitda_margin_override=-0.1))
+    assert "your own Year-5 target margin" in m["no_revenue_history"]
+    assert "industry average margin" in messages(german(**no_rev))["no_revenue_history"]
+    # growth above 100% is normal before revenue; no German tax note when losses mean no tax
+    m = messages(german(**no_rev, financial_assumptions__revenue_growth_rates=[2.0, 1.0, 0.5, 0.5],
+                        financial_assumptions__target_ebitda_margin_override=-0.1))
+    assert "high_growth" not in m and "german_tax_schedule" not in m
+    # region wording with "the" and adjectives; nothing about a "Global" benchmark
+    m = messages(german(company_profile__country="United States", company_profile__business_territory_region="Global"))
+    assert m["region_mismatch"].startswith("Companies in the United States are usually compared with US industry")
+    assert "global figures" in m["region_mismatch"]
+    assert "benchmark_global" not in messages(german(company_profile__company_stage="Idea stage",
+                                                     company_profile__business_territory_region="Global"))
+
+
+def test_banks_get_one_message_not_four():
+    m = messages(german(company_profile__industry="Banks (Regional)", company_profile__company_stage="Idea stage"))
+    assert "financial_sector" in m
+    assert not [k for k in m if k.startswith("nm_") or k.startswith("fallback_")]
+
+
+def test_no_method_message_lists_reasons_and_advice():
+    case = german(company_profile__company_stage="Startup stage", operating_performance__current_revenue_last_12_months=0,
+                  operating_performance__current_ebitda=-200_000, financial_assumptions__target_ebitda_margin_override=-0.5)
+    with pytest.raises(ve.ValuationError) as e:
+        run(case)
+    text = str(e.value)
+    assert "\n• " in text and ".;" not in text
+    assert "choose the Idea or Development stage" in text
+
+
+def test_every_scenario_is_kept_even_when_no_method_works_there():
+    s = ve.run_valuation_scenarios(ve.ValuationInput(**SLIDER_CASE))
+    assert list(s) == ["80%", "90%", "100%", "110%", "120%", "130%"]
