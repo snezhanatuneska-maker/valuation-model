@@ -15009,19 +15009,20 @@
         "simplification": "Trade-tax add-backs and deductions (Hinzurechnungen / Kürzungen) and the trade-tax loss rules are not modelled; trade tax is applied to the same profit as corporate tax."
       },
       "stage_benchmarks": {
-        "_note": "Typical pre-money valuation by stage for German startups, used by the Scorecard method (Idea and Development stages only) when the country is Germany. TO BE SOURCED: no credible public German figure by stage was found (October 2026). The values below are placeholders equal to the current Europe figure.",
-        "source": "Placeholder: Equidam, Startup Valuation Delta H1 2026, median pre-seed valuation for Europe ($3.30M = €2.90M), the same figure the app uses for the Europe region.",
-        "as_of": "2026-07-01",
+        "_note": "Typical pre-money valuation for German startups, used by the Scorecard method (Idea and Development stages only) when the country is Germany. Equidam publishes one figure per country, not per stage, so both stages use the same figure. Update it with each Equidam parameters update (twice a year).",
+        "source": "Equidam, Parameters Update P6.3 (30 July 2026), average and maximum valuations: Scorecard average for Germany €6,550,000 (previous update €5,220,000, +25.48%). It is the average pre-money valuation of angel, pre-seed and seed rounds in Germany over the last 30 months (rounds since 1 January 2024, data as of 1 July 2026; Crunchbase round data, outliers removed). The update drew on 4,606 funding rounds with disclosed pre-money valuations worldwide.",
+        "as_of": "2026-07-30",
+        "update_note": "Take the 'Scorecard average' for Germany from Equidam's latest 'Parameters Update … average and maximum valuations' page (https://www.equidam.com/parameters-update-p6-3-average-and-maximum-valuations/ for P6.3).",
         "stages": {
           "Idea stage": {
-            "eur": 2899000.0,
-            "basis": "the Equidam H1 2026 median for Europe in euros, used as a placeholder until a German figure is sourced",
-            "to_be_sourced": true
+            "eur": 6550000.0,
+            "basis": "Equidam's July 2026 average for German angel, pre-seed and seed rounds",
+            "to_be_sourced": false
           },
           "Development stage": {
-            "eur": 2899000.0,
-            "basis": "the Equidam H1 2026 median for Europe in euros, used as a placeholder until a German figure is sourced",
-            "to_be_sourced": true
+            "eur": 6550000.0,
+            "basis": "Equidam's July 2026 average for German angel, pre-seed and seed rounds",
+            "to_be_sourced": false
           }
         }
       }

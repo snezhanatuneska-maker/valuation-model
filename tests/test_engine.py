@@ -401,3 +401,13 @@ def test_revenue_drop_is_flagged():
 def test_no_duplicate_comparables_note_without_revenue():
     found = codes(SLIDER_CASE)
     assert "no_revenue_history" in found and "nm_comparables" not in found
+
+
+def test_german_scorecard_uses_equidam_country_average():
+    """Equidam Parameters Update P6.3 (July 2026): Scorecard average for Germany EUR 6,550,000."""
+    for stage in ("Idea stage", "Development stage"):
+        r = run(german(company_profile__company_stage=stage))
+        assert r.scorecard.benchmark_pre_money_valuation == 6_550_000
+        assert r.scorecard.benchmark_source == "country_table" and "Equidam" in r.scorecard.benchmark_basis
+        assert not r.scorecard.benchmark_to_be_sourced
+        assert "benchmark_to_be_sourced" not in {w.code for w in r.warnings}

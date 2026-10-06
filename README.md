@@ -140,7 +140,7 @@ The wizard opens with Germany and Europe selected. Any other country works exact
 
 - **Risk-free rate:** the 10-year Bund yield, not the US Treasury rate. Germany is rated Aaa, so its country risk premium is 0 and only the mature-market equity risk premium (4.2%) applies.
 - **Tax, year by year:** corporate tax (15% until 2027, then 14/13/12/11% and 10% from 2032, as enacted in July 2025) + 5.5% solidarity surcharge + trade tax (3.5% × Hebesatz). A projection year that spans two calendar years blends their rates by days. The value after Year 5 (terminal value) and the WACC use the long-run 2032 rate. The Hebesatz is the national average unless the user enters their municipality's under "Advanced". If a user enters a flat tax rate through the API, it still overrides the schedule.
-- **Scorecard benchmark:** a Germany table by stage. **It is still to be sourced**: until credible German figures are found, it holds the Europe figure as a placeholder, and the results and PDF say so.
+- **Scorecard benchmark:** Equidam's Scorecard average for Germany, €6,550,000 (Parameters Update P6.3, 30 July 2026): the average pre-money valuation of angel, pre-seed and seed rounds in Germany over the last 30 months. Equidam publishes one figure per country, so the Idea and Development stages use the same figure. Equidam updates it twice a year.
 
 All of these figures live in `valuation_engine/reference_data.json` under `country_specific` → `Germany`, each with its source and date. Update them once a year there; no code changes are needed.
 
@@ -213,7 +213,7 @@ Rules the refresh applies:
 - Country risk data (`country_data`) has its own tool: download `ctryprem.xlsx` from Damodaran's
   [country risk page](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html), then run
   `python refresh_country_data.py ctryprem.xlsx valuation_engine/reference_data.json` (add `--write` to apply).
-- The Scorecard's regional benchmark is Equidam's H1 2026 median (see `sources.scorecard_benchmark`). Germany's own table by stage (`country_specific.Germany.stage_benchmarks`) is still to be sourced: set `to_be_sourced` to `false` once you replace its figures with cited ones. Users can always enter their own benchmark in the wizard.
+- The Scorecard's regional benchmark is Equidam's H1 2026 median (see `sources.scorecard_benchmark`). Germany uses its own figure (`country_specific.Germany.stage_benchmarks`, Equidam's Scorecard average for Germany); a figure marked `to_be_sourced: true` is shown as a placeholder in the results and PDF. Users can always enter their own benchmark in the wizard.
 
 ## License
 

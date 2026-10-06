@@ -1116,7 +1116,7 @@ def _country_inputs_section(country: str, specific: dict, output: dict) -> list:
     if sb:
         flag = (" <b>The German figures are still to be sourced; these are placeholders.</b>"
                 if any(r.get("to_be_sourced") for r in sb.get("stages", {}).values()) else "")
-        story.append(P(f"<b>Scorecard benchmark by stage (Idea, Development):</b> {esc(sb.get('source'))}{flag}",
+        story.append(P(f"<b>Scorecard benchmark (Idea and Development stages):</b> {esc(sb.get('source'))}{flag}",
                        STYLES["td_label"], raw=True))
     return story
 
