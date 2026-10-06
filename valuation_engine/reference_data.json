@@ -14453,9 +14453,9 @@
   },
   "stage_parameters": {
     "Idea stage": {
-      "vc_target_return": 0.6,
+      "vc_target_return": 0.65,
       "private_company_discount": 0.4,
-      "survival_probability": 0.35,
+      "survival_probability": 0.3,
       "method_weights": {
         "scorecard": 0.4,
         "venture_capital": 0.4,
@@ -14464,9 +14464,9 @@
       }
     },
     "Development stage": {
-      "vc_target_return": 0.5,
+      "vc_target_return": 0.55,
       "private_company_discount": 0.35,
-      "survival_probability": 0.45,
+      "survival_probability": 0.4,
       "method_weights": {
         "scorecard": 0.3,
         "venture_capital": 0.3,
@@ -14475,7 +14475,7 @@
       }
     },
     "Startup stage": {
-      "vc_target_return": 0.4,
+      "vc_target_return": 0.5,
       "private_company_discount": 0.3,
       "survival_probability": 0.5,
       "method_weights": {
@@ -14486,7 +14486,7 @@
       }
     },
     "Expansion stage": {
-      "vc_target_return": 0.3,
+      "vc_target_return": 0.4,
       "private_company_discount": 0.25,
       "survival_probability": 0.65,
       "method_weights": {
@@ -14497,7 +14497,7 @@
       }
     },
     "Growth Stage": {
-      "vc_target_return": 0.25,
+      "vc_target_return": 0.3,
       "private_company_discount": 0.2,
       "survival_probability": 0.8,
       "method_weights": {
@@ -14953,13 +14953,21 @@
   "sources": {
     "data_as_of": "2026-01-05",
     "industry_benchmarks": "Aswath Damodaran, NYU Stern (Damodaran Online), regional industry datasets vebitda, wacc, margin, wcdata and dbtfund, updated 5 January 2026. Regional figures based on fewer than 10 companies are replaced by the industry's Global figure. D&A % and the book interest rate are derived from Damodaran's margin and debt ratios. 'Retail (Online)' is no longer published separately; Damodaran's 'Retail (General)' figures are used.",
-    "country_data": "Aswath Damodaran, NYU Stern (Damodaran Online), country risk premiums (ctryprem), January 2026.",
+    "country_data": "Aswath Damodaran, NYU Stern (Damodaran Online), country risk premiums (ctryprem), 5 January 2026: mature-market premium 4.23% plus a country premium of 1.52x the rating-based default spread. Damodaran published a July 2026 update (mature-market premium 4.20%); load it with refresh_country_data.py.",
     "risk_free_rate": "Long-term US Treasury bond rate used in Damodaran's January 2026 cost-of-capital spreadsheets (3.95%).",
     "perpetual_growth_rate": "App assumption: 2% nominal long-run growth, below the risk-free rate.",
-    "vc_target_return": "App assumption per stage, within the venture-capital target-return ranges reported in the literature (roughly 50-70% for start-up/seed financing falling to 25-35% for bridge/pre-IPO rounds; see Damodaran, 'Valuing Young, Start-up and Growth Companies', 2009, citing Sahlman). Used only by the Venture Capital method.",
-    "private_company_discount": "App assumption per stage, applied only to the Comparables method: public-company multiples are reduced for illiquidity and size (restricted-stock and pre-IPO studies commonly find 20-35%), with larger discounts for earlier stages.",
-    "survival_probability": "App assumption per stage, applied only to the DCF method, anchored on US BLS Business Employment Dynamics data (about 78% of new establishments survive one year and about 49% survive five years).",
+    "vc_target_return": "App assumption per stage, at the midpoint of the venture-capital target returns reported for the matching financing stage (Sahlman / Scherlis, as tabulated in Damodaran, 'Valuing Young, Start-up and Growth Companies', 2009): start-up 50-70% (Idea 65%, Development 55%), first stage 40-60% (Startup 50%), second stage 35-50% (Expansion 40%), bridge / pre-IPO 25-35% (Growth 30%). Maturity uses 20%, a typical private-equity target. Used only by the Venture Capital method.",
+    "private_company_discount": "App assumption per stage, applied only to the Comparables method: public-company multiples are reduced for illiquidity and size. Restricted-stock studies commonly find about 20-35% and pre-IPO studies about 40-50%; the discount runs from 40% (Idea) to 20% (Growth, Maturity).",
+    "survival_probability": "App assumption per stage, applied only to the DCF method, anchored on US BLS Business Employment Dynamics data (about 78% of new businesses survive one year, about 49% five years and about 35% ten years): Startup 50% (five-year survival), lower before revenue (Idea 30%, Development 40%), higher for established firms (Expansion 65%, Growth 80%, Maturity 95%).",
     "stage_region_pre_money_benchmarks": "Internal estimate carried over from the original workbook. Not taken from a published survey; users can replace it with their own benchmark in the wizard.",
     "scorecard": "Scorecard method (Bill Payne / Ohio TechAngels): criterion weights 30/25/15/10/10/10 (Payne's 'need for additional investment' and 'other' 5% each are combined into 'funding required')."
+  },
+  "stage_descriptions": {
+    "Idea stage": "An idea or concept; no product and no revenue yet.",
+    "Development stage": "Building the product or a prototype; no meaningful revenue yet.",
+    "Startup stage": "Product launched, first customers and early revenue.",
+    "Expansion stage": "Proven product with fast-growing revenue; scaling sales and operations.",
+    "Growth Stage": "Established business with substantial revenue, usually profitable, still growing.",
+    "Maturity stage": "Stable, profitable business with modest growth."
   }
 }

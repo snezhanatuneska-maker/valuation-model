@@ -34,7 +34,7 @@ def test_default_region(client):
 def test_preview_and_scenarios(client):
     r = client.post("/valuations/preview", json=REFERENCE_CASE)
     assert r.status_code == 200
-    assert round(r.json()["blended_pre_money_valuation"]) == 1_131_786
+    assert round(r.json()["blended_pre_money_valuation"]) == 1_043_118
     assert len(client.post("/valuations/preview/scenarios", json=REFERENCE_CASE).json()) == 6
 
 
@@ -90,16 +90,28 @@ def test_pdf_report_for_edge_cases(client):
 def test_save_list_rerun_report_delete(client):
     case = copy.deepcopy(REFERENCE_CASE)
     case["company_profile"]["valuation_date"] = None
-    r = client.post("/valuations?user_email=a@b.com", json=case)
+    r = client.post("/valuations?owner_id=browser-a", json=case)
     assert r.status_code == 201
     vid = r.json()["id"]
     saved = client.get(f"/valuations/{vid}").json()
     assert saved["input"]["company_profile"]["valuation_date"]  # date pinned when saved
-    assert client.get("/valuations?user_email=a@b.com").json()[0]["id"] == vid
+    assert client.get("/valuations?owner_id=browser-a").json()[0]["id"] == vid
     assert client.post(f"/valuations/{vid}/rerun").status_code == 200
     assert client.get(f"/valuations/{vid}/scenarios").status_code == 200
     assert client.get(f"/valuations/{vid}/report").content[:4] == b"%PDF"
-    assert client.delete(f"/valuations/{vid}").status_code == 204
+    assert client.delete(f"/valuations/{vid}?owner_id=browser-a").status_code == 204
+
+
+def test_valuations_are_private_to_their_browser(client):
+    vid = client.post("/valuations?owner_id=browser-a", json=REFERENCE_CASE).json()["id"]
+    assert client.get("/valuations").json() == []  # no owner: nothing listed
+    assert client.get("/valuations?owner_id=browser-b").json() == []
+    assert client.delete(f"/valuations/{vid}?owner_id=browser-b").status_code == 404
+    assert client.get("/valuations?owner_id=browser-a").json()[0]["id"] == vid
+
+
+def test_login_and_payment_endpoints_are_gone(client):
+    assert client.post("/auth/demo-login", json={"email": "a@b.com"}).status_code == 404
 
 
 def test_valuation_saved_by_the_old_version_still_opens(client):
