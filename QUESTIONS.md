@@ -73,7 +73,7 @@ workbook didn't. With no debt and a 55% return, the app gives exactly your post-
 - a) Keep. **Recommended**: the other two cash-flow methods subtract debt too.
 - b) Ignore debt in the VC method.
 
-## 7. PDF length: 13 pages instead of 9–10 (needs owner, design)
+## 7. PDF length: 13 pages instead of 9–10 (decided: shortened, option a; now 10 pages, 11 before revenue)
 
 Charts render, no page is empty and nothing runs outside the margins, but the Werkpuls report has 13 pages. Each
 method has its own page even when it isn't used (the Scorecard page says only "Not used for this company"), use
