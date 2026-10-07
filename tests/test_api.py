@@ -272,3 +272,37 @@ def test_pdf_explains_a_zero_value_and_fits_huge_numbers(client):
         assert not re.search(r"€[\d,]*,\d{0,2}\s*\n\s*\d", text)  # no amount wrapped across lines
         if check:
             assert check in " ".join(text.split())
+
+
+def test_pdf_download_name_is_plain_ascii(client):
+    case = copy.deepcopy(GERMAN_CASE)
+    case["company_profile"]["company_name"] = "Müller & Söhne <GmbH> " + "Long" * 40
+    r = client.post("/valuations/preview/report", json=case)
+    assert r.status_code == 200
+    disposition = r.headers["content-disposition"]
+    assert disposition.isascii() and "Mueller-Soehne-GmbH-Long" in disposition
+    assert len(disposition) < 140
+
+
+def test_validation_message_is_a_sentence(client):
+    case = copy.deepcopy(REFERENCE_CASE)
+    case["financial_assumptions"]["revenue_growth_rates"] = [0.1, "x", 0.1, 0.1]
+    case["funding"]["capital_needed"] = 0
+    detail = client.post("/valuations/preview", json=case).json()["detail"]
+    assert detail.startswith("Please check these inputs: ") and detail.endswith(".")
+    assert "revenue growth rates (item 2)" in detail and "capital needed: should be greater than 0" in detail
+
+
+def test_scenario_page_explains_a_value_that_falls_with_revenue():
+    import report
+
+    def scenario(value):
+        mv = {"status": "ok", "pre_money_value": value}
+        return {"blended_pre_money_valuation": value,
+                "method_values": {"scorecard": {"status": "not_used"}, "venture_capital": {"status": "not_used"},
+                                  "comparables": mv, "dcf": mv}}
+    falling = {f"{p}%": scenario(1_000_000 - p * 1000) for p in (80, 90, 100, 110, 120, 130)}
+    rising = {f"{p}%": scenario(1_000_000 + p * 1000) for p in (80, 90, 100, 110, 120, 130)}
+    text = lambda s: " ".join(getattr(f, "text", "") for f in report._scenario_sensitivity_page(s))  # noqa: E731
+    assert report.SCENARIO_FALLS_NOTE in text(falling)
+    assert report.SCENARIO_FALLS_NOTE not in text(rising)

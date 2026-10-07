@@ -323,6 +323,20 @@ def test_old_country_names_still_work():
     assert run(case).blended_pre_money_valuation > 0
 
 
+def test_old_stage_spelling_still_works():
+    case = copy.deepcopy(REFERENCE_CASE)
+    case["company_profile"]["company_stage"] = "Growth Stage"
+    assert ve.ValuationInput(**case).company_profile.company_stage == "Growth stage"
+    assert run(case).blended_pre_money_valuation > 0
+
+
+def test_one_unanswered_scorecard_question_reads_correctly():
+    case = german(company_profile__company_stage="Idea stage")
+    case["market_and_team_assessment"].pop("target_market_size")
+    msg = next(w.message for w in run(case).warnings if w.code == "scorecard_unanswered")
+    assert msg.startswith("1 of the 13 Scorecard questions was not answered and is scored")
+
+
 def codes(case):
     return {w.code for w in run(case).warnings}
 
