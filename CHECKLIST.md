@@ -7,7 +7,7 @@ Baseline = the code before this loop (123 tests, all passing). Final = after the
 
 | Check | Baseline | Final | Notes |
 |---|---|---|---|
-| A1 Golden case (Werkpuls) | PASS* | PASS* | Every figure the app shares with the hand calculation matches to the cent (revenue, EBIT, working capital, DCF present values, terminal value discounted, VC exit and share maths, Scorecard sum, blend). *Five convention differences are deliberate app choices: see QUESTIONS.md 1–5. `tests/test_golden.py` |
+| A1 Golden case (Werkpuls) | PASS* | PASS | Every figure the app shares with the hand calculation matches to the cent. The owner kept the app's method on every convention difference (QUESTIONS.md 1–6, decided 7 October 2026); the app's pinned Werkpuls results are now the expected values (blended pre-money €1,050,656.82, post-money €1,850,656.82). `tests/test_golden.py` |
 | A2 One blended number, weights add up | PASS | PASS | No simple average anywhere; blend = Σ value × weight; post = pre + raise |
 | A3 Sweep industry × region × stage | PASS | PASS | 3,696 runs: no crash, NaN, "NA" or zero value; every fallback listed. WARNING: REITs / Japan is 10× its stage median (Expansion, Growth, Maturity) |
 | A4 Edge inputs | FAIL | PASS | Was: "NaN"/"Infinity" accepted, and amounts like 10^200, then the PDF crashed (500). Fixed (iterations 2, 3) |
