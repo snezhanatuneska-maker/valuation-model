@@ -257,10 +257,10 @@ FINANCIAL_SECTOR_INDUSTRIES = {
     "Bank (Money Center)",
     "Banks (Regional)",
     "Brokerage & Investment Banking",
-    "Financial Svcs. (Non-bank & Insurance)",
+    "Financial Services (Non-bank & Insurance)",
     "Insurance (General)",
     "Insurance (Life)",
-    "Insurance (Prop/Cas.)",
+    "Insurance (Property & Casualty)",
     "Investments & Asset Management",
     "Reinsurance",
 }

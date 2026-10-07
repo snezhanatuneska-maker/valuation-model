@@ -1190,7 +1190,7 @@ async function onCountryChange() {
     const tax = info.corporate_tax_rate;
     document.getElementById("dcf_tax_rate_override").placeholder = `${(tax * 100).toFixed(1)} (country rate)`;
     document.getElementById("tax-hint").textContent =
-      `Leave empty to use the statutory rate for ${countryInText(country)} (${(tax * 100).toFixed(1)}%).`;
+      `Leave empty to use the statutory rate of ${(tax * 100).toFixed(1)}% for ${countryInText(country)}.`;
     showGermanTax(info.country_specific && info.country_specific.tax);
   } catch (_) { /* hints only - ignore */ }
 }
@@ -1804,6 +1804,14 @@ function glossaryBlock() {
     </details>`;
 }
 
+// Why the pre-money value is zero (same wording as the PDF).
+function zeroValueReason(result) {
+  const debt = (result.equity_bridge && result.equity_bridge.debt) || 0;
+  return debt > 0
+    ? `The value is €0 because the company's debt (${money(debt)}) is larger than the value the methods find for the business, so the shares are worth about nothing before the new money comes in.`
+    : "The value rounds to €0: the methods used leave essentially no value for the shares before the new money.";
+}
+
 function readResultBox(result, scenarios) {
   const used = Object.entries(result.method_values).filter(([, mv]) => mv.status === "ok" && mv.weight_used > 0);
   const weights = used.map(([key, mv]) => `${METHOD_LABELS[key].replace(/ \(.*\)$/, "")} ${pct(mv.weight_used)}`).join(", ");
@@ -1884,6 +1892,7 @@ function renderResults(result, scenarios) {
       <p class="headline-label">${escapeHtml(lastResult && lastResult.payload ? lastResult.payload.company_profile.company_name : "Your company")}: pre-money valuation</p>
       <p class="headline-value">${money(result.blended_pre_money_valuation)}</p>
       <p class="headline-sub">Post-money ${money(result.post_money_valuation)} after raising ${money(result.capital_needed)}</p>
+      ${result.blended_pre_money_valuation < 0.5 ? `<p class="headline-sub" style="margin-top:8px">${escapeHtml(zeroValueReason(result))}</p>` : ""}
     </div>
     ${readResultBox(result, scenarios)}
     <h2 class="ledger-title">Valuation summary</h2>
