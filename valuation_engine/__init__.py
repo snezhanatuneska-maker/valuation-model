@@ -1247,6 +1247,19 @@ VC_LOW_SHARE_OF_RAISE = 0.25
 INVESTOR_STAKE_WARNING = 0.5
 # Highest method value above this multiple of the lowest gets a note: the blend hides a wide disagreement.
 METHODS_DISAGREE_RATIO = 3
+# Upper end, in US dollars, of the questionnaire answers about size; open-ended answers have none.
+_REVENUE_POTENTIAL_MAX_USD = {"< $20 Million": 20e6, "$20 to $50 Million": 50e6, "$50 to $100 Million": 100e6}
+_MARKET_SIZE_MAX_USD = {"< $50 million": 50e6, "$50 to $100 million": 100e6}
+# A Year-5 target margin more than this above the industry's is questioned (as for the starting margin).
+TARGET_MARGIN_GAP = 0.10
+
+
+def usd_per_eur() -> float:
+    """The ECB rate already used to convert the Equidam benchmarks (see sources)."""
+    us = scorecard_benchmarks()["US"]
+    return us["usd"] / us["eur"]
+
+
 # What the lowest method's value depends on most, named in that note.
 _METHOD_DRIVERS = {
     "scorecard": "your questionnaire answers and the regional benchmark",
@@ -1313,6 +1326,26 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                  + ("adjust your target margin if that isn't realistic."
                     if projections.target_margin_source == "user_override"
                     else "enter your own target margin if that isn't realistic."))
+
+    # The plan against the founder's own answers on market size and revenue potential.
+    year5 = projections.years[-1].revenue
+    mk = inputs.market_and_team_assessment
+    market_max = _MARKET_SIZE_MAX_USD.get(mk.target_market_size)
+    potential_max = _REVENUE_POTENTIAL_MAX_USD.get(mk.revenue_potential_in_5_years)
+    if market_max and year5 > market_max / usd_per_eur():
+        warn("plan_above_market", f"Year-5 revenue in your plan ({_eur(year5)}) is more than the whole market you "
+             f"described (\"{mk.target_market_size}\", about {_eur(round(market_max / usd_per_eur(), -4))}). Check the plan "
+             "or the market size answer.")
+    elif potential_max and year5 > potential_max / usd_per_eur():
+        warn("plan_above_revenue_potential", f"Year-5 revenue in your plan ({_eur(year5)}) is above the revenue "
+             f"potential you gave (\"{mk.revenue_potential_in_5_years}\", about {_eur(round(potential_max / usd_per_eur(), -4))}). "
+             "Check the plan or that answer: the cash-flow methods use the plan.")
+    industry_margin = get_industry_metric(cp.industry, "ebitda_margin", cp.business_territory_region)
+    if (projections.target_margin_source == "user_override"
+            and projections.target_ebitda_margin > industry_margin + TARGET_MARGIN_GAP):
+        warn("target_margin_high", f"Your Year-5 EBITDA margin ({_pct(projections.target_ebitda_margin)}) is more "
+             f"than 10 points above the industry's ({_pct(industry_margin)}). Check that it is realistic: "
+             "the cash-flow methods depend on it.")
 
     if inputs.ownership:
         total = sum(s.ownership_pct for s in inputs.ownership)
