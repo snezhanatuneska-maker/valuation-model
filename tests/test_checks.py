@@ -290,3 +290,9 @@ def test_discount_rate_close_to_growth_is_handled(monkeypatch):
     r = ve.run_valuation(ve.ValuationInput(**WERKPULS))
     assert r.dcf.terminal_value_floor_applied and "tv_floor" in {w.code for w in r.warnings}
     assert r.dcf.terminal_value == pytest.approx(r.dcf.terminal_fcf * 1.02 / 0.02)
+
+
+def test_api_description_uses_the_method_names_shown_everywhere_else(client):
+    description = client.get("/openapi.json").json()["info"]["description"]
+    assert "DCF Multiples" not in description
+    assert "Comparables (EV/EBITDA multiple)" in description

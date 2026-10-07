@@ -482,8 +482,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Startup Valuation API",
     description=(
-        "Runs the Scorecard / Venture Capital / DCF Multiples / DCF blended "
-        "valuation model. Wraps the pure-Python valuation_engine package "
+        "Runs the Scorecard / Venture Capital / Comparables (EV/EBITDA multiple) / DCF "
+        "blended valuation model. Wraps the pure-Python valuation_engine package "
         "with persistence and HTTP access."
     ),
     version="1.0.0",
