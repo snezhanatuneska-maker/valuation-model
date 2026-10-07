@@ -41,6 +41,7 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
+    KeepTogether,
     Image,
     NextPageTemplate,
     PageBreak,
@@ -740,8 +741,10 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
     story.append(data_table(headers, rows, col_widths=[CONTENT_W * 0.25] + [CONTENT_W * 0.75 / n] * n))
     story.append(Spacer(1, 8))
     story.append(side_by_side(
-        [P("Revenue by year", STYLES["h3"]), bar_chart(labels, [y.get("revenue", 0) for y in years], color=NAVY_LINE)],
-        [P("EBITDA by year", STYLES["h3"]), bar_chart(labels, [y.get("ebitda", 0) for y in years], color=BLUE_MID)],
+        [P("Revenue by year", STYLES["h3"]),
+         bar_chart(labels, [y.get("revenue", 0) for y in years], color=NAVY_LINE, height=95)],
+        [P("EBITDA by year", STYLES["h3"]),
+         bar_chart(labels, [y.get("ebitda", 0) for y in years], color=BLUE_MID, height=95)],
     ))
 
     region = g(cp, "business_territory_region")
@@ -780,8 +783,6 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
         story.append(P("* Damodaran has no usable figure for this region, so the industry's global figure "
                        "(or the median across all industries) is used.", STYLES["sub"]))
 
-    story.append(Spacer(1, 6))
-
     funds_entries = [(k, v) for k, v in (g(funding, "use_of_funds") or {}).items() if v]
     ownership_entries = [(o.get("name"), o.get("ownership_pct")) for o in (ownership or []) if o.get("ownership_pct", 0) > 0]
     allocated = sum(v for _, v in ownership_entries)
@@ -790,12 +791,14 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
 
     funds_block = [P("Use of funds", STYLES["h3"])]
     if funds_entries:
-        funds_block += [pie_chart([v for _, v in funds_entries]), Spacer(1, 4), legend_table(funds_entries, fmt=money)]
+        funds_block += [pie_chart([v for _, v in funds_entries], size=64), Spacer(1, 4),
+                        legend_table(funds_entries, fmt=money)]
     else:
         funds_block.append(P("—", STYLES["td_label"]))
     own_block = [P("Ownership structure (before this round)", STYLES["h3"])]
     if ownership_entries:
-        own_block += [pie_chart([v for _, v in ownership_entries]), Spacer(1, 4), legend_table(ownership_entries, fmt=pct)]
+        own_block += [pie_chart([v for _, v in ownership_entries], size=64), Spacer(1, 4),
+                      legend_table(ownership_entries, fmt=pct)]
     else:
         own_block.append(P("—", STYLES["td_label"]))
     story.append(side_by_side(funds_block, own_block))
@@ -843,6 +846,8 @@ def _valuation_summary_page(output: dict) -> list:
     for key, mv in method_values.items():
         if mv.get("status") == "not_meaningful":
             story.append(P(f"{METHOD_LABELS.get(key, key)}: {mv.get('note')}", STYLES["sub"]))
+        elif key == "scorecard" and mv.get("status") == "not_used":
+            story.append(P(f"Scorecard: not used at this stage. {SCORECARD_NOT_USED}", STYLES["sub"]))
     story.append(Spacer(1, 12))
     story.append(bar_chart(cats, vals, color=NAVY_LINE, width=CONTENT_W, height=130))
     story.append(Spacer(1, 12))
@@ -938,13 +943,16 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
     return story
 
 
+SCORECARD_NOT_USED = (
+    "The Scorecard compares a pre-revenue company with the typical pre-revenue company in its region, so it "
+    "applies only at the Idea and Development stages; companies with revenue are valued on their numbers by "
+    "the other methods.")
+
+
 def _scorecard_page(sc: dict, cp: dict, mv: Optional[dict] = None) -> list:
     story = [P("Scorecard method", STYLES["h2"])]
     if mv and mv.get("status") == "not_used":
-        story.append(P(
-            "Not used for this company. The Scorecard compares a pre-revenue company with the typical "
-            "pre-revenue company in its region, so it applies only at the Idea and Development stages; "
-            "companies with revenue are valued on their numbers by the other methods.", STYLES["td_label"]))
+        story.append(P(f"Not used for this company. {SCORECARD_NOT_USED}", STYLES["td_label"]))
         return story
     story += _method_value_header("Pre-money valuation", money(g(sc, "pre_money_valuation")))
     bench = g(sc, "benchmark_pre_money_valuation")
@@ -1346,11 +1354,14 @@ def build_pdf_bytes(
     story += _valuation_summary_page(output)
     story.append(PageBreak())
     story += _warnings_page(output)
+    # The scenarios follow on the same page when they fit as a whole, else on the next one.
+    story.append(Spacer(1, 18))
+    story.append(KeepTogether(_scenario_sensitivity_page(scenarios or {})))
     story.append(PageBreak())
-    story += _scenario_sensitivity_page(scenarios or {})
-    story.append(PageBreak())
-    story += _scorecard_page(g(output, "scorecard", {}), cp, g(output, "method_values", {}).get("scorecard"))
-    story.append(PageBreak())
+    scorecard_mv = g(output, "method_values", {}).get("scorecard") or {}
+    if scorecard_mv.get("status") != "not_used":  # else one line on the Valuation page says why
+        story += _scorecard_page(g(output, "scorecard", {}), cp, scorecard_mv)
+        story.append(PageBreak())
     story += _vc_page(g(output, "venture_capital", {}), output)
     story.append(PageBreak())
     story += _comparables_page(g(output, "comparables", {}), cp)
