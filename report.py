@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import base64
 import io
+import re
 from datetime import datetime
 from typing import Any, Optional
 
@@ -177,6 +178,20 @@ def pct(n: Any) -> str:
     except (TypeError, ValueError):
         return "\u2014"
     return f"{n * 100:.1f}%"
+
+
+def money_compact(n: Any) -> str:
+    """Short amounts for narrow cells and chart labels: -€5k, €987k, €18.08M."""
+    if n is None:
+        return "—"
+    v = float(n)
+    sign = "-" if v < 0 else ""
+    a = abs(v)
+    if a >= 1_000_000:
+        return f"{sign}\u20ac{a / 1_000_000:,.2f}M"
+    if a >= 1_000:
+        return f"{sign}\u20ac{a / 1_000:,.0f}k"
+    return money(v)
 
 
 def money2(n: Any) -> str:
@@ -340,7 +355,7 @@ def bar_chart(categories: list[str], values: list[float], color=NAVY_LINE, width
         x = pad_side + i * gap + (gap - bar_w) / 2
         y0 = base_y if h >= 0 else base_y + h
         d.add(Rect(x, y0, bar_w, abs(h), fillColor=color if v >= 0 else colors.HexColor("#a3623f"), strokeColor=None))
-        label = f"\u20ac{v / 1000:,.0f}k" if abs(v) >= 1000 else money(v)
+        label = money_compact(v)
         label_y = base_y + h + 4 if h >= 0 else base_y + h - 9
         d.add(String(x + bar_w / 2, label_y, label, fontName="Helvetica-Bold", fontSize=6.5,
                       fillColor=MUTED, textAnchor="middle"))
@@ -643,7 +658,8 @@ def _company_summary_page(cp: dict, mkt: dict, ops: dict, output: dict) -> list:
         ("Business model", g(cp, "business_model")),
         ("Committed capital", money(g(cp, "committed_capital", 0))),
         ("Exit strategy", g(cp, "exit_strategy")),
-        ("Planned time to exit", f"{g(cp, 'planned_time_to_exit_years')} years"),
+        ("Planned time to exit", f"{g(cp, 'planned_time_to_exit_years')} "
+                                 f"year{'' if g(cp, 'planned_time_to_exit_years') == 1 else 's'}"),
         ("Tax rate", tax_text),
     ], col_widths=[HALF_W * 0.4, HALF_W * 0.6])
 
@@ -732,7 +748,10 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
 
     story.append(P(f"Benchmarks used — {safe(g(cp, 'industry'))} / {short_region(region)}", STYLES["h3"]))
     rows = [
-        ("Industry EBITDA margin (Year-5 target)", bm("ebitda_margin")),
+        (("Industry EBITDA margin (for reference)", f"{info_only('ebitda_margin')} (not used: your own Year-5 target is "
+          f"{pct(proj.get('target_ebitda_margin'))})")
+         if proj.get("target_margin_source") == "user_override"
+         else ("Industry EBITDA margin (Year-5 target)", bm("ebitda_margin"))),
         ("  of which: COGS / SG&A / R&D (% of revenue, for reference)",
          f"{info_only('cogs_pct_revenue')} / {info_only('sga_pct_revenue')} / {info_only('rd_pct_revenue')}"),
         ("D&A (% of revenue)", bm("da_pct_revenue")),
@@ -854,16 +873,23 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
 
     labels = list(scenarios.keys())
     n = len(labels)
+    values = [scenarios[l].get("blended_pre_money_valuation") or 0 for l in labels]
+    if max(values) - min(values) < 1:
+        story.append(P(
+            f"The value is the same in every scenario ({money(values[0])}): only methods that don't use projected "
+            "revenue give a value for this company, so a higher or lower Year-1 revenue doesn't change it.",
+            STYLES["td_label"]))
+        return story
 
     def val(label, key):
         mv = scenarios[label].get("method_values", {}).get(key, {})
         if mv.get("status") == "ok":
-            return money(mv.get("pre_money_value"))
+            return money_compact(mv.get("pre_money_value"))
         return "not used" if mv.get("status") == "not_used" else "n/m"
 
     rows = [[METHOD_CHART_LABELS[k]] + [val(l, k) for l in labels]
             for k in ("scorecard", "venture_capital", "comparables", "dcf")]
-    total_row = ["Blended pre-money"] + [money(scenarios[l].get("blended_pre_money_valuation")) for l in labels]
+    total_row = ["Blended pre-money"] + [money_compact(scenarios[l].get("blended_pre_money_valuation")) for l in labels]
     col_w = [CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n
     story.append(data_table(["Method"] + labels, rows, total_row=total_row, col_widths=col_w))
     story.append(P("The weights stay as in the main result; a method that gives no positive value in a scenario "
@@ -890,12 +916,19 @@ def _scorecard_page(sc: dict, cp: dict, mv: Optional[dict] = None) -> list:
     bench = g(sc, "benchmark_pre_money_valuation")
     factor = g(sc, "total_factor")
     source = g(sc, "benchmark_source")
+    basis = g(sc, "benchmark_basis") or ""
+    basis = basis[:1].lower() + basis[1:] if basis.startswith("Average") else basis
     bench_src = ("your own benchmark" if source == "user_override"
-                 else g(sc, "benchmark_basis") if source == "country_table"
-                 else f"{g(sc, 'benchmark_basis')}, converted to euros")
-    where = g(cp, "country") if source == "country_table" else short_region(g(cp, "business_territory_region"))
+                 else basis if source == "country_table"
+                 else f"{basis}, converted to euros")
+    region = g(cp, "business_territory_region")
+    where = ("like yours" if source == "user_override"
+             else f"in {g(cp, 'country')}" if source == "country_table"
+             else "in the US" if region == "US"
+             else "anywhere (all-region figure)" if region == "Global"
+             else f"in {short_region(region)}")
     story += _how(
-        f"A typical pre-revenue company in {where} "
+        f"A typical pre-revenue company {where} "
         f"is valued at about {money(bench)} before investment ({bench_src}). Your answers score this company at "
         f"{pct(factor)} of that typical company overall, so {money(bench)} × {pct(factor)} = "
         f"{money(g(sc, 'pre_money_valuation'))}.")
@@ -949,9 +982,11 @@ def _vc_page(vc: dict, output: Optional[dict] = None) -> list:
         (f"Exit-year ({g(vc, 'exit_year_label')}) revenue", money(g(vc, "exit_year_revenue"))),
         (f"Exit-year ({g(vc, 'exit_year_label')}) EBITDA", money(g(vc, "exit_year_ebitda"))),
         ("EV/EBITDA multiple", multiple(g(vc, "ev_ebitda_multiple"))),
-        ("Exit value (enterprise value)", money(g(vc, "exit_value"))),
+        # A non-positive exit value has no meaning; show a dash rather than a negative amount.
+        ("Exit value (enterprise value)", money(g(vc, "exit_value")) if (g(vc, "exit_value") or 0) > 0 else "—"),
         ("Less: debt (assumed still outstanding at exit)", money(-(g(vc, "debt") or 0))),
-        ("Exit value for shareholders", money(g(vc, "exit_equity_value"))),
+        ("Exit value for shareholders",
+         money(g(vc, "exit_equity_value")) if (g(vc, "exit_equity_value") or 0) > 0 else "—"),
     ]))
     note = _benchmark_source_note(g(vc, "ev_ebitda_multiple_source"))
     if note:
@@ -1042,14 +1077,19 @@ def _dcf_page(dcf: dict, wacc: dict, years: list, german: Optional[dict] = None)
     story.append(Spacer(1, 8))
 
     tv_share = g(dcf, "terminal_value_share")
+    # When the method isn't used (e.g. negative enterprise value), the values derived from the
+    # cash flows have no meaning: show dashes rather than negative amounts.
+    used = g(dcf, "pre_money_valuation") is not None
+    shown = lambda v: money(v) if used else "—"  # noqa: E731
     value_rows = info_table([
-        ("PV of 5 years of free cash flow", money(g(dcf, "pv_of_fcf"))),
-        ("PV of terminal value", money(g(dcf, "pv_of_terminal_value"))),
-        ("Enterprise value (if the business survives)", money(g(dcf, "enterprise_value"))),
+        ("PV of 5 years of free cash flow", shown(g(dcf, "pv_of_fcf"))),
+        ("PV of terminal value", shown(g(dcf, "pv_of_terminal_value"))),
+        ("Enterprise value (if the business survives)", shown(g(dcf, "enterprise_value"))),
         ("Terminal value share of that value",
+         "—" if not used else
          "over 100% (Years 1-5 burn cash)" if tv_share is not None and tv_share > 1 else pct(tv_share)),
         ("Probability of survival (for this stage)", pct(g(dcf, "survival_probability"))),
-        ("Risk-adjusted enterprise value", money(g(dcf, "risk_adjusted_enterprise_value"))),
+        ("Risk-adjusted enterprise value", shown(g(dcf, "risk_adjusted_enterprise_value"))),
         ("Less: debt", money(-(g(dcf, "debt") or 0))),
         ("Plus: cash", money(g(dcf, "cash"))),
         ("Equity value (pre-money)", money(g(dcf, "equity_value"))),
@@ -1121,9 +1161,22 @@ def _country_inputs_section(country: str, specific: dict, output: dict) -> list:
     return story
 
 
+# Source sentences that concern one particular country or industry: shown only to that company.
+_SPECIFIC_SOURCE_SENTENCES = {"Russia": "country", "Retail (Online)": "industry"}
+
+
+def _relevant_sentences(text: str, country: Optional[str], industry: Optional[str]) -> str:
+    keep = []
+    for sentence in re.split(r"(?<=[.;])\s+(?=[A-Z'])", text):
+        about = next((name for name in _SPECIFIC_SOURCE_SENTENCES if name in sentence), None)
+        if about is None or about in (country, industry):
+            keep.append(sentence)
+    return " ".join(keep)
+
+
 def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Optional[str],
                       country: Optional[str] = None, country_inputs: Optional[dict] = None,
-                      output: Optional[dict] = None) -> list:
+                      output: Optional[dict] = None, industry: Optional[str] = None) -> list:
     story = [P("Methods, data sources & disclaimer", STYLES["h2"])]
     story.append(P("Methods", STYLES["h3"]))
     for text in (
@@ -1168,7 +1221,8 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
     ]
     for key, label in labels:
         if sources.get(key):
-            story.append(P(f"<b>{esc(label)}:</b> {esc(sources[key])}", STYLES["td_label"], raw=True))
+            story.append(P(f"<b>{esc(label)}:</b> {esc(_relevant_sentences(sources[key], country, industry))}",
+                           STYLES["td_label"], raw=True))
             story.append(Spacer(1, 3))
 
     story.append(Spacer(1, 10))
@@ -1264,7 +1318,7 @@ def build_pdf_bytes(
     story += _dcf_page(g(output, "dcf", {}), g(output, "wacc", {}), years, _german_taxes(output))
     story.append(PageBreak())
     story += _methodology_page(sources, stage_params, g(cp, "company_stage"), g(cp, "country"),
-                               country_inputs, output)
+                               country_inputs, output, g(cp, "industry"))
 
     doc.build(story)
     return buffer.getvalue()

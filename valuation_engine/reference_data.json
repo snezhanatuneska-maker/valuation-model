@@ -14950,25 +14950,25 @@
       "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": {
         "eur": 2368000.0,
         "usd": 2695000.0,
-        "basis": "Average of the Equidam H1 2026 medians for Africa ($2.99M) and Latin America ($2.40M)",
+        "basis": "Average of the Equidam H1 2026 medians for Africa, $2.99M, and Latin America, $2.40M",
         "regional_figure": true
       },
       "Japan": {
         "eur": 4568000.0,
         "usd": 5200000.0,
-        "basis": "Equidam H1 2026 all-region median (no separate figure for Japan)",
+        "basis": "Equidam H1 2026 all-region median, no separate figure for Japan",
         "regional_figure": false
       },
       "China": {
         "eur": 4568000.0,
         "usd": 5200000.0,
-        "basis": "Equidam H1 2026 all-region median (no separate figure for China)",
+        "basis": "Equidam H1 2026 all-region median, no separate figure for China",
         "regional_figure": false
       },
       "India": {
         "eur": 4568000.0,
         "usd": 5200000.0,
-        "basis": "Equidam H1 2026 all-region median (no separate figure for India)",
+        "basis": "Equidam H1 2026 all-region median, no separate figure for India",
         "regional_figure": false
       },
       "Global": {
@@ -14998,11 +14998,11 @@
           "2032": 0.1
         },
         "corporate_tax_note": "Years before the first listed year use the first rate; years after the last listed year use the last rate.",
-        "corporate_tax_source": "Körperschaftsteuer: § 23 (1) KStG as amended by the Gesetz für ein steuerliches Investitionssofortprogramm zur Stärkung des Wirtschaftsstandorts Deutschland of 14 July 2025 (BGBl. I 2025 Nr. 161, published 18 July 2025): 15% up to 2027, 14% in 2028, 13% in 2029, 12% in 2030, 11% in 2031, 10% from 2032.",
+        "corporate_tax_source": "Körperschaftsteuer: § 23 para. 1 KStG as amended by the Gesetz für ein steuerliches Investitionssofortprogramm zur Stärkung des Wirtschaftsstandorts Deutschland of 14 July 2025 (BGBl. I 2025 Nr. 161, published 18 July 2025): 15% up to 2027, 14% in 2028, 13% in 2029, 12% in 2030, 11% in 2031, 10% from 2032.",
         "solidarity_surcharge": 0.055,
         "solidarity_surcharge_source": "Solidaritätszuschlag: 5.5% of the corporate tax (§ 4 SolzG 1995), unchanged.",
         "trade_tax_base_rate": 0.035,
-        "trade_tax_base_rate_source": "Gewerbesteuer: tax base rate (Steuermesszahl) of 3.5% (§ 11 (2) GewStG), multiplied by the municipality's Hebesatz.",
+        "trade_tax_base_rate_source": "Gewerbesteuer: tax base rate (Steuermesszahl) of 3.5% (§ 11 para. 2 GewStG), multiplied by the municipality's Hebesatz.",
         "average_hebesatz": 4.09,
         "average_hebesatz_as_of": "2024",
         "average_hebesatz_source": "Statistisches Bundesamt (Destatis), press release of 21 August 2025: average trade-tax Hebesatz of all German municipalities in 2024 was 409%. Users can enter their own municipality's Hebesatz.",

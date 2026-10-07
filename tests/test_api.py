@@ -183,3 +183,74 @@ def test_valuation_saved_by_the_old_version_still_opens(storing_client):
     assert r.status_code == 200, r.text
     assert r.json()["input"]["market_and_team_assessment"]["target_market_size"] == "< $50 million"
     assert client.get(f"/valuations/{vid}/report").status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Sweep: many input combinations through the result, the scenarios and the PDF,
+# checking for the kinds of mistakes found in user walkthroughs.
+# ---------------------------------------------------------------------------
+def _sweep_cases(n=60, seed=42):
+    import random
+
+    import valuation_engine as ve
+    rng = random.Random(seed)
+    lookup = ve.scorecard_qualitative_lookup()
+    for i in range(n):
+        c = copy.deepcopy(GERMAN_CASE)
+        cp, op, fa = c["company_profile"], c["operating_performance"], c["financial_assumptions"]
+        cp["country"] = rng.choice(["Germany", "Germany", "United States", "Austria", "Tanzania", "Côte d'Ivoire"])
+        cp["business_territory_region"] = (ve.default_region_for_country(cp["country"]) if rng.random() < 0.8
+                                           else rng.choice(ve.business_regions()))
+        cp["industry"] = rng.choice(["Software (System & Application)", "Machinery", "Banks (Regional)",
+                                     "Drugs (Biotechnology)", "Retail (Online)", "Green & Renewable Energy"])
+        cp["company_stage"] = rng.choice(list(ve.stage_parameters()))
+        cp["planned_time_to_exit_years"] = rng.choice([1, 3, 5])
+        cp["dcf_tax_rate_override"] = rng.choice([None, 0.2])
+        cp["benchmark_pre_money_override"] = rng.choice([None, 1_500_000])
+        rev = rng.choice([0, 300_000, 5_000_000])
+        op["current_revenue_last_12_months"] = rev
+        op["current_ebitda"] = -100_000 if rev == 0 else round(rev * rng.choice([-0.2, 0.1, 0.25]))
+        fa["revenue_year1"] = rng.choice([60_000, 1_000_000, 6_000_000])
+        fa["revenue_growth_rates"] = rng.choice([[0.1] * 4, [2.0, 1.0, 0.6, 0.4], [-0.3, 0.1, 0.1, 0.1]])
+        fa["existing_debt_balance"] = rng.choice([0, 10_000_000])
+        fa["target_ebitda_margin_override"] = rng.choice([None, -0.1, 0.25])
+        c["funding"]["capital_needed"] = rng.choice([100_000, 20_000_000])
+        if rng.random() < 0.5:
+            c["market_and_team_assessment"] = {q: rng.choice(list(o)) for q, o in lookup.items()}
+        yield f"sweep {i}", c
+
+
+BAD_TEXT = [r"\bnan\b", r"NaN", r"undefined", r"\bnull\b", r"&#39;", r"&amp;", r"€-", r"\b1 years\b",
+            r"in United States", r"\.;", r"\(\(", r"company in (Global|US) "]
+
+
+def test_sweep_results_scenarios_and_pdfs(client):
+    import io
+    import re
+
+    from pypdf import PdfReader
+    for name, case in _sweep_cases():
+        r = client.post("/valuations/preview", json=case)
+        assert r.status_code in (200, 422), (name, r.text)
+        if r.status_code == 422:
+            assert "\n" in r.json()["detail"] or "Banks and insurers" in r.json()["detail"], name
+            continue
+        out = r.json()
+        scenarios = client.post("/valuations/preview/scenarios", json=case).json()
+        assert list(scenarios) == ["80%", "90%", "100%", "110%", "120%", "130%"], name
+        assert scenarios["100%"]["blended_pre_money_valuation"] == pytest.approx(out["blended_pre_money_valuation"])
+        messages = [w["message"] for w in out["warnings"]]
+        assert len(messages) == len(set(messages)), name
+        pdf = client.post("/valuations/preview/report", json=case)
+        assert pdf.status_code == 200, name
+        text = "\n".join(page.extract_text() for page in PdfReader(io.BytesIO(pdf.content)).pages)
+        for pattern in BAD_TEXT:
+            assert not re.search(pattern, text), (name, pattern)
+        assert not re.search(r"€[\d,]*,\d{0,2}\s*\n\s*\d", text), (name, "amount wrapped across lines")
+        blended = re.search(r"Blended pre-money valuation\s*€([\d,]+)", text)
+        assert blended and float(blended.group(1).replace(",", "")) == pytest.approx(
+            out["blended_pre_money_valuation"], abs=1), name
+        if case["company_profile"]["country"] != "Russia":
+            assert "Russia" not in text, name
+        if case["company_profile"]["industry"] != "Retail (Online)":
+            assert "Retail (Online)" not in text, name

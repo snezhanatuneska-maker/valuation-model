@@ -27,6 +27,7 @@ Methodology (see AUDIT_REPORT.md for why each choice was made):
 """
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -1165,6 +1166,29 @@ _REGION_SHORT = {
     "Global": "Global",
 }
 
+# How each benchmark region is described in a sentence ("... compared with European figures").
+_REGION_ADJECTIVE = {
+    "US": "US",
+    EUROPE_REGION: "European",
+    "Japan": "Japanese",
+    EMERGING_REGION: "emerging-market",
+    "China": "Chinese",
+    "India": "Indian",
+    "Global": "global",
+}
+
+# Country names that take "the" in a sentence ("in the United States").
+_COUNTRIES_WITH_THE = {
+    "United States", "United Kingdom", "Netherlands", "Bahamas", "Philippines", "Maldives", "Cayman Islands",
+    "Turks and Caicos Islands", "Solomon Islands", "Isle of Man", "Czech Republic", "Dominican Republic",
+    "United Arab Emirates", "Congo (Democratic Republic)", "Congo (Republic)",
+}
+
+
+def country_in_text(country: str) -> str:
+    return f"the {country}" if country in _COUNTRIES_WITH_THE else country
+
+
 _METRIC_LABELS = {
     "ebitda_margin": "EBITDA margin",
     "da_pct_revenue": "D&A (% of revenue)",
@@ -1227,9 +1251,12 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                  f"12 months ({_eur(ltm)}). If you don't expect sales to fall, check both figures: every "
                  "cash-flow method builds on the Year-1 plan.")
     else:
-        warn("no_revenue_history", "No revenue in the last 12 months: projected margins use the industry "
-             "average from Year 1, and the Comparables method can't be applied.", "info")
-    if any(g > 1.0 for g in fa.revenue_growth_rates):
+        margin_used = ("your own Year-5 target margin" if fa.target_ebitda_margin_override is not None
+                       else "the industry average margin")
+        warn("no_revenue_history", f"No revenue in the last 12 months: the projection uses {margin_used} from "
+             "Year 1, and the Comparables method can't be applied.", "info")
+    # Growth above 100% a year is normal for a company that is only starting to sell.
+    if ltm > 0 and any(g > 1.0 for g in fa.revenue_growth_rates):
         warn("high_growth", "One or more yearly growth rates is above 100%. Check these are realistic.")
 
     revenue_base = ltm if ltm > 0 else fa.revenue_year1
@@ -1247,8 +1274,10 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
             warn("margin_gap", f"Your current EBITDA margin ({_pct(projections.starting_ebitda_margin)}) "
                  f"differs from the {'target' if projections.target_margin_source == 'user_override' else 'industry'} "
                  f"margin ({_pct(projections.target_ebitda_margin)}) by more than 10 points. The projection "
-                 "moves from one to the other over five years; enter your own target margin if that isn't "
-                 "realistic.")
+                 "moves from one to the other over five years; "
+                 + ("adjust your target margin if that isn't realistic."
+                    if projections.target_margin_source == "user_override"
+                    else "enter your own target margin if that isn't realistic."))
 
     if inputs.ownership:
         total = sum(s.ownership_pct for s in inputs.ownership)
@@ -1272,13 +1301,14 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
     except KeyError:
         expected_region = None
     if expected_region and expected_region != "Global" and expected_region != cp.business_territory_region:
-        warn("region_mismatch", f"Companies in {cp.country} are usually benchmarked against "
-             f"{_REGION_SHORT.get(expected_region, expected_region)}; you chose "
-             f"{_REGION_SHORT.get(cp.business_territory_region, cp.business_territory_region)}. "
-             "Industry benchmarks follow the region you chose.", "info")
+        warn("region_mismatch", f"Companies in {country_in_text(cp.country)} are usually compared with "
+             f"{_REGION_ADJECTIVE.get(expected_region, expected_region)} industry figures; you chose "
+             f"{_REGION_ADJECTIVE.get(cp.business_territory_region, cp.business_territory_region)} figures, "
+             "so the benchmarks follow your choice.", "info")
 
     region_name = _REGION_SHORT.get(cp.business_territory_region, cp.business_territory_region)
-    for b in bench.used.values():
+    # Banks and insurers are valued by the Scorecard only, so industry-figure fallbacks don't matter.
+    for b in ([] if cp.industry in FINANCIAL_SECTOR_INDUSTRIES else bench.used.values()):
         if b.source == "industry_global":
             warn(f"fallback_{b.metric}", f"Damodaran has no usable {region_name} figure for "
                  f"{_METRIC_LABELS.get(b.metric, b.metric)} in this industry, so the industry's global "
@@ -1301,6 +1331,7 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
              "depends mostly on years after the forecast.", "info")
 
     if (method_values["scorecard"].status == "ok" and scorecard.benchmark_source == "table"
+            and cp.business_territory_region != "Global"
             and not scorecard_benchmarks()[cp.business_territory_region]["regional_figure"]):
         warn("benchmark_global", f"There is no separate published pre-revenue benchmark for "
              f"{region_name}, so the Scorecard uses the all-region median. Enter a local benchmark if you "
@@ -1358,7 +1389,8 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
              "as a placeholder. Enter a local benchmark if you have one.", "info")
 
     taxes = projections.tax_schedule
-    if taxes is not None and taxes.basis == "germany_schedule":
+    pays_tax = any(y.tax_on_ebit > 0 for y in projections.years)  # no note if losses mean no tax is due
+    if taxes is not None and taxes.basis == "germany_schedule" and pays_tax:
         rates = ", ".join(f"{y.year_label} {_pct(y.tax_rate)}" for y in projections.years)
         hebesatz = (f"your Hebesatz of {taxes.hebesatz * 100:.0f}%" if taxes.hebesatz_source == "user"
                     else f"the national average Hebesatz of {taxes.hebesatz * 100:.0f}% (enter your "
@@ -1374,6 +1406,9 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
             # Without revenue, Comparables can't apply by design, and the "no_revenue_history"
             # note already says so: no second message.
             if key == "comparables" and ltm == 0:
+                continue
+            # Banks and insurers: the single "financial_sector" message already explains all three.
+            if cp.industry in FINANCIAL_SECTOR_INDUSTRIES:
                 continue
             warn(f"nm_{key}", f"{METHOD_NAMES[key]} left out of the blend: {mv.note}")
         elif mv.status == "ok" and mv.note:
@@ -1470,9 +1505,15 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
             "Banks and insurers can't be valued on EBITDA or free cash flow, and the Scorecard applies only to "
             "pre-revenue companies (Idea and Development stages), so this tool can't value this company.")
     if usable_weight <= 0:
-        reasons = "; ".join(f"{METHOD_NAMES[k]}: {r}" for k, (v, r) in raw.items() if r and weights[k] > 0)
+        reasons = "\n".join(f"• {METHOD_NAMES[k]}: {r}" for k, (v, r) in raw.items() if r and weights[k] > 0)
+        if op.current_revenue_last_12_months == 0 and company.company_stage not in PRE_REVENUE_STAGES:
+            advice = ("Your company has no revenue yet: choose the Idea or Development stage, where the Scorecard "
+                      "(which doesn't need revenue or profits) is used.")
+        else:
+            advice = ("Usually this means the plan never becomes profitable, or the amount raised is larger than "
+                      "the plan supports. Check the revenue plan, the target margin and the amount you are raising.")
         raise ValuationError(
-            "None of the methods used for this stage gives a meaningful value for these inputs. " + reasons)
+            "None of the methods for this stage can give a value with these inputs:\n" + reasons + "\n\n" + advice)
 
     method_values = {}
     blended = 0.0
@@ -1551,9 +1592,13 @@ def run_valuation_scenarios(
         scaled_inputs = inputs.model_copy(deep=True)
         scaled_inputs.financial_assumptions.revenue_year1 = base_revenue * m
         try:
-            results[scenario_label(m)] = _with_base_weights(run_valuation(scaled_inputs), base)
+            scenario = run_valuation(scaled_inputs)
         except ValuationError:
-            continue
+            # No method gives a value at this revenue level: keep the scenario, with every method at 0.
+            scenario = copy.deepcopy(base)
+            for key, mv in scenario.method_values.items():
+                scenario.method_values[key] = MethodValue(None, mv.weight, 0.0, None, "not_meaningful", None)
+        results[scenario_label(m)] = _with_base_weights(scenario, base)
     return results
 
 
