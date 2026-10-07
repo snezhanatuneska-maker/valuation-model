@@ -134,8 +134,8 @@ def mround(x, m):
 
 
 FINANCIALS = {"Bank (Money Center)", "Banks (Regional)", "Brokerage & Investment Banking",
-              "Financial Svcs. (Non-bank & Insurance)", "Insurance (General)", "Insurance (Life)",
-              "Insurance (Prop/Cas.)", "Investments & Asset Management", "Reinsurance"}
+              "Financial Services (Non-bank & Insurance)", "Insurance (General)", "Insurance (Life)",
+              "Insurance (Property & Casualty)", "Investments & Asset Management", "Reinsurance"}
 
 
 def german_rate(year, hebesatz):

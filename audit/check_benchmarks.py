@@ -46,7 +46,16 @@ DIRECT = {
 # App industries whose figures come from a differently named Damodaran industry.
 SOURCE_ALIASES = {"Retail (Online)": "Retail (General)",
                   # Damodaran spells it "Heathcare"; the app shows the corrected name.
-                  "Healthcare Information and Technology": "Heathcare Information and Technology"}
+                  "Healthcare Information and Technology": "Heathcare Information and Technology",
+                  "Financial Services (Non-bank & Insurance)": "Financial Svcs. (Non-bank & Insurance)",
+                  "Furniture/Home Furnishings": "Furn/Home Furnishings",
+                  "Insurance (Property & Casualty)": "Insurance (Prop/Cas.)",
+                  "Oilfield Services/Equipment": "Oilfield Svcs/Equip.",
+                  "Real Estate Investment Trusts (REITs)": "R.E.I.T.",
+                  "Semiconductor Equipment": "Semiconductor Equip",
+                  "Telecom Equipment": "Telecom. Equipment",
+                  "Telecom Services": "Telecom. Services",
+                  "Rubber & Tires": "Rubber& Tires"}
 MIN_FIRMS = 10
 TOL = 1e-6
 

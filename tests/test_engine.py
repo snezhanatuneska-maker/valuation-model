@@ -1,6 +1,7 @@
 """Engine tests: every figure is checked against an independent recomputation
 (audit/recompute.py), plus the rules the methodology promises."""
 import copy
+import re
 
 import pytest
 from pydantic import ValidationError
@@ -454,3 +455,12 @@ def test_no_method_message_lists_reasons_and_advice():
 def test_every_scenario_is_kept_even_when_no_method_works_there():
     s = ve.run_valuation_scenarios(ve.ValuationInput(**SLIDER_CASE))
     assert list(s) == ["80%", "90%", "100%", "110%", "120%", "130%"]
+
+
+def test_industry_names_are_spelled_out_and_old_names_still_work():
+    names = ve.categorical_options()["industry"]
+    assert not [n for n in names if re.search(r"Svcs|Prop/Cas|R\.E\.I\.T|Telecom\. |Furn/|Equip\b|Rubber& ", n)]
+    case = copy.deepcopy(GERMAN_CASE)
+    case["company_profile"]["industry"] = "Telecom. Services"  # Damodaran's spelling
+    assert ve.ValuationInput(**case).company_profile.industry == "Telecom Services"
+    assert "Insurance (Property & Casualty)" in ve.FINANCIAL_SECTOR_INDUSTRIES

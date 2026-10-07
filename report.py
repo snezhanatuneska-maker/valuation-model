@@ -194,6 +194,12 @@ def money_compact(n: Any) -> str:
     return money(v)
 
 
+def amount_format(values: list, limit: float = 100_000_000) -> Any:
+    """Full amounts normally; compact ones (€18.08M) when the largest would not fit a table column."""
+    largest = max((abs(v) for v in values if isinstance(v, (int, float))), default=0)
+    return money_compact if largest >= limit else money
+
+
 def money2(n: Any) -> str:
     """Money with cents, for small amounts like a price per share."""
     if n is None or n == "":
@@ -715,12 +721,13 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
         STYLES["sub"]))
 
     headers = [""] + [f"{y.get('year_label')} ({y.get('period_label', '').replace('to ', '')})" for y in years]
+    amt = amount_format([y.get(k) for y in years for k in ("revenue", "ebitda", "capex", "unlevered_fcf")])
     rows = [
-        ["Revenue"] + [money(y.get("revenue")) for y in years],
+        ["Revenue"] + [amt(y.get("revenue")) for y in years],
         ["EBITDA margin"] + [pct(y.get("ebitda_margin")) for y in years],
-        ["EBITDA"] + [money(y.get("ebitda")) for y in years],
-        ["Capital expenditure"] + [money(y.get("capex")) for y in years],
-        ["Free cash flow"] + [money(y.get("unlevered_fcf")) for y in years],
+        ["EBITDA"] + [amt(y.get("ebitda")) for y in years],
+        ["Capital expenditure"] + [amt(y.get("capex")) for y in years],
+        ["Free cash flow"] + [amt(y.get("unlevered_fcf")) for y in years],
     ]
     n = max(len(years), 1)
     story.append(data_table(headers, rows, col_widths=[CONTENT_W * 0.25] + [CONTENT_W * 0.75 / n] * n))
@@ -788,6 +795,15 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
     return story
 
 
+def zero_value_reason(output: dict) -> str:
+    """Why the pre-money value is zero (the same wording as on the results page)."""
+    debt = g(g(output, "equity_bridge", {}), "debt") or 0
+    if debt > 0:
+        return (f"The value is €0 because the company's debt ({money(debt)}) is larger than the value the methods "
+                "find for the business, so the shares are worth about nothing before the new money comes in.")
+    return "The value rounds to €0: the methods used leave essentially no value for the shares before the new money."
+
+
 def _valuation_summary_page(output: dict) -> list:
     story = [P("Valuation", STYLES["h2"])]
     story.append(P(
@@ -836,6 +852,9 @@ def _valuation_summary_page(output: dict) -> list:
         return t
 
     story.append(callout("Pre-money valuation", money(g(output, "blended_pre_money_valuation"))))
+    if (g(output, "blended_pre_money_valuation") or 0) < 0.5:
+        story.append(Spacer(1, 4))
+        story.append(P(zero_value_reason(output), STYLES["sub"]))
     story.append(Spacer(1, 6))
     story.append(callout("Capital being raised", money(g(output, "capital_needed"))))
     story.append(Spacer(1, 6))
@@ -1061,15 +1080,17 @@ def _dcf_page(dcf: dict, wacc: dict, years: list, german: Optional[dict] = None)
             f"{money(g(dcf, 'pre_money_valuation'))}.")
 
     headers = [""] + [y.get("year_label", "") for y in years]
+    amt = amount_format([y.get(k) for y in years for k in ("ebit", "tax_on_ebit", "da", "capex", "change_in_working_capital",
+                                                          "unlevered_fcf")])
     rows = [
-        ["EBIT"] + [money(y.get("ebit")) for y in years],
+        ["EBIT"] + [amt(y.get("ebit")) for y in years],
         *([["Tax rate (German schedule)"] + [pct(y.get("tax_rate")) for y in years]] if german else []),
-        ["Tax on EBIT"] + [money(-y.get("tax_on_ebit", 0)) for y in years],
-        ["Add back D&A"] + [money(y.get("da")) for y in years],
-        ["Capital expenditure"] + [money(-y.get("capex", 0)) for y in years],
-        ["Change in working capital"] + [money(-y.get("change_in_working_capital", 0)) for y in years],
+        ["Tax on EBIT"] + [amt(-y.get("tax_on_ebit", 0)) for y in years],
+        ["Add back D&A"] + [amt(y.get("da")) for y in years],
+        ["Capital expenditure"] + [amt(-y.get("capex", 0)) for y in years],
+        ["Change in working capital"] + [amt(-y.get("change_in_working_capital", 0)) for y in years],
     ]
-    total_row = ["Free cash flow"] + [money(v) for v in g(dcf, "unlevered_fcf_by_year", [])]
+    total_row = ["Free cash flow"] + [amt(v) for v in g(dcf, "unlevered_fcf_by_year", [])]
     n = max(len(years), 1)
     story.append(P("Unlevered free cash flow (negative numbers reduce cash)", STYLES["h3"]))
     story.append(data_table(headers, rows, total_row=total_row,
@@ -1080,7 +1101,11 @@ def _dcf_page(dcf: dict, wacc: dict, years: list, german: Optional[dict] = None)
     # When the method isn't used (e.g. negative enterprise value), the values derived from the
     # cash flows have no meaning: show dashes rather than negative amounts.
     used = g(dcf, "pre_money_valuation") is not None
-    shown = lambda v: money(v) if used else "—"  # noqa: E731
+    # Half-width table: compact amounts from a billion euros up, so nothing wraps.
+    big = amount_format([g(dcf, k) for k in ("pv_of_fcf", "pv_of_terminal_value", "enterprise_value",
+                                             "risk_adjusted_enterprise_value", "debt", "cash", "equity_value")],
+                        limit=1_000_000_000)
+    shown = lambda v: big(v) if used else "—"  # noqa: E731
     value_rows = info_table([
         ("PV of 5 years of free cash flow", shown(g(dcf, "pv_of_fcf"))),
         ("PV of terminal value", shown(g(dcf, "pv_of_terminal_value"))),
@@ -1090,9 +1115,9 @@ def _dcf_page(dcf: dict, wacc: dict, years: list, german: Optional[dict] = None)
          "over 100% (Years 1-5 burn cash)" if tv_share is not None and tv_share > 1 else pct(tv_share)),
         ("Probability of survival (for this stage)", pct(g(dcf, "survival_probability"))),
         ("Risk-adjusted enterprise value", shown(g(dcf, "risk_adjusted_enterprise_value"))),
-        ("Less: debt", money(-(g(dcf, "debt") or 0))),
-        ("Plus: cash", money(g(dcf, "cash"))),
-        ("Equity value (pre-money)", money(g(dcf, "equity_value"))),
+        ("Less: debt", big(-(g(dcf, "debt") or 0))),
+        ("Plus: cash", big(g(dcf, "cash"))),
+        ("Equity value (pre-money)", big(g(dcf, "equity_value"))),
     ], col_widths=[HALF_W * 0.68, HALF_W * 0.32])
     rate_rows = info_table([
         ("Risk-free rate (10-year Bund)" if german else "Risk-free rate", pct2(g(wacc, "risk_free_rate"))),

@@ -254,3 +254,21 @@ def test_sweep_results_scenarios_and_pdfs(client):
             assert "Russia" not in text, name
         if case["company_profile"]["industry"] != "Retail (Online)":
             assert "Retail (Online)" not in text, name
+
+
+def test_pdf_explains_a_zero_value_and_fits_huge_numbers(client):
+    import io
+    import re
+
+    from pypdf import PdfReader
+    zero = copy.deepcopy(GERMAN_CASE)
+    zero["financial_assumptions"]["existing_debt_balance"] = 50_000_000
+    huge = copy.deepcopy(GERMAN_CASE)
+    huge["operating_performance"].update(current_revenue_last_12_months=80_000_000, current_ebitda=20_000_000)
+    huge["financial_assumptions"].update(revenue_year1=90_000_000, revenue_growth_rates=[9.0, 5.0, 1.0, 0.5])
+    for case, check in ((zero, "The value is €0 because the company's debt"), (huge, None)):
+        pdf = client.post("/valuations/preview/report", json=case)
+        text = "\n".join(p.extract_text() for p in PdfReader(io.BytesIO(pdf.content)).pages)
+        assert not re.search(r"€[\d,]*,\d{0,2}\s*\n\s*\d", text)  # no amount wrapped across lines
+        if check:
+            assert check in " ".join(text.split())

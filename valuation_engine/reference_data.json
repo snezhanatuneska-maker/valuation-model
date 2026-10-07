@@ -4521,7 +4521,7 @@
         "Global": 0.012964490068664411
       }
     },
-    "Financial Svcs. (Non-bank & Insurance)": {
+    "Financial Services (Non-bank & Insurance)": {
       "ev_ebitda_multiple": {
         "Global": 43.42140928005367,
         "Europe (EU, UK, Switzerland & Scandinavia)": 17.012540159424592,
@@ -4932,7 +4932,7 @@
         "Global": 0.00019427065857916985
       }
     },
-    "Furn/Home Furnishings": {
+    "Furniture/Home Furnishings": {
       "ev_ebitda_multiple": {
         "Global": 10.626401957357944,
         "Europe (EU, UK, Switzerland & Scandinavia)": 9.45266833743719,
@@ -6576,7 +6576,7 @@
         "Global": 8.201358744180385e-06
       }
     },
-    "Insurance (Prop/Cas.)": {
+    "Insurance (Property & Casualty)": {
       "ev_ebitda_multiple": {
         "Global": 7.815288923578121,
         "Europe (EU, UK, Switzerland & Scandinavia)": 10.65864735643733,
@@ -7672,7 +7672,7 @@
         "Global": 0.00099251074933639
       }
     },
-    "Oilfield Svcs/Equip.": {
+    "Oilfield Services/Equipment": {
       "ev_ebitda_multiple": {
         "Global": 8.83033678983486,
         "Europe (EU, UK, Switzerland & Scandinavia)": 5.695293120641159,
@@ -8494,7 +8494,7 @@
         "Global": 0.012209117638642684
       }
     },
-    "R.E.I.T.": {
+    "Real Estate Investment Trusts (REITs)": {
       "ev_ebitda_multiple": {
         "Global": 19.69582875946651,
         "Europe (EU, UK, Switzerland & Scandinavia)": 18.830894211370666,
@@ -10412,7 +10412,7 @@
         "Global": 0.0013148088232457422
       }
     },
-    "Rubber& Tires": {
+    "Rubber & Tires": {
       "ev_ebitda_multiple": {
         "Global": 6.817684759642478,
         "Europe (EU, UK, Switzerland & Scandinavia)": 6.057389333841595,
@@ -10686,7 +10686,7 @@
         "Global": 0.12349409101970968
       }
     },
-    "Semiconductor Equip": {
+    "Semiconductor Equipment": {
       "ev_ebitda_multiple": {
         "Global": 25.66213960211013,
         "Europe (EU, UK, Switzerland & Scandinavia)": 27.93326041746913,
@@ -11782,7 +11782,7 @@
         "Global": 0.013471825072391481
       }
     },
-    "Telecom. Equipment": {
+    "Telecom Equipment": {
       "ev_ebitda_multiple": {
         "Global": 24.950975209490192,
         "Europe (EU, UK, Switzerland & Scandinavia)": 13.285394702958877,
@@ -11919,7 +11919,7 @@
         "Global": 0.12517174588544105
       }
     },
-    "Telecom. Services": {
+    "Telecom Services": {
       "ev_ebitda_multiple": {
         "Global": 7.054086222833386,
         "Europe (EU, UK, Switzerland & Scandinavia)": 7.186808798814744,
@@ -14800,10 +14800,10 @@
       "Entertainment",
       "Environmental & Waste Services",
       "Farming/Agriculture",
-      "Financial Svcs. (Non-bank & Insurance)",
+      "Financial Services (Non-bank & Insurance)",
       "Food Processing",
       "Food Wholesalers",
-      "Furn/Home Furnishings",
+      "Furniture/Home Furnishings",
       "Green & Renewable Energy",
       "Healthcare Information and Technology",
       "Healthcare Products",
@@ -14815,7 +14815,7 @@
       "Information Services",
       "Insurance (General)",
       "Insurance (Life)",
-      "Insurance (Prop/Cas.)",
+      "Insurance (Property & Casualty)",
       "Investments & Asset Management",
       "Machinery",
       "Metals & Mining",
@@ -14823,16 +14823,16 @@
       "Oil/Gas (Integrated)",
       "Oil/Gas (Production and Exploration)",
       "Oil/Gas Distribution",
-      "Oilfield Svcs/Equip.",
+      "Oilfield Services/Equipment",
       "Packaging & Container",
       "Paper/Forest Products",
       "Power",
       "Precious Metals",
       "Publishing & Newspapers",
-      "R.E.I.T.",
       "Real Estate (Development)",
       "Real Estate (General/Diversified)",
       "Real Estate (Operations & Services)",
+      "Real Estate Investment Trusts (REITs)",
       "Recreation",
       "Reinsurance",
       "Restaurant/Dining",
@@ -14843,9 +14843,9 @@
       "Retail (Grocery and Food)",
       "Retail (Online)",
       "Retail (Special Lines)",
-      "Rubber& Tires",
+      "Rubber & Tires",
       "Semiconductor",
-      "Semiconductor Equip",
+      "Semiconductor Equipment",
       "Shipbuilding & Marine",
       "Shoe",
       "Software (Entertainment)",
@@ -14853,8 +14853,8 @@
       "Software (System & Application)",
       "Steel",
       "Telecom (Wireless)",
-      "Telecom. Equipment",
-      "Telecom. Services",
+      "Telecom Equipment",
+      "Telecom Services",
       "Tobacco",
       "Transportation",
       "Transportation (Railroads)",
@@ -15029,7 +15029,16 @@
     }
   },
   "industry_aliases": {
-    "Heathcare Information and Technology": "Healthcare Information and Technology"
+    "Heathcare Information and Technology": "Healthcare Information and Technology",
+    "Financial Svcs. (Non-bank & Insurance)": "Financial Services (Non-bank & Insurance)",
+    "Furn/Home Furnishings": "Furniture/Home Furnishings",
+    "Insurance (Prop/Cas.)": "Insurance (Property & Casualty)",
+    "Oilfield Svcs/Equip.": "Oilfield Services/Equipment",
+    "R.E.I.T.": "Real Estate Investment Trusts (REITs)",
+    "Semiconductor Equip": "Semiconductor Equipment",
+    "Telecom. Equipment": "Telecom Equipment",
+    "Telecom. Services": "Telecom Services",
+    "Rubber& Tires": "Rubber & Tires"
   },
   "country_aliases": {
     "Swaziland": "Eswatini",
