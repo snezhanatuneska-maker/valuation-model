@@ -367,3 +367,18 @@ def test_sample_companies_are_always_valid_inputs(wizard):
       return bad.slice(0, 3);
     }""")
     assert bad == []
+
+
+def test_result_shows_method_range_and_revenue_scenarios(wizard):
+    w = wizard
+    fill_werkpuls(w)
+    result = calculate(w)
+    payload = w.page.evaluate("lastResult.payload")
+    scen = w.api_post("/valuations/preview/scenarios", payload)
+    lines = w.page.eval_on_selector_all(".headline-range", "ps => ps.map(p => p.innerText)")
+    r = result["method_range"]
+    assert lines[0] == f"Range across methods: {money(r['low'])} (Venture Capital) to {money(r['high'])} (DCF)"
+    assert lines[1] == (f"If Year-1 revenue is 20% lower or higher: {money(scen['80%']['blended_pre_money_valuation'])}"
+                        f" to {money(scen['120%']['blended_pre_money_valuation'])}")
+    assert "The methods disagree" in w.page.text_content(".checks-list")
+    assert w.errors == []

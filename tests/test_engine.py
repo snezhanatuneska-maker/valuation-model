@@ -401,8 +401,10 @@ def test_scenarios_keep_the_main_weights_so_value_rises_with_revenue():
 
 
 def test_low_vc_value_is_explained():
-    codes_ = {w.code for w in run(SLIDER_CASE).warnings}
-    assert "vc_low" in codes_
+    """By its own note, or (when it is the low end of a wide range) by the methods-disagree note."""
+    notes = {w.code: w.message for w in run(SLIDER_CASE).warnings}
+    assert "vc_low" in notes or ("Venture Capital method only €" in notes.get("methods_disagree", "")
+                                 and "amount raised" in notes["methods_disagree"])
     assert "vc_low" not in {w.code for w in run(GERMAN_CASE).warnings}
 
 

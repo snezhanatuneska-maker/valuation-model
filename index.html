@@ -299,6 +299,7 @@ input::placeholder { color: rgba(75, 85, 99, 0.55); }
 .headline-label { margin: 0; font-size: 13.5px; opacity: 0.85; }
 .headline-value { margin: 4px 0 2px; font-family: var(--font-serif); font-size: clamp(28px, 7vw, 38px); font-weight: 700; }
 .headline-sub { margin: 0; font-size: 14px; opacity: 0.85; }
+.headline-range { margin-top: 6px; }
 .read-result {
   margin: 0 0 24px;
   padding: 14px 16px;
@@ -1872,6 +1873,19 @@ document.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeTip(); });
 window.addEventListener("resize", closeTip);
 
+// A startup's value is uncertain: show how far apart the methods are and what a 20% revenue miss does.
+const METHOD_SHORT = { scorecard: "Scorecard", venture_capital: "Venture Capital", comparables: "Comparables", dcf: "DCF" };
+function rangeLines(result, scenarios) {
+  const lines = [];
+  const r = result.method_range;
+  if (r) lines.push(`Range across methods: ${money(r.low)} (${METHOD_SHORT[r.low_method]}) to ${money(r.high)} (${METHOD_SHORT[r.high_method]})`);
+  const lo = scenarios && scenarios["80%"], hi = scenarios && scenarios["120%"];
+  if (lo && hi && Math.abs(hi.blended_pre_money_valuation - lo.blended_pre_money_valuation) >= 1) {
+    lines.push(`If Year-1 revenue is 20% lower or higher: ${money(lo.blended_pre_money_valuation)} to ${money(hi.blended_pre_money_valuation)}`);
+  }
+  return lines.map((l) => `<p class="headline-sub headline-range">${escapeHtml(l)}</p>`).join("");
+}
+
 function renderResults(result, scenarios) {
   document.getElementById("results-loading").hidden = true;
   const panel = document.getElementById("results-panel");
@@ -1894,6 +1908,7 @@ function renderResults(result, scenarios) {
       <p class="headline-label">${escapeHtml(lastResult && lastResult.payload ? lastResult.payload.company_profile.company_name : "Your company")}: pre-money valuation</p>
       <p class="headline-value">${money(result.blended_pre_money_valuation)}</p>
       <p class="headline-sub">Post-money ${money(result.post_money_valuation)} after raising ${money(result.capital_needed)}</p>
+      ${rangeLines(result, scenarios)}
       ${result.blended_pre_money_valuation < 0.5 ? `<p class="headline-sub" style="margin-top:8px">${escapeHtml(zeroValueReason(result))}</p>` : ""}
     </div>
     ${readResultBox(result, scenarios)}

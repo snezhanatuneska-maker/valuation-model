@@ -591,7 +591,51 @@ def _not_meaningful(reason: Optional[str]) -> list:
 # ============================================================================
 
 
-def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Optional[bytes]) -> list:
+METHOD_SHORT = {"scorecard": "Scorecard", "venture_capital": "Venture Capital", "comparables": "Comparables",
+                "dcf": "DCF"}
+
+
+def _at_a_glance(output: dict, scenarios: dict) -> list:
+    """The result in four lines: the blend, post-money, how far apart the methods are, and what a 20%
+    revenue miss does. A startup's value is uncertain; the range says how uncertain."""
+    used = [METHOD_SHORT[k] for k, mv in (g(output, "method_values", {}) or {}).items()
+            if mv.get("status") == "ok" and mv.get("weight_used")]
+    rows = [("Pre-money valuation", money(g(output, "blended_pre_money_valuation")),
+             "blend of " + (" and ".join([", ".join(used[:-1]), used[-1]]) if len(used) > 1 else used[0])
+             if used else ""),
+            ("Post-money valuation", money(g(output, "post_money_valuation")),
+             f"after raising {money(g(output, 'capital_needed'))}")]
+    rng = g(output, "method_range")
+    if rng:
+        rows.append(("Range across methods", f"{money(rng['low'])} ({METHOD_SHORT[rng['low_method']]}) to "
+                     f"{money(rng['high'])} ({METHOD_SHORT[rng['high_method']]})", "lowest and highest method"))
+    low, high = (scenarios or {}).get("80%"), (scenarios or {}).get("120%")
+    if low and high and abs(high["blended_pre_money_valuation"] - low["blended_pre_money_valuation"]) >= 1:
+        rows.append(("If Year-1 revenue is 20% lower or higher",
+                     f"{money(low['blended_pre_money_valuation'])} to {money(high['blended_pre_money_valuation'])}",
+                     "blended pre-money"))
+    def value(b, c):
+        note = f"<br/><font size=8 color='#8b98a8'>{esc(c)}</font>" if c else ""
+        return P(f"<b>{esc(b)}</b>{note}", STYLES["td_value"], raw=True)
+    table = Table([[P(a, STYLES["callout_label"]), value(b, c)] for a, b, c in rows],
+                  colWidths=[CONTENT_W * 0.42, CONTENT_W * 0.58])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), ROW_STRIPE), ("BACKGROUND", (0, 0), (-1, 0), TOTAL_BG),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.5, BORDER),
+        ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story = [P("At a glance", STYLES["h3"]), table]
+    if rng:
+        story.append(P("The methods look at the company from different angles and rarely agree; the range shows how "
+                       "far apart they are. The revenue line shows how much the result depends on the plan.",
+                       STYLES["sub"]))
+    return story
+
+
+def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Optional[bytes],
+                glance: Optional[list] = None) -> list:
     story = [Spacer(1, 55 * mm)]
     band = Table([[""]], colWidths=[35 * mm], rowHeights=[2.5])
     band.setStyle(TableStyle([("BACKGROUND", (0, 0), (0, 0), NAVY_LINE)]))
@@ -618,7 +662,10 @@ def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Op
                                ("BOTTOMPADDING", (0, 0), (-1, -1), 2)]))
     story.append(Spacer(1, 8))
     story.append(meta)
-    story.append(Spacer(1, 40))
+    if glance:
+        story.append(Spacer(1, 18))
+        story += glance
+    story.append(Spacer(1, 40 if not glance else 24))
     story.append(P(
         "This report is an automated, informational estimate blending four standard valuation "
         "methods. It is not a certified appraisal, and should not be relied on as financial, "
@@ -939,7 +986,7 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
     story.append(Spacer(1, 10))
     story.append(P("Blended pre-money valuation across scenarios", STYLES["h3"]))
     story.append(bar_chart(labels, [scenarios[l].get("blended_pre_money_valuation") or 0 for l in labels],
-                           color=NAVY_LINE, width=CONTENT_W, height=140))
+                           color=NAVY_LINE, width=CONTENT_W, height=115))
     return story
 
 
@@ -1344,7 +1391,7 @@ def build_pdf_bytes(
 
     years = g(output, "projections", {}).get("years", [])
     story: list = []
-    story += _cover_page(company_name, date_str, data_date, logo_bytes)
+    story += _cover_page(company_name, date_str, data_date, logo_bytes, _at_a_glance(output, scenarios or {}))
     story.append(NextPageTemplate("Content"))
     story.append(PageBreak())
     story += _company_summary_page(cp, mkt, ops, output)
@@ -1355,7 +1402,7 @@ def build_pdf_bytes(
     story.append(PageBreak())
     story += _warnings_page(output)
     # The scenarios follow on the same page when they fit as a whole, else on the next one.
-    story.append(Spacer(1, 18))
+    story.append(Spacer(1, 10))
     story.append(KeepTogether(_scenario_sensitivity_page(scenarios or {})))
     story.append(PageBreak())
     scorecard_mv = g(output, "method_values", {}).get("scorecard") or {}
