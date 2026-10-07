@@ -14,7 +14,7 @@ Baseline = the code before this loop (123 tests, all passing). Final = after the
 | A5 Risk multiplier / hurdle labels | FAIL | PASS | The code uses no 0.55 anywhere; labels match the code. Was: API description still said "DCF Multiples" (iteration 4). See QUESTIONS.md 4 |
 | A6 Cash and debt bridge | PASS | PASS | Comparables and DCF: − debt + cash. VC: − debt at exit |
 | A7 Valuation date | PASS | PASS | From the input, else today; nothing hard-coded |
-| B1 Every endpoint in /openapi.json | PASS | PASS | 17 routes incl. save / get / rerun / scenarios / report / delete (with saving switched on) |
+| B1 Every endpoint in /openapi.json | PASS | PASS | All 23 operations incl. save / get / rerun / scenarios / report / delete (with saving switched on) |
 | B2 Same numbers on every route | PASS | PASS | preview = saved = rerun = scenarios at 100% = both PDFs |
 | B3 Bad input → readable 422, private saves | FAIL | PASS | Was: NaN/Infinity gave 500 from the PDF route. Saves are private per browser ID (no email login any more: QUESTIONS.md 9) |
 | C1 Walk the wizard, PDF download, no console errors | FAIL | PASS | Was: a console error on every visit (missing site icon, iteration 1). Desktop 1280 px and phone 390 px |
