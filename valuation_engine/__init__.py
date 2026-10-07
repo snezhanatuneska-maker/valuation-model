@@ -307,6 +307,11 @@ class BaseModel(_PydanticModel):
     model_config = ConfigDict(allow_inf_nan=False)
 
 
+# Largest amount (in euros) any input may hold: far above any real company, low enough that every
+# result and the PDF stay printable.
+MAX_AMOUNT = 10_000_000_000_000
+
+
 class CompanyProfile(BaseModel):
     company_name: str = Field(min_length=1)
     contact_name: Optional[str] = None
@@ -318,7 +323,7 @@ class CompanyProfile(BaseModel):
     num_employees: Optional[int] = Field(default=None, ge=0)
     year_of_incorporation: Optional[int] = Field(default=None, ge=1800, le=2100)
     company_stage: str  # must match a key in stage_parameters
-    committed_capital: float = Field(default=0.0, ge=0)
+    committed_capital: float = Field(default=0.0, ge=0, le=MAX_AMOUNT)
     business_activity: Optional[str] = None
     industry: str  # must match a key in industry_benchmarks
     business_territory_region: str  # must match a region key, e.g. "Emerging Markets (...)"
@@ -341,7 +346,7 @@ class CompanyProfile(BaseModel):
 
     # Optional replacement for the regional "typical pre-revenue pre-money"
     # benchmark used by the Scorecard method (built-in: Equidam H1 2026 medians).
-    benchmark_pre_money_override: Optional[float] = Field(default=None, gt=0)
+    benchmark_pre_money_override: Optional[float] = Field(default=None, gt=0, le=MAX_AMOUNT)
 
     # Optional company logo for the PDF report cover page/header. Either a
     # plain base64 string or a data URL (e.g. "data:image/png;base64,....").
@@ -402,20 +407,20 @@ class MarketAndTeamAssessment(BaseModel):
 
 
 class OperatingPerformance(BaseModel):
-    current_revenue_last_12_months: float = Field(ge=0)
-    current_ebitda: float
-    cash_available: float = Field(default=0.0, ge=0)
-    current_ppe_value: float = Field(default=0.0, ge=0)
+    current_revenue_last_12_months: float = Field(ge=0, le=MAX_AMOUNT)
+    current_ebitda: float = Field(ge=-MAX_AMOUNT, le=MAX_AMOUNT)
+    cash_available: float = Field(default=0.0, ge=0, le=MAX_AMOUNT)
+    current_ppe_value: float = Field(default=0.0, ge=0, le=MAX_AMOUNT)
 
 
 class FinancialAssumptions(BaseModel):
-    revenue_year1: float = Field(gt=0)
+    revenue_year1: float = Field(gt=0, le=MAX_AMOUNT)
     # growth rate applied to get Y2, Y3, Y4, Y5 from the prior year (as fractions, e.g. 0.10)
     revenue_growth_rates: list[float] = Field(default_factory=lambda: [0.10, 0.10, 0.10, 0.10])
     # capex for Y1..Y5 (5 values)
     capex_by_year: list[float] = Field(default_factory=lambda: [0, 30000, 30000, 30000, 30000])
     # outstanding interest-bearing debt today (subtracted to get equity value)
-    existing_debt_balance: float = Field(default=0.0, ge=0)
+    existing_debt_balance: float = Field(default=0.0, ge=0, le=MAX_AMOUNT)
     # Optional Year-5 EBITDA margin to use instead of the industry's.
     target_ebitda_margin_override: Optional[float] = Field(default=None, ge=-1, le=0.9)
 
@@ -435,6 +440,8 @@ class FinancialAssumptions(BaseModel):
             raise ValueError("capex_by_year must have exactly 5 values (for Y1..Y5)")
         if any(c < 0 for c in v):
             raise ValueError("capex can't be negative")
+        if any(c > MAX_AMOUNT for c in v):
+            raise ValueError(f"capex can be at most {MAX_AMOUNT:,.0f}")
         return v
 
 
@@ -444,7 +451,7 @@ class Shareholder(BaseModel):
 
 
 class FundingRequirement(BaseModel):
-    capital_needed: float = Field(gt=0)
+    capital_needed: float = Field(gt=0, le=MAX_AMOUNT)
     use_of_funds: dict[str, float] = Field(default_factory=dict)
 
     @field_validator("use_of_funds")
@@ -452,12 +459,14 @@ class FundingRequirement(BaseModel):
     def _non_negative(cls, v):
         if any(x < 0 for x in v.values()):
             raise ValueError("use-of-funds amounts can't be negative")
+        if any(x > MAX_AMOUNT for x in v.values()):
+            raise ValueError(f"use-of-funds amounts can be at most {MAX_AMOUNT:,.0f}")
         return v
 
 
 class VCMethodAssumptions(BaseModel):
     """Assumptions specific to the Venture Capital method."""
-    number_of_existing_shares: float = Field(default=1_000_000.0, ge=1)
+    number_of_existing_shares: float = Field(default=1_000_000.0, ge=1, le=MAX_AMOUNT)
 
 
 class ValuationInput(BaseModel):

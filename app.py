@@ -21,6 +21,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import os
+import re
 import sqlite3
 import uuid
 from contextlib import asynccontextmanager, contextmanager
@@ -511,6 +512,7 @@ def _readable_validation_errors(exc: RequestValidationError) -> str:
             field += f" (item {loc[-1] + 1})"
         msg = err.get("msg", "is invalid").removeprefix("Value error, ")
         msg = msg.replace("Input should be", "should be").replace("Field required", "is required")
+        msg = re.sub(r"\b\d{5,}\b", lambda m: f"{int(m.group()):,}", msg)  # 10000000 -> 10,000,000
         parts.append(f"{field}: {msg}")
     text = "; ".join(parts)
     return "Please check these inputs: " + text + ("" if text.endswith(".") else ".")
