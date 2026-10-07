@@ -35,7 +35,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel as _PydanticModel, ConfigDict, Field, field_validator, model_validator
 
 # ============================================================================
 # SECTION 1 — Reference data (industry benchmarks, country data, stage
@@ -300,6 +300,11 @@ def default_region_for_country(country: str) -> str:
 # out-of-range values are rejected with a readable message instead of
 # crashing a calculation later.
 # ============================================================================
+
+
+class BaseModel(_PydanticModel):
+    """Every input model: "NaN" and "Infinity" are not numbers a valuation can use."""
+    model_config = ConfigDict(allow_inf_nan=False)
 
 
 class CompanyProfile(BaseModel):
