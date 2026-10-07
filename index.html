@@ -2214,7 +2214,12 @@ document.getElementById("btn-start").addEventListener("click", async () => {
   if (sampleLoaded) await resetForm();
   goToStep(1);
   scrollToForm();
-  setTimeout(() => document.getElementById("company_name").focus({ preventScroll: true }), 400);
+  setTimeout(() => {
+    // Only if the visitor hasn't already clicked into a field.
+    if (!document.activeElement || !document.activeElement.matches("input, select, textarea")) {
+      document.getElementById("company_name").focus({ preventScroll: true });
+    }
+  }, 400);
 });
 
 document.getElementById("btn-sample").addEventListener("click", async () => {

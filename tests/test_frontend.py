@@ -316,3 +316,37 @@ def test_back_and_forward_keep_data(wizard):
     assert w.step() == 6
     assert w.page.is_visible(".headline-value")
     assert w.errors == []
+
+
+def test_sample_company_and_result_buttons(wizard):
+    w = wizard
+    with w.page.expect_response(lambda r: r.url.endswith("/valuations/preview"), timeout=60_000):
+        w.page.click("#btn-sample")
+    w.page.wait_for_selector(".headline-value")
+    assert w.page.text_content(".headline-value").startswith("€")
+    w.page.click("#btn-edit")
+    assert w.step() == 1 and w.page.input_value("#company_name")
+    w.page.go_forward()  # back to the results
+    w.page.wait_for_timeout(200)
+    w.page.goto(w.page.url)  # a reload starts a clean form
+    w.page.wait_for_function("document.getElementById('industry').options.length > 10")
+    assert w.page.input_value("#company_name") == ""
+    assert w.errors == [] and w.failed == []
+
+
+def test_start_button_does_not_steal_the_cursor(wizard):
+    """Typing in another box right after "Start" must stay in that box."""
+    w = wizard
+    w.page.goto(w.page.url)
+    w.page.wait_for_function("document.getElementById('industry').options.length > 10")
+    w.page.click("#btn-start")
+    w.page.focus("#contact_name")
+    w.page.keyboard.type("Lena Hartmann", delay=60)  # takes longer than the page's 0.4 s focus delay
+    assert w.page.input_value("#contact_name") == "Lena Hartmann"
+    assert w.page.input_value("#company_name") == ""
+
+
+def test_start_button_puts_the_cursor_in_company_name(wizard):
+    w = wizard
+    w.page.wait_for_timeout(600)
+    assert w.page.evaluate("document.activeElement.id") == "company_name"
