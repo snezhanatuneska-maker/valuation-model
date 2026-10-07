@@ -1245,6 +1245,29 @@ REVENUE_DROP_WARNING = 0.2
 VC_LOW_SHARE_OF_RAISE = 0.25
 # Share of the company the new investors would own above which the round is questioned.
 INVESTOR_STAKE_WARNING = 0.5
+# Highest method value above this multiple of the lowest gets a note: the blend hides a wide disagreement.
+METHODS_DISAGREE_RATIO = 3
+# Upper end, in US dollars, of the questionnaire answers about size; open-ended answers have none.
+_REVENUE_POTENTIAL_MAX_USD = {"< $20 Million": 20e6, "$20 to $50 Million": 50e6, "$50 to $100 Million": 100e6}
+_MARKET_SIZE_MAX_USD = {"< $50 million": 50e6, "$50 to $100 million": 100e6}
+# A Year-5 target margin more than this above the industry's is questioned (as for the starting margin).
+TARGET_MARGIN_GAP = 0.10
+
+
+def usd_per_eur() -> float:
+    """The ECB rate already used to convert the Equidam benchmarks (see sources)."""
+    us = scorecard_benchmarks()["US"]
+    return us["usd"] / us["eur"]
+
+
+# What the lowest method's value depends on most, named in that note.
+_METHOD_DRIVERS = {
+    "scorecard": "your questionnaire answers and the regional benchmark",
+    "venture_capital": "the amount raised compared with the projected exit value (a smaller round, a later "
+                       "exit or a stronger plan would raise it)",
+    "comparables": "the last 12 months' EBITDA",
+    "dcf": "the five-year cash flows and the discount rate",
+}
 
 
 def method_values_post_money(method_values: dict, capital_needed: float) -> Optional[float]:
@@ -1303,6 +1326,26 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                  + ("adjust your target margin if that isn't realistic."
                     if projections.target_margin_source == "user_override"
                     else "enter your own target margin if that isn't realistic."))
+
+    # The plan against the founder's own answers on market size and revenue potential.
+    year5 = projections.years[-1].revenue
+    mk = inputs.market_and_team_assessment
+    market_max = _MARKET_SIZE_MAX_USD.get(mk.target_market_size)
+    potential_max = _REVENUE_POTENTIAL_MAX_USD.get(mk.revenue_potential_in_5_years)
+    if market_max and year5 > market_max / usd_per_eur():
+        warn("plan_above_market", f"Year-5 revenue in your plan ({_eur(year5)}) is more than the whole market you "
+             f"described (\"{mk.target_market_size}\", about {_eur(round(market_max / usd_per_eur(), -4))}). Check the plan "
+             "or the market size answer.")
+    elif potential_max and year5 > potential_max / usd_per_eur():
+        warn("plan_above_revenue_potential", f"Year-5 revenue in your plan ({_eur(year5)}) is above the revenue "
+             f"potential you gave (\"{mk.revenue_potential_in_5_years}\", about {_eur(round(potential_max / usd_per_eur(), -4))}). "
+             "Check the plan or that answer: the cash-flow methods use the plan.")
+    industry_margin = get_industry_metric(cp.industry, "ebitda_margin", cp.business_territory_region)
+    if (projections.target_margin_source == "user_override"
+            and projections.target_ebitda_margin > industry_margin + TARGET_MARGIN_GAP):
+        warn("target_margin_high", f"Your Year-5 EBITDA margin ({_pct(projections.target_ebitda_margin)}) is more "
+             f"than 10 points above the industry's ({_pct(industry_margin)}). Check that it is realistic: "
+             "the cash-flow methods depend on it.")
 
     if inputs.ownership:
         total = sum(s.ownership_pct for s in inputs.ownership)
@@ -1389,9 +1432,20 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                  f"would buy {_pct(stake)} of the company (post-money {_eur(post)}). Early rounds usually sell well "
                  "under half of a company, so check the amount you are raising and your plan.")
 
+    rng = method_range(method_values)
+    disagree = bool(rng and rng.high > METHODS_DISAGREE_RATIO * rng.low)
+    if disagree:
+        apart = f"{rng.high / rng.low:.0f}× apart" if rng.low > 0 else "far apart"
+        warn("methods_disagree", f"The methods disagree: {METHOD_NAMES[rng.high_method]} gives {_eur(rng.high)}, "
+             f"{METHOD_NAMES[rng.low_method]} only {_eur(rng.low)} ({apart}). The blended value sits between them, so "
+             f"quote the range, not only the blend. The low value depends most on "
+             f"{_METHOD_DRIVERS[rng.low_method]}; check those inputs first.")
+
     vc_mv = method_values["venture_capital"]
     raise_amount = inputs.funding.capital_needed
-    if vc_mv.status == "ok" and vc_mv.weight_used > 0 and vc_mv.pre_money_value < VC_LOW_SHARE_OF_RAISE * raise_amount:
+    # When the VC method is also the low end of a wide range, the note above already explains it.
+    if (vc_mv.status == "ok" and vc_mv.weight_used > 0 and vc_mv.pre_money_value < VC_LOW_SHARE_OF_RAISE * raise_amount
+            and not (disagree and rng.low_method == "venture_capital")):
         warn("vc_low", f"The Venture Capital method values the company at only {_eur(vc_mv.pre_money_value)} before "
              f"the round: the {_eur(raise_amount)} you are raising nearly uses up the value the projected exit "
              "supports today at the return investors at your stage expect. It counts for "
@@ -1473,6 +1527,24 @@ class MethodValue:
 
 
 @dataclass
+class MethodRange:
+    """Lowest and highest value among the methods in the blend."""
+    low: float
+    low_method: str
+    high: float
+    high_method: str
+
+
+def method_range(method_values: dict) -> Optional[MethodRange]:
+    """None when fewer than two methods count in the blend."""
+    used = {k: mv.pre_money_value for k, mv in method_values.items() if mv.status == "ok" and mv.weight_used > 0}
+    if len(used) < 2:
+        return None
+    low, high = min(used, key=used.get), max(used, key=used.get)
+    return MethodRange(low=used[low], low_method=low, high=used[high], high_method=high)
+
+
+@dataclass
 class EquityBridge:
     debt: float
     cash: float
@@ -1495,6 +1567,7 @@ class ValuationOutput:
     capital_needed: float
     post_money_valuation: float
     warnings: list[ValuationWarning]
+    method_range: Optional[MethodRange] = None
 
 
 def run_valuation(inputs: ValuationInput) -> ValuationOutput:
@@ -1579,6 +1652,7 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
         capital_needed=capital_needed,
         post_money_valuation=blended + capital_needed,
         warnings=warnings,
+        method_range=method_range(method_values),
     )
 
 
@@ -1650,4 +1724,5 @@ def _with_base_weights(scenario: ValuationOutput, base: ValuationOutput) -> Valu
                 status=base_mv.status, note=base_mv.note)
     scenario.blended_pre_money_valuation = blended
     scenario.post_money_valuation = blended + scenario.capital_needed
+    scenario.method_range = method_range(scenario.method_values)
     return scenario
