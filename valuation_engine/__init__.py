@@ -102,6 +102,11 @@ def industry_aliases() -> dict:
     return _all_reference_data().get("industry_aliases", {})
 
 
+def stage_aliases() -> dict:
+    """{old stage name: current name}, e.g. "Growth Stage" -> "Growth stage"."""
+    return _all_reference_data().get("stage_aliases", {})
+
+
 def scorecard_option_aliases() -> dict:
     """criterion -> {old option text: current option text} (old saved valuations keep working)."""
     return _all_reference_data().get("scorecard_option_aliases", {})
@@ -342,6 +347,12 @@ class CompanyProfile(BaseModel):
     def _current_industry_name(cls, v):
         """Inputs using an old industry name (e.g. a corrected misspelling) keep working."""
         return industry_aliases().get(v, v)
+
+    @field_validator("company_stage")
+    @classmethod
+    def _current_stage_name(cls, v):
+        """Inputs saved with an old stage spelling ("Growth Stage") keep working."""
+        return stage_aliases().get(v, v)
 
     @field_validator("country")
     @classmethod
@@ -1339,7 +1350,7 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
     if method_values["scorecard"].status == "ok" and scorecard.unanswered:
         n = len(scorecard.unanswered)
         warn("scorecard_unanswered", f"{n} of the {sum(len(q) for q in SCORECARD_CRITERIA_QUESTIONS.values())} "
-             f"Scorecard question{'s were' if n > 1 else ' was'} not answered and {'are' if n > 1 else 'is'} "
+             f"Scorecard questions {'were' if n > 1 else 'was'} not answered and {'are' if n > 1 else 'is'} "
              "scored as typical (100%). Answer them for a Scorecard value that reflects your company.")
 
     # Stage and revenue should tell the same story: the stage decides the method weights.

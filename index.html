@@ -1698,9 +1698,10 @@ function scenarioBlock(scenarios) {
     <p class="ledger-subtitle">The value stays at ${money(blends[0])} whatever Year-1 revenue turns out to be: only methods that don't use projected revenue give a value for this company, so there are no revenue scenarios to compare.</p>`;
   }
   const labels = Object.keys(scenarios).map((l) => Number(l.replace("%", "")));
+  const falls = blends.some((b, i) => i > 0 && b < blends[i - 1] - 1);
   return `
     <h2 class="ledger-title" style="margin-top:32px">Scenario &amp; sensitivity</h2>
-    <p class="ledger-subtitle">How the valuation shifts if Year-1 revenue comes in above or below plan. Scorecard and Comparables don't move: they use your answers and last-12-month EBITDA, not projected revenue. The weights stay as in your result above; a method that gives no positive value in a scenario counts as €0.</p>
+    <p class="ledger-subtitle">How the valuation shifts if Year-1 revenue comes in above or below plan. Scorecard and Comparables don't move: they use your answers and last-12-month EBITDA, not projected revenue. The weights stay as in your result above; a method that gives no positive value in a scenario counts as €0.${falls ? " " + "Here a higher Year-1 revenue gives a lower value: in your plan, extra revenue costs more cash than it brings in (for example losses at the planned margin, or the working capital it ties up), so the cash-flow based values go down." : ""}</p>
     <div class="scenario-slider-row">
       <label for="scenario-slider">Revenue scenario</label>
       <input type="range" id="scenario-slider" min="${Math.min(...labels)}" max="${Math.max(...labels)}" step="10" value="100">
@@ -1959,7 +1960,7 @@ async function downloadResultsPdf() {
     const safeName = companyName
       .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/Ä/g, "Ae").replace(/Ö/g, "Oe")
       .replace(/Ü/g, "Ue").replace(/ß/g, "ss")
-      .replace(/[^a-z0-9 _-]/gi, "").trim().replace(/\s+/g, "-") || "valuation";
+      .replace(/[^a-z0-9 _-]/gi, "").trim().replace(/\s+/g, "-").slice(0, 80).replace(/-+$/, "") || "valuation";
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

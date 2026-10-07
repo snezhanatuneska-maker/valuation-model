@@ -37,6 +37,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
@@ -523,7 +524,13 @@ def _make_page_decorator(company_name: str, date_str: str, logo_bytes: Optional[
         header_y = PAGE_H - MARGIN_TOP + 9 * mm
         canvas.setFont("Helvetica-Bold", 8)
         canvas.setFillColor(MUTED_LIGHT)
-        canvas.drawString(MARGIN_SIDE, header_y, company_name.upper())
+        # Shorten a long name with "…" so it never runs into the label or logo on the right.
+        name, max_w = company_name.upper(), PAGE_W - 2 * MARGIN_SIDE - 45 * mm
+        if stringWidth(name, "Helvetica-Bold", 8) > max_w:
+            while name and stringWidth(name + "…", "Helvetica-Bold", 8) > max_w:
+                name = name[:-1]
+            name = name.rstrip() + "…"
+        canvas.drawString(MARGIN_SIDE, header_y, name)
         if logo_bytes is not None:
             try:
                 reader = ImageReader(io.BytesIO(logo_bytes))
@@ -879,6 +886,12 @@ def _warnings_page(output: dict) -> list:
     return story
 
 
+SCENARIO_FALLS_NOTE = (
+    "Here a higher Year-1 revenue gives a lower value: in your plan, extra revenue costs more cash than it "
+    "brings in (for example losses at the planned margin, or the working capital it ties up), so the "
+    "cash-flow based values go down.")
+
+
 def _scenario_sensitivity_page(scenarios: dict) -> list:
     story = [P("Scenario & sensitivity", STYLES["h2"])]
     story.append(P(
@@ -915,7 +928,9 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
                    "counts as €0." + (" n/m = left out of the blend, as in the main result."
                                       if any(scenarios[l].get("method_values", {}).get(k, {}).get("status") == "not_meaningful"
                                              for l in labels for k in ("scorecard", "venture_capital", "comparables", "dcf"))
-                                      else ""), STYLES["sub"]))
+                                      else "")
+                   + (" " + SCENARIO_FALLS_NOTE
+                      if any(b < a - 1 for a, b in zip(values, values[1:])) else ""), STYLES["sub"]))
     story.append(Spacer(1, 10))
     story.append(P("Blended pre-money valuation across scenarios", STYLES["h3"]))
     story.append(bar_chart(labels, [scenarios[l].get("blended_pre_money_valuation") or 0 for l in labels],

@@ -14507,7 +14507,7 @@
         "dcf": 0.425
       }
     },
-    "Growth Stage": {
+    "Growth stage": {
       "vc_target_return": 0.3,
       "private_company_discount": 0.2,
       "survival_probability": 0.8,
@@ -14876,9 +14876,12 @@
       "Development stage",
       "Startup stage",
       "Expansion stage",
-      "Growth Stage",
+      "Growth stage",
       "Maturity stage"
     ]
+  },
+  "stage_aliases": {
+    "Growth Stage": "Growth stage"
   },
   "scorecard_option_aliases": {
     "management_team_experience": {
@@ -14929,7 +14932,7 @@
     "Development stage": "Building the product or a prototype; no meaningful revenue yet.",
     "Startup stage": "Product launched, first customers and early revenue.",
     "Expansion stage": "Proven product with fast-growing revenue; scaling sales and operations.",
-    "Growth Stage": "Established business with substantial revenue, usually profitable, still growing.",
+    "Growth stage": "Established business with substantial revenue, usually profitable, still growing.",
     "Maturity stage": "Stable, profitable business with modest growth."
   },
   "scorecard_benchmarks": {

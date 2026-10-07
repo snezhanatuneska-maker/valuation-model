@@ -342,9 +342,14 @@ def _pdf_response(payload: ve.ValuationInput, output_dict: dict) -> Response:
                                            ve.data_sources(), stage_params,
                                            ve.country_specific(payload.company_profile.country))
 
+    # HTTP headers only carry plain ASCII, so umlauts are spelled out (ü -> ue) and other symbols dropped,
+    # the same way the web page names the download.
     company_name = payload.company_profile.company_name or "valuation"
-    safe_name = "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in company_name).strip() or "valuation"
-    filename = f"{safe_name} - Valuation Report.pdf".replace(" ", "-")
+    for umlaut, plain in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("Ä", "Ae"), ("Ö", "Oe"), ("Ü", "Ue"), ("ß", "ss")):
+        company_name = company_name.replace(umlaut, plain)
+    safe_name = "".join(c for c in company_name if (c.isascii() and c.isalnum()) or c in (" ", "-", "_"))
+    safe_name = "-".join(safe_name.split())[:80].strip("-") or "valuation"
+    filename = f"{safe_name}-Valuation-Report.pdf"
 
     return Response(
         content=pdf_bytes,
@@ -499,11 +504,16 @@ app.add_middleware(
 def _readable_validation_errors(exc: RequestValidationError) -> str:
     parts = []
     for err in exc.errors():
-        loc = [str(x) for x in err.get("loc", []) if x not in ("body",)]
-        field = loc[-1].replace("_", " ") if loc else "input"
+        loc = [x for x in err.get("loc", []) if x != "body"]
+        names = [x for x in loc if isinstance(x, str)]
+        field = names[-1].replace("_", " ") if names else "input"
+        if loc and isinstance(loc[-1], int):  # an item in a list, e.g. the 2nd growth rate
+            field += f" (item {loc[-1] + 1})"
         msg = err.get("msg", "is invalid").removeprefix("Value error, ")
+        msg = msg.replace("Input should be", "should be").replace("Field required", "is required")
         parts.append(f"{field}: {msg}")
-    return "Please check these inputs - " + "; ".join(parts)
+    text = "; ".join(parts)
+    return "Please check these inputs: " + text + ("" if text.endswith(".") else ".")
 
 
 @app.exception_handler(RequestValidationError)
