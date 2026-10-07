@@ -1,6 +1,6 @@
 # Check-and-fix loop: checklist
 
-Last run: 7 October 2026, branch `claude/great-goldberg-0zs2fz`. Full test suite: **211 passed, 3 runs in a row**
+Last run: 7 October 2026, branch `claude/great-goldberg-0zs2fz`. Full test suite: **212 passed**
 (`python -m pytest -q`; the browser tests need `pip install playwright` and Chromium and are skipped otherwise).
 
 Baseline = the code before this loop (123 tests, all passing). Final = after the fixes below.
@@ -27,7 +27,7 @@ Baseline = the code before this loop (123 tests, all passing). Final = after the
 | D2 PDF formatting | PASS | PASS | "Existing shares (count) 25,000", years as 2027, tax as 30.0% |
 | D3 Spelling | PASS | PASS | None of the listed misspellings appear on screen or in the PDF |
 | D4 Charts, pages, overflow | FAIL | PASS | Charts render, no empty page, nothing outside the margins. Was 13 pages; now 10 for companies with revenue, 11 before revenue (the Scorecard page is real content there). Shortened with your OK (iteration 6) |
-| E Live deployment | NOT RUN | NOT RUN | This environment's network policy blocks valuation-model-a1iu.onrender.com and snezhanatuneska-maker.github.io, and nothing is pushed to `main` yet. See "Live deployment" below |
+| E Live deployment | NOT RUN | PASS | Live API and GitHub Pages checked twice in a row on 7 October 2026: both run the latest version, all 23 API operations answer (saving routes correctly "switched off"), same numbers on screen, API and PDF (Werkpuls €1,017,464 / €1,817,464, 10-page PDF with umlauts), bad input gets 422, and all 24 browser checks pass at desktop and phone width with no console errors or CORS problems |
 
 ## Iterations
 
@@ -42,6 +42,6 @@ Baseline = the code before this loop (123 tests, all passing). Final = after the
 
 ## Live deployment (check E)
 
-Not done: this session can't reach Render or GitHub Pages, so it can't confirm a deploy. To run it, merge this
-branch into `main` (Render and GitHub Pages redeploy from `main`), then rerun the browser tests against the live
-site, or ask me in a session whose network settings allow those two hosts.
+Done on 7 October 2026 after the network settings allowed valuation-model-a1iu.onrender.com and
+snezhanatuneska-maker.github.io: the repo's browser tests and an API script were pointed at the live addresses and
+passed on two runs in a row. **Every check A–E passes: the loop is cleared.**

@@ -1,8 +1,8 @@
 # Questions for the owner
 
-**Status, 7 October 2026:** questions 1–11 are decided. The owner kept the app's method on every point (option a)
+**Status, 7 October 2026:** questions 1–11 are decided and 12 is done. The owner kept the app's method on every point (option a)
 and the PDF was shortened (7). The golden test now expects the app's own Werkpuls results (pinned run: blended
-pre-money €1,050,656.82, post-money €1,850,656.82). Question 12 (live check) is below.
+pre-money €1,050,656.82, post-money €1,850,656.82).
 
 Things the check-and-fix loop found that are method, data or design choices, so I didn't change them. Each has
 a plain-language explanation, the options and my recommendation. Nothing here is a crash or a wrong sum.
@@ -125,7 +125,7 @@ warning, not a failure: REITs are rarely startups.
 - a) Leave as is. **Recommended**.
 - b) Use the global REIT figures for Japan.
 
-## 12. Live deployment (needs owner)
+## 12. Live deployment (done 7 October 2026: merged to `main`, live site checked twice, everything passes)
 
 This session's network settings block both live addresses (valuation-model-a1iu.onrender.com and
 snezhanatuneska-maker.github.io), so I couldn't check the live site or confirm a redeploy. The fixes are on branch
