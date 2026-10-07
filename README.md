@@ -95,8 +95,9 @@ re-download the project. Just:
 ## The PDF report
 
 At the end of the wizard, "Download PDF" builds a full branded report
-(cover page, company summary, projections, valuation breakdown, one
-page per method, and a methodology/disclaimer page) on the server and
+(about 10 pages: cover, company summary, projections, valuation breakdown,
+input checks and scenarios, one page per method used, and methodology and
+sources) on the server and
 downloads it directly as a real `.pdf` file — no print dialog involved.
 
 Optionally, upload a **company logo** near the top of Step 1 (PNG or

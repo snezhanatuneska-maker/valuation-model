@@ -1,6 +1,6 @@
 # Check-and-fix loop: checklist
 
-Last run: 7 October 2026, branch `claude/great-goldberg-0zs2fz`. Full test suite: **203 passed, 3 runs in a row**
+Last run: 7 October 2026, branch `claude/great-goldberg-0zs2fz`. Full test suite: **211 passed, 3 runs in a row**
 (`python -m pytest -q`; the browser tests need `pip install playwright` and Chromium and are skipped otherwise).
 
 Baseline = the code before this loop (123 tests, all passing). Final = after the fixes below.
@@ -22,11 +22,11 @@ Baseline = the code before this loop (123 tests, all passing). Final = after the
 | C3 Dropdowns from API, projection preview = API | PASS | PASS | |
 | C4 Validation messages | PASS | PASS | Ownership 80% (note, doesn't block), use of funds ≠ raise, Year-1 revenue 3.75× last 12 months, empty company name. Werkpuls shows none of these (it does show a capex note: QUESTIONS.md 8) |
 | C5 Scenario slider | PASS | PASS | Every step matches /scenarios |
-| C6 Back/forward, demo | FAIL | PASS | Back/forward keep data; sample company works. Was: "Start" could move the cursor out of the field being typed in (iteration 5). Demo login and paywall were removed in the October audit: QUESTIONS.md 9 |
+| C6 Back/forward, demo | FAIL | PASS | Back/forward keep data; sample company works (was: 1 draw in 20 had a negative use-of-funds amount, iteration 7). Was: "Start" could move the cursor out of the field being typed in (iteration 5). Demo login and paywall were removed in the October audit: QUESTIONS.md 9 |
 | D1 PDF numbers = API | PASS | PASS | All method values, weights, projections, DCF and VC figures |
 | D2 PDF formatting | PASS | PASS | "Existing shares (count) 25,000", years as 2027, tax as 30.0% |
 | D3 Spelling | PASS | PASS | None of the listed misspellings appear on screen or in the PDF |
-| D4 Charts, pages, overflow | FAIL | FAIL (needs owner) | Charts render, no empty page, nothing outside the margins. The report has 13 pages, not 9–10: QUESTIONS.md 7 |
+| D4 Charts, pages, overflow | FAIL | PASS | Charts render, no empty page, nothing outside the margins. Was 13 pages; now 10 for companies with revenue, 11 before revenue (the Scorecard page is real content there). Shortened with your OK (iteration 6) |
 | E Live deployment | NOT RUN | NOT RUN | This environment's network policy blocks valuation-model-a1iu.onrender.com and snezhanatuneska-maker.github.io, and nothing is pushed to `main` yet. See "Live deployment" below |
 
 ## Iterations
@@ -36,6 +36,9 @@ Baseline = the code before this loop (123 tests, all passing). Final = after the
 3. Amounts like 10^200 crashed the PDF → €10 trillion limit with a readable message.
 4. API description named a method "DCF Multiples" → "Comparables (EV/EBITDA multiple)".
 5. "Start" moved the cursor out of a field already being typed in → only when no field has the cursor.
+6. PDF was 13 pages → about 10 (unused Scorecard as one line, checks and scenarios share a page, use of funds
+   and ownership back on the projections page).
+7. The one-click sample sometimes had a negative "Operations" amount (rejected by the API) → split fixed.
 
 ## Live deployment (check E)
 

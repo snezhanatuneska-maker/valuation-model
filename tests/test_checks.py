@@ -296,3 +296,17 @@ def test_api_description_uses_the_method_names_shown_everywhere_else(client):
     description = client.get("/openapi.json").json()["info"]["description"]
     assert "DCF Multiples" not in description
     assert "Comparables (EV/EBITDA multiple)" in description
+
+
+@pytest.mark.parametrize("name,most", [("werkpuls", 10), ("werkpuls_profitable", 10), ("werkpuls_idea", 11),
+                                       ("reference", 10), ("german", 10)])
+def test_pdf_is_about_ten_pages(client, name, most):
+    from recompute import GERMAN_CASE, REFERENCE_CASE
+    c = {"reference": REFERENCE_CASE, "german": GERMAN_CASE}.get(name) or PDF_CASES[name]
+    assert len(_pdf(client, c).pages) <= most
+
+
+def test_unused_scorecard_is_one_line_not_a_page(client):
+    text = " ".join(_text(_pdf(client, WERKPULS)).split())
+    assert "Scorecard method Not used for this company" not in text
+    assert "Scorecard: not used at this stage" in text
