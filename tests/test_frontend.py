@@ -350,3 +350,20 @@ def test_start_button_puts_the_cursor_in_company_name(wizard):
     w = wizard
     w.page.wait_for_timeout(600)
     assert w.page.evaluate("document.activeElement.id") == "company_name"
+
+
+def test_sample_companies_are_always_valid_inputs(wizard):
+    """Every randomly drawn sample company has non-negative use-of-funds amounts that add up to the raise."""
+    bad = wizard.page.evaluate("""async () => {
+      const bad = [];
+      for (let i = 0; i < 2000; i++) {
+        const c = sampleCompany(pick(SAMPLE_PROFILES), 0.04 + Math.random() * 0.26);
+        fillSample(c);
+        const p = buildPayload();
+        const uses = Object.values(p.funding.use_of_funds);
+        const total = uses.reduce((a, b) => a + b, 0);
+        if (uses.some((x) => x < 0) || Math.abs(total - p.funding.capital_needed) > 0.5) bad.push(p.funding);
+      }
+      return bad.slice(0, 3);
+    }""")
+    assert bad == []

@@ -2168,9 +2168,11 @@ function fillSample(c) {
   const total = owners.reduce((sum, r) => sum + Math.round(r[1] * 10) / 10, 0);
   setVal(`shareholder_pct_${owners.length}`, Math.round((100 - founderShare + 100 - total) * 10) / 10);
 
-  // Use of funds adds up exactly to the raise; capex matches Year-1 capex.
-  const rd = Math.round(c.raise * 0.45 / 1000) * 1000;
-  const sales = Math.round(c.raise * 0.35 / 1000) * 1000;
+  // Use of funds adds up exactly to the raise; capex matches Year-1 capex. The rest is split
+  // 45% R&D, 35% sales, 20% operations, so operations can't go negative for a small raise.
+  const rest = c.raise - c.capexY1;
+  const rd = Math.round(rest * 0.45 / 1000) * 1000;
+  const sales = Math.round(rest * 0.35 / 1000) * 1000;
   setVal("use_rd", rd);
   setVal("use_sales", sales);
   setVal("use_inventory", "");
