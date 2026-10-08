@@ -99,7 +99,7 @@ def test_pdf_numbers_equal_api(client, name):
     if out["dcf"]["pre_money_valuation"] is not None:
         expected += [out["dcf"]["pv_of_fcf"], out["dcf"]["pv_of_terminal_value"], out["dcf"]["enterprise_value"]]
     vc = out["venture_capital"]
-    if vc["pre_money_valuation"] is not None:
+    if vc["pre_money_valuation"]:  # shares are only issued when the method leaves a positive value
         expected += [vc["exit_value"], vc["post_money_valuation"]]
         assert f"{vc['number_of_new_shares']:,.0f}" in flat
         assert f"€{vc['price_per_share']:,.2f}" in flat
@@ -114,7 +114,7 @@ def test_pdf_formatting(client, name):
     flat = " ".join(text.split())
     assert "Existing shares (count) 25,000" in flat or "Venture Capital method" not in flat
     assert not re.search(r"shares[^\n]*€", text, re.I) or "Price per new share" in text
-    assert not re.search(r"\b2,0[2-4]\d\b", text)  # a year printed as "2,027"
+    assert not re.search(r"(?<!€)\b2,0[2-4]\d\b(?!,\d)", text)  # a year printed as "2,027" (not an amount like €2,027,787)
     assert not re.search(r"Tax rate 0\.\d", flat)  # a rate printed as a fraction
     assert not re.search(r"\bNaN\b|\bnan\b|\binf\b|\bNA\b|None", text)
     for typo in ("Strenght", "Perpetural", "Mulltiple", "Avalible", "Ammount", "Commited", "requirments",

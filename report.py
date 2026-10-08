@@ -54,6 +54,8 @@ from reportlab.platypus import (
 from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.shapes import Drawing, Line, Rect, String
 
+import valuation_engine as ve
+
 # ============================================================================
 # Palette + typography - mirrors the .pr-* print CSS in index.html so the
 # PDF matches the look of the on-screen print preview.
@@ -116,6 +118,14 @@ STYLES = {
         spaceAfter=8,
     ),
     "td_label": ParagraphStyle("td_label", fontName="Helvetica", fontSize=9, leading=12, textColor=TEXT),
+    # Source notes and other reference text on the methodology page.
+    "td_label_compact": ParagraphStyle("td_label_compact", fontName="Helvetica", fontSize=8.5, leading=10.5,
+                                       textColor=TEXT),
+    "td_value_compact": ParagraphStyle("td_value_compact", fontName="Helvetica-Bold", fontSize=8.5, leading=10.5,
+                                       textColor=TEXT, alignment=2),
+    "small": ParagraphStyle("small", fontName="Helvetica", fontSize=8, leading=10.5, textColor=TEXT),
+    "small_note": ParagraphStyle("small_note", fontName="Helvetica-Oblique", fontSize=8, leading=10.5,
+                                 textColor=MUTED_LIGHT, spaceAfter=4),
     "td_value": ParagraphStyle(
         "td_value", fontName="Helvetica-Bold", fontSize=9, leading=12, textColor=TEXT, alignment=2,
     ),
@@ -161,6 +171,25 @@ STYLES = {
 # ============================================================================
 
 
+def T(en: str, de: str) -> str:
+    """The text in the report's language (set by the API from ?lang=)."""
+    return ve._t(en, de)
+
+
+def _german() -> bool:
+    return ve.current_language() == "de"
+
+
+def _n(x: float, decimals: int = 0) -> str:
+    """1,234.5 / 1.234,5"""
+    return ve._num(x, decimals)
+
+
+def _eur_text(amount_text: str, sign: str = "") -> str:
+    """€1,234 / 1.234 € with the sign in front."""
+    return f"{sign}{amount_text}\u00a0\u20ac" if _german() else f"{sign}\u20ac{amount_text}"
+
+
 def money(n: Any) -> str:
     if n is None or n == "":
         return "\u2014"
@@ -169,7 +198,7 @@ def money(n: Any) -> str:
     except (TypeError, ValueError):
         return "\u2014"
     sign = "-" if round(n) < 0 else ""  # never "-€0"
-    return f"{sign}\u20ac{abs(n):,.0f}"
+    return _eur_text(_n(abs(n)), sign)
 
 
 def pct(n: Any) -> str:
@@ -179,20 +208,20 @@ def pct(n: Any) -> str:
         n = float(n)
     except (TypeError, ValueError):
         return "\u2014"
-    return f"{n * 100:.1f}%"
+    return f"{_n(n * 100, 1)}\u00a0%" if _german() else f"{n * 100:.1f}%"
 
 
 def money_compact(n: Any) -> str:
-    """Short amounts for narrow cells and chart labels: -€5k, €987k, €18.08M."""
+    """Short amounts for narrow cells and chart labels: -€5k, €987k, €18.08M (German: 987 Tsd. €, 18,08 Mio. €)."""
     if n is None:
         return "—"
     v = float(n)
     sign = "-" if v < 0 else ""
     a = abs(v)
     if a >= 1_000_000:
-        return f"{sign}\u20ac{a / 1_000_000:,.2f}M"
+        return f"{sign}{_n(a / 1_000_000, 2)}\u00a0Mio.\u00a0\u20ac" if _german() else f"{sign}\u20ac{a / 1_000_000:,.2f}M"
     if a >= 1_000:
-        return f"{sign}\u20ac{a / 1_000:,.0f}k"
+        return f"{sign}{_n(a / 1_000)}\u00a0Tsd.\u00a0\u20ac" if _german() else f"{sign}\u20ac{a / 1_000:,.0f}k"
     return money(v)
 
 
@@ -208,20 +237,30 @@ def money2(n: Any) -> str:
         return "\u2014"
     n = float(n)
     sign = "-" if n < 0 else ""
-    return f"{sign}\u20ac{abs(n):,.2f}"
+    return _eur_text(_n(abs(n), 2), sign)
 
 
 def pct2(n: Any) -> str:
     """Percent with 2 decimals, for rates (WACC, cost of equity, ...)."""
     if n is None or n == "":
         return "\u2014"
-    return f"{float(n) * 100:.2f}%"
+    return f"{_n(float(n) * 100, 2)}\u00a0%" if _german() else f"{float(n) * 100:.2f}%"
 
 
 def multiple(n: Any) -> str:
     if n is None or n == "":
         return "\u2014"
-    return f"{float(n):.2f}\u00d7"
+    return f"{_n(float(n), 2)}\u00d7"
+
+
+def count(n: Any) -> str:
+    """A whole number with thousands separators (share counts)."""
+    return "\u2014" if n is None else _n(round(float(n)))
+
+
+def scenario_label(label: str) -> str:
+    """'80%' / '80 %'."""
+    return label.replace("%", "\u00a0%") if _german() else label
 
 
 def safe(v: Any) -> str:
@@ -258,14 +297,18 @@ def P(text: str, style: ParagraphStyle, raw: bool = False) -> Paragraph:
 # ============================================================================
 
 
-def info_table(rows: list[tuple[str, str]], col_widths=None) -> Table:
-    """Two-column label/value table (mirrors .pr-table used for plain info blocks)."""
-    data = [[P(safe(label), LABEL_STYLE), P(safe(value), VALUE_STYLE)] for label, value in rows]
+def info_table(rows: list[tuple[str, str]], col_widths=None, compact: bool = False) -> Table:
+    """Two-column label/value table (mirrors .pr-table used for plain info blocks). `compact`: smaller type and
+    padding, for the dense company-summary tables."""
+    label_style = STYLES["td_label_compact"] if compact else LABEL_STYLE
+    value_style = STYLES["td_value_compact"] if compact else VALUE_STYLE
+    data = [[P(safe(label), label_style), P(safe(value), value_style)] for label, value in rows]
     widths = col_widths or [CONTENT_W * 0.55, CONTENT_W * 0.45]
     t = Table(data, colWidths=widths)
+    pad = 3 if compact else 4.5
     style = [
-        ("TOPPADDING", (0, 0), (-1, -1), 4.5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4.5),
+        ("TOPPADDING", (0, 0), (-1, -1), pad),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), pad),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
         ("LINEBELOW", (0, 0), (-1, -1), 0.5, BORDER),
@@ -418,20 +461,21 @@ def side_by_side(left, right, gap=16) -> Table:
 # Labels (mirror index.html's SCORECARD_LABELS / CRITERIA_LABELS / METHOD_LABELS)
 # ============================================================================
 
-SCORECARD_LABELS = {
-    "management_team_experience": "Management team experience",
-    "willingness_to_step_aside_for_ceo": "Willingness to step aside for an experienced CEO",
-    "management_team_completeness": "How complete is the management team?",
-    "product_development_stage": "Product development stage",
-    "product_compelling_to_customers": "Is the product compelling to customers?",
-    "product_can_be_duplicated": "Can this product be duplicated by others?",
-    "strength_of_competitors_in_market": "Strength of competitors in the market",
-    "strength_of_competitive_products": "Strength of competitive products",
-    "target_market_size": "Target market size",
-    "revenue_potential_in_5_years": "Revenue potential in 5 years",
-    "sales_channels_partners": "Sales channels / sales partners",
-    "marketing_partners": "Marketing partners",
-    "need_for_additional_funding_rounds": "Need for additional funding rounds",
+_SCORECARD_LABELS = {
+    "management_team_experience": ("Management team experience", "Erfahrung des Managementteams"),
+    "willingness_to_step_aside_for_ceo": ("Willingness to step aside for an experienced CEO",
+                                          "Bereit, einer erfahrenen CEO Platz zu machen?"),
+    "management_team_completeness": ("How complete is the management team?", "Wie vollständig ist das Team?"),
+    "product_development_stage": ("Product development stage", "Entwicklungsstand des Produkts"),
+    "product_compelling_to_customers": ("Is the product compelling to customers?", "Überzeugt das Produkt die Kunden?"),
+    "product_can_be_duplicated": ("Can this product be duplicated by others?", "Kann das Produkt kopiert werden?"),
+    "strength_of_competitors_in_market": ("Strength of competitors in the market", "Stärke der Wettbewerber"),
+    "strength_of_competitive_products": ("Strength of competitive products", "Stärke der Konkurrenzprodukte"),
+    "target_market_size": ("Target market size", "Größe des Zielmarkts"),
+    "revenue_potential_in_5_years": ("Revenue potential in 5 years", "Umsatzpotenzial in 5 Jahren"),
+    "sales_channels_partners": ("Sales channels / sales partners", "Vertriebswege / Vertriebspartner"),
+    "marketing_partners": ("Marketing partners", "Marketingpartner"),
+    "need_for_additional_funding_rounds": ("Need for additional funding rounds", "Weitere Finanzierungsrunden nötig?"),
 }
 MARKET_POTENTIAL_KEYS = [
     "strength_of_competitors_in_market", "strength_of_competitive_products",
@@ -444,44 +488,74 @@ TEAM_PRODUCT_KEYS = [
     "product_compelling_to_customers", "product_can_be_duplicated",
     "need_for_additional_funding_rounds",
 ]
-CRITERIA_LABELS = {
-    "strength_of_the_team": "Strength of the team",
-    "size_of_the_opportunity": "Size of the opportunity",
-    "competitive_environment": "Competitive environment",
-    "strength_and_protection_of_product": "Strength & protection of product",
-    "strategic_relationships_with_partners": "Strategic relationships with partners",
-    "funding_required": "Funding required",
+_CRITERIA_LABELS = {
+    "strength_of_the_team": ("Strength of the team", "Stärke des Teams"),
+    "size_of_the_opportunity": ("Size of the opportunity", "Größe der Chance"),
+    "competitive_environment": ("Competitive environment", "Wettbewerbsumfeld"),
+    "strength_and_protection_of_product": ("Strength & protection of product", "Stärke und Schutz des Produkts"),
+    "strategic_relationships_with_partners": ("Strategic relationships with partners", "Strategische Partnerschaften"),
+    "funding_required": ("Funding required", "Kapitalbedarf"),
 }
-METHOD_LABELS = {
-    "scorecard": "Scorecard",
-    "venture_capital": "Venture Capital",
-    "comparables": "Comparables (EV/EBITDA multiple)",
-    "dcf": "Discounted cash flow (DCF)",
+_METHOD_LABELS = {
+    "scorecard": ("Scorecard", "Scorecard"),
+    "venture_capital": ("Venture Capital", "Venture Capital"),
+    "comparables": ("Comparables (revenue or EBITDA multiple)", "Vergleichsmethode (Umsatz- oder EBITDA-Multiplikator)"),
+    "dcf": ("Discounted cash flow (DCF)", "Discounted Cashflow (DCF)"),
 }
-METHOD_CHART_LABELS = {"scorecard": "Scorecard", "venture_capital": "VC", "comparables": "Comparables", "dcf": "DCF"}
-SOURCE_NOTES = {
-    "region": "",
-    "industry_global": "global figure*",
-    "cross_industry": "all-industry median*",
-    "user_override": "your input",
+_METHOD_CHART_LABELS = {"scorecard": ("Scorecard", "Scorecard"), "venture_capital": ("VC", "VC"),
+                        "comparables": ("Comparables", "Vergleich"), "dcf": ("DCF", "DCF")}
+_SOURCE_NOTES = {
+    "region": ("", ""),
+    "industry_global": ("global figure*", "weltweiter Wert*"),
+    "cross_industry": ("all-industry median*", "Median aller Branchen*"),
+    "user_override": ("your input", "Ihre Eingabe"),
 }
-REGION_SHORT = {
-    "Europe (EU, UK, Switzerland & Scandinavia)": "Europe",
-    "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": "Emerging Markets",
+_REGION_SHORT = {
+    "Europe (EU, UK, Switzerland & Scandinavia)": ("Europe", "Europa"),
+    "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": ("Emerging Markets", "Schwellenländer"),
+    "US": ("US", "USA"),
+    "India": ("India", "Indien"),
+    "Global": ("Global", "Weltweit"),
 }
+
+
+def _pick(table: dict, key: str) -> str:
+    en, de = table.get(key, (key, key))
+    return T(en, de)
+
+
+def scorecard_label(key: str) -> str:
+    return _pick(_SCORECARD_LABELS, key)
+
+
+def criteria_label(key: str) -> str:
+    return _pick(_CRITERIA_LABELS, key)
+
+
+def method_label(key: str) -> str:
+    return _pick(_METHOD_LABELS, key)
+
+
+def method_chart_label(key: str) -> str:
+    return _pick(_METHOD_CHART_LABELS, key)
+
+
+def source_note(source: Optional[str]) -> str:
+    return _pick(_SOURCE_NOTES, source or "region")
 
 
 def short_region(region: Optional[str]) -> str:
-    return REGION_SHORT.get(region or "", region or "—")
+    return _pick(_REGION_SHORT, region) if region in _REGION_SHORT else (region or "—")
 
 
 def format_date(iso: Optional[str]) -> str:
     if not iso:
         return "—"
     try:
-        return datetime.strptime(iso[:10], "%Y-%m-%d").strftime("%d %B %Y").lstrip("0")
+        d = datetime.strptime(iso[:10], "%Y-%m-%d")
     except ValueError:
         return iso
+    return ve._long_date(d.date()).lstrip("0")
 
 
 # ============================================================================
@@ -547,7 +621,7 @@ def _make_page_decorator(company_name: str, date_str: str, logo_bytes: Optional[
                 pass
         else:
             canvas.setFont("Helvetica", 8)
-            canvas.drawRightString(PAGE_W - MARGIN_SIDE, header_y, "COMPANY VALUATION REPORT")
+            canvas.drawRightString(PAGE_W - MARGIN_SIDE, header_y, T("COMPANY VALUATION REPORT", "UNTERNEHMENSBEWERTUNG"))
         canvas.setStrokeColor(BORDER)
         canvas.line(MARGIN_SIDE, header_y - 4, PAGE_W - MARGIN_SIDE, header_y - 4)
 
@@ -555,8 +629,10 @@ def _make_page_decorator(company_name: str, date_str: str, logo_bytes: Optional[
         canvas.setFillColor(colors.HexColor("#a7b0bc"))
         canvas.drawCentredString(
             PAGE_W / 2, MARGIN_BOTTOM - 10 * mm,
-            f"{BRAND} by {AUTHOR} · Valuation as of {date_str} · Page {doc.page} · "
-            "Informational estimate, not a certified appraisal",
+            T(f"{BRAND} by {AUTHOR} · Valuation as of {date_str} · Page {doc.page} · "
+              "Informational estimate, not a certified appraisal",
+              f"{BRAND} von {AUTHOR} · Bewertung zum {date_str} · Seite {doc.page} · "
+              "Unverbindliche Schätzung, kein zertifiziertes Gutachten"),
         )
         canvas.restoreState()
 
@@ -569,7 +645,8 @@ def _draw_nothing(canvas, doc):
 
 def _how(text: str) -> list:
     """A shaded 'How this number was reached' box."""
-    box = Table([[P(f"<b>How this number was reached.</b> {esc(text)}", STYLES["td_label"], raw=True)]],
+    box = Table([[P(f"<b>{T('How this number was reached.', 'So entsteht diese Zahl.')}</b> {esc(text)}",
+                    STYLES["td_label"], raw=True)]],
                 colWidths=[CONTENT_W])
     box.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), DISCLAIMER_BG),
@@ -580,10 +657,18 @@ def _how(text: str) -> list:
     return [box, Spacer(1, 10)]
 
 
+def _counts_as_zero(reason: Optional[str]) -> list:
+    if not reason:
+        return []
+    return [P(f"<b>{T('Counts as €0 in the blend:', 'Zählt mit 0 € in der Gewichtung:')}</b> {esc(reason)}",
+              STYLES["td_label"], raw=True), Spacer(1, 8)]
+
+
 def _not_meaningful(reason: Optional[str]) -> list:
     if not reason:
         return []
-    return [P(f"<b>Not used in the blend:</b> {esc(reason)}", STYLES["td_label"], raw=True), Spacer(1, 8)]
+    return [P(f"<b>{T('Not used in the blend:', 'Nicht in der Gewichtung:')}</b> {esc(reason)}",
+              STYLES["td_label"], raw=True), Spacer(1, 8)]
 
 
 # ============================================================================
@@ -591,29 +676,56 @@ def _not_meaningful(reason: Optional[str]) -> list:
 # ============================================================================
 
 
-METHOD_SHORT = {"scorecard": "Scorecard", "venture_capital": "Venture Capital", "comparables": "Comparables",
-                "dcf": "DCF"}
+_METHOD_SHORT = {"scorecard": ("Scorecard", "Scorecard"), "venture_capital": ("Venture Capital", "Venture Capital"),
+                 "comparables": ("Comparables", "Vergleichsmethode"), "dcf": ("DCF", "DCF")}
+
+
+def method_short(key: str) -> str:
+    return _pick(_METHOD_SHORT, key)
+
+
+def _join(items: list[str]) -> str:
+    """'A, B and C' / 'A, B und C'."""
+    if len(items) <= 1:
+        return "".join(items)
+    return T(" and ", " und ").join([", ".join(items[:-1]), items[-1]])
 
 
 def _at_a_glance(output: dict, scenarios: dict) -> list:
-    """The result in four lines: the blend, post-money, how far apart the methods are, and what a 20%
-    revenue miss does. A startup's value is uncertain; the range says how uncertain."""
-    used = [METHOD_SHORT[k] for k, mv in (g(output, "method_values", {}) or {}).items()
+    """The result in a few lines: the blend, post-money, how far apart the methods are, what a 20%
+    revenue miss does, and how a typical round would price the company. A startup's value is uncertain;
+    the ranges say how uncertain."""
+    used = [method_short(k) for k, mv in (g(output, "method_values", {}) or {}).items()
             if mv.get("status") == "ok" and mv.get("weight_used")]
-    rows = [("Pre-money valuation", money(g(output, "blended_pre_money_valuation")),
-             "blend of " + (" and ".join([", ".join(used[:-1]), used[-1]]) if len(used) > 1 else used[0])
-             if used else ""),
-            ("Post-money valuation", money(g(output, "post_money_valuation")),
-             f"after raising {money(g(output, 'capital_needed'))}")]
+    rows = [(T("Pre-money valuation", "Pre-Money-Bewertung"), money(g(output, "blended_pre_money_valuation")),
+             T("blend of ", "gewichtet aus ") + _join(used) if used else ""),
+            (T("Post-money valuation", "Post-Money-Bewertung"), money(g(output, "post_money_valuation")),
+             T(f"after raising {money(g(output, 'capital_needed'))}",
+               f"nach Aufnahme von {money(g(output, 'capital_needed'))}"))]
     rng = g(output, "method_range")
     if rng:
-        rows.append(("Range across methods", f"{money(rng['low'])} ({METHOD_SHORT[rng['low_method']]}) to "
-                     f"{money(rng['high'])} ({METHOD_SHORT[rng['high_method']]})", "lowest and highest method"))
+        rows.append((T("Range across methods", "Spanne der Methoden"),
+                     T(f"{money(rng['low'])} ({method_short(rng['low_method'])}) to "
+                       f"{money(rng['high'])} ({method_short(rng['high_method'])})",
+                       f"{money(rng['low'])} ({method_short(rng['low_method'])}) bis "
+                       f"{money(rng['high'])} ({method_short(rng['high_method'])})"),
+                     T("lowest and highest method", "niedrigste und höchste Methode")))
     low, high = (scenarios or {}).get("80%"), (scenarios or {}).get("120%")
     if low and high and abs(high["blended_pre_money_valuation"] - low["blended_pre_money_valuation"]) >= 1:
-        rows.append(("If Year-1 revenue is 20% lower or higher",
-                     f"{money(low['blended_pre_money_valuation'])} to {money(high['blended_pre_money_valuation'])}",
-                     "blended pre-money"))
+        rows.append((T("If Year-1 revenue is 20% lower or higher", "Wenn der Umsatz in Jahr 1 20 % niedriger oder höher ist"),
+                     T(f"{money(low['blended_pre_money_valuation'])} to {money(high['blended_pre_money_valuation'])}",
+                       f"{money(low['blended_pre_money_valuation'])} bis {money(high['blended_pre_money_valuation'])}"),
+                     T("blended pre-money", "gewichtete Pre-Money-Bewertung")))
+    rl = g(output, "round_logic")
+    if rl:
+        rows.append((T("Round logic (how a typical round would price it)",
+                       "Rundenlogik (so würde eine typische Runde bepreisen)"),
+                     T(f"{money_compact(rl['implied_pre_money_low'])} to {money_compact(rl['implied_pre_money_high'])}",
+                       f"{money_compact(rl['implied_pre_money_low'])} bis {money_compact(rl['implied_pre_money_high'])}"),
+                     T(f"pre-money if {money(rl['capital_needed'])} buys a typical {rl['round_name']} stake of "
+                       f"{ve._pct0(rl['dilution_low'])}–{ve._pct0(rl['dilution_high'])}",
+                       f"Pre-Money, wenn {money(rl['capital_needed'])} einen typischen {rl['round_name']}-Anteil von "
+                       f"{ve._pct0(rl['dilution_low'])}–{ve._pct0(rl['dilution_high'])} kaufen")))
     def value(b, c):
         note = f"<br/><font size=8 color='#8b98a8'>{esc(c)}</font>" if c else ""
         return P(f"<b>{esc(b)}</b>{note}", STYLES["td_value"], raw=True)
@@ -626,17 +738,30 @@ def _at_a_glance(output: dict, scenarios: dict) -> list:
         ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
-    story = [P("At a glance", STYLES["h3"]), table]
+    story = [P(T("At a glance", "Auf einen Blick"), STYLES["h3"]), table]
+    checks = [w for w in (g(output, "warnings", []) or []) if w.get("severity") == "warning"]
+    if checks:
+        n = len(checks)
+        lead = T(f"<b>Before sharing this report:</b> {n} of your inputs {'needs' if n == 1 else 'need'} a second "
+                 "look (see \"Checks on your inputs\").",
+                 f"<b>Bevor Sie diesen Bericht weitergeben:</b> {n} Ihrer Angaben "
+                 f"{'sollte' if n == 1 else 'sollten'} noch einmal geprüft werden (siehe \"Prüfung Ihrer Angaben\").")
+        story.append(P(lead + (" " + esc(next(w["message"] for w in checks if w.get("code") == "implausible_value"))
+                               if any(w.get("code") == "implausible_value" for w in checks) else ""),
+                       STYLES["sub"], raw=True))
     if rng:
-        story.append(P("The methods look at the company from different angles and rarely agree; the range shows how "
-                       "far apart they are. The revenue line shows how much the result depends on the plan.",
+        story.append(P(T("The methods look at the company from different angles and rarely agree; the range shows how "
+                         "far apart they are. The revenue line shows how much the result depends on the plan.",
+                         "Die Methoden betrachten das Unternehmen aus verschiedenen Blickwinkeln und stimmen selten "
+                         "überein; die Spanne zeigt, wie weit sie auseinanderliegen. Die Umsatzzeile zeigt, wie stark "
+                         "das Ergebnis vom Plan abhängt."),
                        STYLES["sub"]))
     return story
 
 
 def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Optional[bytes],
                 glance: Optional[list] = None) -> list:
-    story = [Spacer(1, 55 * mm)]
+    story = [Spacer(1, 38 * mm)]
     band = Table([[""]], colWidths=[35 * mm], rowHeights=[2.5])
     band.setStyle(TableStyle([("BACKGROUND", (0, 0), (0, 0), NAVY_LINE)]))
     story.append(band)
@@ -647,15 +772,15 @@ def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Op
             story.append(Spacer(1, 14))
         except Exception:
             pass
-    story.append(P("COMPANY VALUATION REPORT", STYLES["eyebrow"]))
+    story.append(P(T("COMPANY VALUATION REPORT", "UNTERNEHMENSBEWERTUNG"), STYLES["eyebrow"]))
     story.append(P(company_name, STYLES["h1"]))
     meta_rows = [
-        [P("Prepared for", STYLES["cover_meta_label"]), P(company_name, STYLES["cover_meta_value"])],
-        [P("Valuation date", STYLES["cover_meta_label"]), P(date_str, STYLES["cover_meta_value"])],
-        [P("Market data", STYLES["cover_meta_label"]),
+        [P(T("Prepared for", "Erstellt für"), STYLES["cover_meta_label"]), P(company_name, STYLES["cover_meta_value"])],
+        [P(T("Valuation date", "Bewertungsdatum"), STYLES["cover_meta_label"]), P(date_str, STYLES["cover_meta_value"])],
+        [P(T("Market data", "Marktdaten"), STYLES["cover_meta_label"]),
          P(f"Damodaran Online (NYU Stern), {data_date}", STYLES["cover_meta_value"])],
-        [P("Report generated", STYLES["cover_meta_label"]),
-         P(datetime.now().strftime("%d %B %Y").lstrip("0"), STYLES["cover_meta_value"])],
+        [P(T("Report generated", "Erstellt am"), STYLES["cover_meta_label"]),
+         P(format_date(datetime.now().strftime("%Y-%m-%d")), STYLES["cover_meta_value"])],
     ]
     meta = Table(meta_rows, colWidths=[35 * mm, CONTENT_W - 35 * mm])
     meta.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 2),
@@ -666,14 +791,20 @@ def _cover_page(company_name: str, date_str: str, data_date: str, logo_bytes: Op
         story.append(Spacer(1, 18))
         story += glance
     story.append(Spacer(1, 40 if not glance else 24))
-    story.append(P(
+    story.append(P(T(
         "This report is an automated, informational estimate blending four standard valuation "
         "methods. It is not a certified appraisal, and should not be relied on as financial, "
-        "investment, or legal advice.",
+        "investment, or legal advice. It is not a valuation under IDW S1 or the German valuation law (BewG) and "
+        "can't be used for tax purposes or employee share plans.",
+        "Dieser Bericht ist eine automatisierte, unverbindliche Schätzung aus vier gängigen Bewertungsmethoden. "
+        "Er ist kein zertifiziertes Gutachten und keine Finanz-, Anlage- oder Rechtsberatung. Er ist keine "
+        "Bewertung nach IDW S1 oder dem Bewertungsgesetz (BewG) und kann nicht für steuerliche Zwecke oder "
+        "Mitarbeiterbeteiligungen (VSOP/ESOP) verwendet werden."),
         STYLES["cover_disclaimer"],
     ))
     story.append(Spacer(1, 6))
-    story.append(P(f"Prepared with {BRAND} by {AUTHOR}.", STYLES["cover_disclaimer"]))
+    story.append(P(T(f"Prepared with {BRAND} by {AUTHOR}.", f"Erstellt mit {BRAND} von {AUTHOR}."),
+                   STYLES["cover_disclaimer"]))
     return story
 
 
@@ -684,114 +815,140 @@ def _german_taxes(output: dict) -> Optional[dict]:
 
 
 def _hebesatz_text(taxes: dict) -> str:
-    who = "your municipality" if taxes.get("hebesatz_source") == "user" else "national average"
-    return f"{(taxes.get('hebesatz') or 0) * 100:.0f}% ({who})"
+    who = (T("your municipality", "Ihre Gemeinde") if taxes.get("hebesatz_source") == "user"
+           else T("national average", "Bundesdurchschnitt"))
+    return f"{ve._pct0(taxes.get('hebesatz') or 0)} ({who})"
 
 
 def _company_summary_page(cp: dict, mkt: dict, ops: dict, output: dict) -> list:
-    story = [P("Company summary", STYLES["h2"])]
+    story = [P(T("Company summary", "Unternehmensübersicht"), STYLES["h2"])]
     proj = g(output, "projections", {})
-    tax_note = "your input" if g(cp, "dcf_tax_rate_override") is not None else "country statutory rate"
+    tax_note = (T("your input", "Ihre Eingabe") if g(cp, "dcf_tax_rate_override") is not None
+                else T("country statutory rate", "gesetzlicher Satz des Landes"))
     german = _german_taxes(output)
     if german:
         rates = [y.get("tax_rate") for y in proj.get("years", [])]
-        tax_text = (f"{pct(rates[0])} in Year 1 falling to {pct(rates[-1])} in Year 5 and "
-                    f"{pct(german.get('long_run_rate'))} after (German schedule)")
+        tax_text = T(f"{pct(rates[0])} in Year 1 falling to {pct(rates[-1])} in Year 5 and "
+                     f"{pct(german.get('long_run_rate'))} after (German schedule)",
+                     f"{pct(rates[0])} in Jahr 1, sinkend auf {pct(rates[-1])} in Jahr 5 und "
+                     f"{pct(german.get('long_run_rate'))} danach (deutscher Steuerverlauf)")
     else:
         tax_text = f"{pct(g(proj, 'tax_rate'))} ({tax_note})"
+    years_to_exit = g(cp, "planned_time_to_exit_years")
 
     general = info_table([
-        ("Company name", g(cp, "company_name")),
-        ("Contact name", g(cp, "contact_name")),
-        ("Contact email", g(cp, "contact_email")),
-        ("Company address", g(cp, "address")),
-        ("Website", g(cp, "website")),
-        ("Country", g(cp, "country")),
-        ("Number of founders", g(cp, "num_founders")),
-        ("Number of employees", g(cp, "num_employees")),
-        ("Year of incorporation", g(cp, "year_of_incorporation")),
-        ("Company stage", g(cp, "company_stage")),
-    ], col_widths=[HALF_W * 0.4, HALF_W * 0.6])
+        (T("Company name", "Firmenname"), g(cp, "company_name")),
+        (T("Contact name", "Ansprechperson"), g(cp, "contact_name")),
+        (T("Contact email", "E-Mail"), g(cp, "contact_email")),
+        (T("Company address", "Adresse"), g(cp, "address")),
+        (T("Website", "Website"), g(cp, "website")),
+        (T("Country", "Land"), ve.country_label(g(cp, "country") or "")),
+        (T("Number of founders", "Anzahl der Gründer"), g(cp, "num_founders")),
+        (T("Number of employees", "Anzahl der Mitarbeitenden"), g(cp, "num_employees")),
+        (T("Year of incorporation", "Gründungsjahr"), g(cp, "year_of_incorporation")),
+        (T("Company stage", "Phase"), ve.stage_label(g(cp, "company_stage") or "")),
+    ], col_widths=[HALF_W * 0.4, HALF_W * 0.6], compact=True)
     business = info_table([
-        ("Business activity", g(cp, "business_activity")),
-        ("Industry", g(cp, "industry")),
-        ("Business territory", short_region(g(cp, "business_territory_region"))),
-        ("Business model", g(cp, "business_model")),
-        ("Committed capital", money(g(cp, "committed_capital", 0))),
-        ("Exit strategy", g(cp, "exit_strategy")),
-        ("Planned time to exit", f"{g(cp, 'planned_time_to_exit_years')} "
-                                 f"year{'' if g(cp, 'planned_time_to_exit_years') == 1 else 's'}"),
-        ("Tax rate", tax_text),
-    ], col_widths=[HALF_W * 0.4, HALF_W * 0.6])
+        (T("Business activity", "Geschäftstätigkeit"), g(cp, "business_activity")),
+        (T("Industry", "Branche"), g(cp, "industry")),
+        (T("Business territory", "Region"), short_region(g(cp, "business_territory_region"))),
+        (T("Business model", "Geschäftsmodell"), g(cp, "business_model")),
+        (T("Committed capital", "Zugesagtes Kapital"), money(g(cp, "committed_capital", 0))),
+        (T("Exit strategy", "Exit-Strategie"), g(cp, "exit_strategy")),
+        (T("Planned time to exit", "Geplante Zeit bis zum Exit"),
+         T(f"{years_to_exit} year{'' if years_to_exit == 1 else 's'}", f"{years_to_exit} Jahr{'' if years_to_exit == 1 else 'e'}")),
+        (T("Tax rate", "Steuersatz"), tax_text),
+    ], col_widths=[HALF_W * 0.4, HALF_W * 0.6], compact=True)
 
-    story.append(side_by_side([P("General info", STYLES["h3"]), general],
-                              [P("Business profile", STYLES["h3"]), business]))
+    story.append(side_by_side([P(T("General info", "Allgemeine Angaben"), STYLES["h3"]), general],
+                              [P(T("Business profile", "Geschäftsprofil"), STYLES["h3"]), business]))
     story.append(Spacer(1, 10))
 
     competitors = [c for c in (g(mkt, "key_competitor_1"), g(mkt, "key_competitor_2"), g(mkt, "key_competitor_3")) if c]
     # Questionnaire answers: only the ones the founder actually gave. Companies with revenue
     # may skip the questionnaire (the Scorecard only counts before revenue).
     answered = any(g(mkt, k) for k in (*MARKET_POTENTIAL_KEYS, *TEAM_PRODUCT_KEYS))
-    answer = lambda k: g(mkt, k) or "Not answered"  # noqa: E731
+    answer = lambda k: ve.option_label(k, g(mkt, k)) or T("Not answered", "Nicht beantwortet")  # noqa: E731
     if answered:
-        market_rows = [(SCORECARD_LABELS.get(k, k), answer(k)) for k in MARKET_POTENTIAL_KEYS]
-        team_rows = [(SCORECARD_LABELS.get(k, k), answer(k)) for k in TEAM_PRODUCT_KEYS]
+        market_rows = [(scorecard_label(k), answer(k)) for k in MARKET_POTENTIAL_KEYS]
+        team_rows = [(scorecard_label(k), answer(k)) for k in TEAM_PRODUCT_KEYS]
     else:
         market_rows = []
-        team_rows = [("Questionnaire", "Not answered (only needed before revenue, for the Scorecard method)")]
-    market_rows.append(("Key competitors", ", ".join(competitors) if competitors else None))
-    market_table = info_table(market_rows, col_widths=[HALF_W * 0.4, HALF_W * 0.6])
-    team_table = info_table(team_rows, col_widths=[HALF_W * 0.4, HALF_W * 0.6])
+        team_rows = [(T("Questionnaire", "Fragebogen"),
+                      T("Not answered (only needed before revenue, for the Scorecard method)",
+                        "Nicht beantwortet (nur vor Umsatzbeginn nötig, für die Scorecard-Methode)"))]
+    market_rows.append((T("Key competitors", "Wichtigste Wettbewerber"), ", ".join(competitors) if competitors else None))
+    market_table = info_table(market_rows, col_widths=[HALF_W * 0.45, HALF_W * 0.55], compact=True)
+    team_table = info_table(team_rows, col_widths=[HALF_W * 0.45, HALF_W * 0.55], compact=True)
     rev = g(ops, "current_revenue_last_12_months") or 0
     margin = (g(ops, "current_ebitda") or 0) / rev if rev else None
-    perf_table = info_table([
-        ("Revenue, last 12 months", money(rev)),
-        ("EBITDA, last 12 months", money(g(ops, "current_ebitda"))),
-        ("EBITDA margin", pct(margin)),
-        ("Cash available", money(g(ops, "cash_available"))),
-        ("PP&E (current value)", money(g(ops, "current_ppe_value"))),
-    ], col_widths=[HALF_W * 0.4, HALF_W * 0.6])
+    perf_rows = [
+        (T("Revenue, last 12 months", "Umsatz, letzte 12 Monate"), money(rev)),
+        (T("EBITDA, last 12 months", "EBITDA, letzte 12 Monate"), money(g(ops, "current_ebitda"))),
+        (T("EBITDA margin", "EBITDA-Marge"), pct(margin)),
+    ]
+    if g(ops, "annual_recurring_revenue"):
+        perf_rows.append((T("Annual recurring revenue (ARR)", "Jährlich wiederkehrender Umsatz (ARR)"),
+                          money(g(ops, "annual_recurring_revenue"))))
+    perf_rows += [
+        (T("Cash available", "Liquide Mittel"), money(g(ops, "cash_available"))),
+        (T("PP&E (current value)", "Sachanlagen (aktueller Wert)"), money(g(ops, "current_ppe_value"))),
+    ]
+    perf_table = info_table(perf_rows, col_widths=[HALF_W * 0.4, HALF_W * 0.6], compact=True)
 
     story.append(side_by_side(
-        [P("Market potential", STYLES["h3"]), market_table, P("Latest operating performance", STYLES["h3"]), perf_table],
-        [P("Team & product", STYLES["h3"]), team_table],
+        [P(T("Market potential", "Marktpotenzial"), STYLES["h3"]), market_table,
+         P(T("Latest operating performance", "Aktuelle Geschäftszahlen"), STYLES["h3"]), perf_table],
+        [P(T("Team & product", "Team & Produkt"), STYLES["h3"]), team_table],
     ))
     return story
 
 
 def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, output: dict, benchmark: dict) -> list:
-    story = [P("Projected financials & valuation inputs", STYLES["h2"])]
+    story = [P(T("Projected financials & valuation inputs", "Planzahlen & Bewertungsgrundlagen"), STYLES["h2"])]
     proj = g(output, "projections", {})
     years = proj.get("years", [])
     labels = [y.get("year_label", "") for y in years]
-    target_name = "your target margin" if proj.get("target_margin_source") == "user_override" else "the industry margin"
+    target_name = (T("your target margin", "Ihre Zielmarge") if proj.get("target_margin_source") == "user_override"
+                   else T("the industry margin", "die Branchenmarge"))
+    start_pct, target_pct = pct(proj.get("starting_ebitda_margin")), pct(proj.get("target_ebitda_margin"))
     if proj.get("starting_margin_source") == "company":
-        margin_text = (f"The EBITDA margin starts from your last-12-month margin ({pct(proj.get('starting_ebitda_margin'))}) "
-                       f"and moves in equal steps to {target_name} ({pct(proj.get('target_ebitda_margin'))}) by Year 5.")
+        margin_text = T(f"The EBITDA margin starts from your last-12-month margin ({start_pct}) and moves in equal "
+                        f"steps to {target_name} ({target_pct}) by Year 5.",
+                        f"Die EBITDA-Marge beginnt bei Ihrer Marge der letzten 12 Monate ({start_pct}) und erreicht "
+                        f"in gleichen Schritten bis Jahr 5 {target_name} ({target_pct}).")
     else:
-        margin_text = (f"With no revenue history, the projection uses {target_name} "
-                       f"({pct(proj.get('target_ebitda_margin'))}) as the EBITDA margin from Year 1.")
-    story.append(P(
-        f"Year 1 is the 12 months after the valuation date ({format_date(proj.get('valuation_date'))}). {margin_text}",
-        STYLES["sub"]))
+        margin_text = T(f"The EBITDA margin starts from today's EBITDA ÷ Year-1 revenue ({start_pct}) and moves in "
+                        f"equal steps to {target_name} ({target_pct}) by Year 5.",
+                        f"Die EBITDA-Marge beginnt bei heutigem EBITDA ÷ Umsatz in Jahr 1 ({start_pct}) und erreicht "
+                        f"in gleichen Schritten bis Jahr 5 {target_name} ({target_pct}).")
+    vdate = format_date(proj.get("valuation_date"))
+    story.append(P(T(f"Year 1 is the 12 months after the valuation date ({vdate}). {margin_text}",
+                     f"Jahr 1 sind die 12 Monate nach dem Bewertungsdatum ({vdate}). {margin_text}"),
+                   STYLES["sub"]))
 
-    headers = [""] + [f"{y.get('year_label')} ({y.get('period_label', '').replace('to ', '')})" for y in years]
+    def period(y):
+        text = y.get("period_label", "")
+        for prefix in ("to ", "bis "):
+            text = text.replace(prefix, "")
+        return text
+    headers = [""] + [f"{y.get('year_label')} ({period(y)})" for y in years]
     amt = amount_format([y.get(k) for y in years for k in ("revenue", "ebitda", "capex", "unlevered_fcf")])
     rows = [
-        ["Revenue"] + [amt(y.get("revenue")) for y in years],
-        ["EBITDA margin"] + [pct(y.get("ebitda_margin")) for y in years],
+        [T("Revenue", "Umsatz")] + [amt(y.get("revenue")) for y in years],
+        [T("EBITDA margin", "EBITDA-Marge")] + [pct(y.get("ebitda_margin")) for y in years],
         ["EBITDA"] + [amt(y.get("ebitda")) for y in years],
-        ["Capital expenditure"] + [amt(y.get("capex")) for y in years],
-        ["Free cash flow"] + [amt(y.get("unlevered_fcf")) for y in years],
+        [T("Capital expenditure", "Investitionen")] + [amt(y.get("capex")) for y in years],
+        [T("Free cash flow", "Freier Cashflow")] + [amt(y.get("unlevered_fcf")) for y in years],
     ]
     n = max(len(years), 1)
     story.append(data_table(headers, rows, col_widths=[CONTENT_W * 0.25] + [CONTENT_W * 0.75 / n] * n))
     story.append(Spacer(1, 8))
     story.append(side_by_side(
-        [P("Revenue by year", STYLES["h3"]),
-         bar_chart(labels, [y.get("revenue", 0) for y in years], color=NAVY_LINE, height=95)],
-        [P("EBITDA by year", STYLES["h3"]),
-         bar_chart(labels, [y.get("ebitda", 0) for y in years], color=BLUE_MID, height=95)],
+        [P(T("Revenue by year", "Umsatz je Jahr"), STYLES["h3"]),
+         bar_chart(labels, [y.get("revenue", 0) for y in years], color=NAVY_LINE, height=80)],
+        [P(T("EBITDA by year", "EBITDA je Jahr"), STYLES["h3"]),
+         bar_chart(labels, [y.get("ebitda", 0) for y in years], color=BLUE_MID, height=80)],
     ))
 
     region = g(cp, "business_territory_region")
@@ -802,7 +959,7 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
         b = used.get(metric)
         if not b:
             return "—"
-        note = SOURCE_NOTES.get(b.get("source"), "")
+        note = source_note(b.get("source"))
         return f"{fmt(b.get('value'))}" + (f" ({note})" if note else "")
 
     def info_only(metric):
@@ -810,41 +967,55 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
         v = table.get(region)
         return pct(v) if v is not None else "—"
 
-    story.append(P(f"Benchmarks used — {safe(g(cp, 'industry'))} / {short_region(region)}", STYLES["h3"]))
+    story.append(P(T(f"Benchmarks used — {safe(g(cp, 'industry'))} / {short_region(region)}",
+                     f"Verwendete Vergleichswerte — {safe(g(cp, 'industry'))} / {short_region(region)}"), STYLES["h3"]))
     rows = [
-        (("Industry EBITDA margin (for reference)", f"{info_only('ebitda_margin')} (not used: your own Year-5 target is "
-          f"{pct(proj.get('target_ebitda_margin'))})")
+        ((T("Industry EBITDA margin (for reference)", "EBITDA-Marge der Branche (zum Vergleich)"),
+          T(f"{info_only('ebitda_margin')} (not used: your own Year-5 target is {pct(proj.get('target_ebitda_margin'))})",
+            f"{info_only('ebitda_margin')} (nicht verwendet: Ihre Zielmarge für Jahr 5 ist "
+            f"{pct(proj.get('target_ebitda_margin'))})"))
          if proj.get("target_margin_source") == "user_override"
-         else ("Industry EBITDA margin (Year-5 target)", bm("ebitda_margin"))),
-        ("  of which: COGS / SG&A / R&D (% of revenue, for reference)",
+         else (T("Industry EBITDA margin (Year-5 target)", "EBITDA-Marge der Branche (Ziel in Jahr 5)"),
+               bm("ebitda_margin"))),
+        (T("  of which: COGS / SG&A / R&D (% of revenue, for reference)",
+           "  davon: Herstellkosten / Vertrieb & Verw. / F&E (% vom Umsatz)"),
          f"{info_only('cogs_pct_revenue')} / {info_only('sga_pct_revenue')} / {info_only('rd_pct_revenue')}"),
-        ("D&A (% of revenue)", bm("da_pct_revenue")),
-        ("Accounts receivable / inventory / payable (% of revenue)",
+        (T("D&A (% of revenue)", "Abschreibungen (% vom Umsatz)"), bm("da_pct_revenue")),
+        (T("Accounts receivable / inventory / payable (% of revenue)",
+           "Forderungen / Vorräte / Verbindl. (% vom Umsatz)"),
          f"{bm('acc_receivable_pct_revenue')} / {bm('inventory_pct_revenue')} / {bm('acc_payable_pct_revenue')}"),
-        ("EV/EBITDA multiple (trailing, profitable public companies)", bm("ev_ebitda_multiple", multiple)),
-        ("Beta", bm("beta", lambda v: f"{float(v):.2f}")),
-        ("Cost of equity / WACC", f"{pct2(g(wacc, 'cost_of_equity'))} / {pct2(g(wacc, 'wacc'))}"),
+        (T("EV/EBITDA multiple (trailing, profitable public companies)",
+           "EV/EBITDA-Multiplikator (profitable Börsenunternehmen)"),
+         bm("ev_ebitda_multiple", multiple)),
+        *([(T("EV/Sales multiple (trailing, all public companies)",
+              "EV/Umsatz-Multiplikator (alle Börsenunternehmen)"),
+            bm("ev_sales_multiple", multiple))] if used.get("ev_sales_multiple") else []),
+        ("Beta", bm("beta", lambda v: _n(float(v), 2))),
+        (T("Cost of equity / WACC", "Eigenkapitalkosten / WACC"), f"{pct2(g(wacc, 'cost_of_equity'))} / {pct2(g(wacc, 'wacc'))}"),
     ]
     story.append(info_table(rows, col_widths=[CONTENT_W * 0.62, CONTENT_W * 0.38]))
     if any(b.get("source") in ("industry_global", "cross_industry") for b in used.values()):
-        story.append(P("* Damodaran has no usable figure for this region, so the industry's global figure "
-                       "(or the median across all industries) is used.", STYLES["sub"]))
+        story.append(P(T("* Damodaran has no usable figure for this region, so the industry's global figure "
+                         "(or the median across all industries) is used.",
+                         "* Damodaran hat für diese Region keinen verwendbaren Wert; deshalb wird der weltweite Wert "
+                         "der Branche (oder der Median aller Branchen) verwendet."), STYLES["sub"]))
 
     funds_entries = [(k, v) for k, v in (g(funding, "use_of_funds") or {}).items() if v]
     ownership_entries = [(o.get("name"), o.get("ownership_pct")) for o in (ownership or []) if o.get("ownership_pct", 0) > 0]
     allocated = sum(v for _, v in ownership_entries)
     if ownership_entries and allocated < 0.995:
-        ownership_entries.append(("Not specified", 1 - allocated))
+        ownership_entries.append((T("Not specified", "Nicht angegeben"), 1 - allocated))
+    funds_entries = [(USE_OF_FUNDS_DE.get(k, k) if _german() else k, v) for k, v in funds_entries]
 
-    funds_block = [P("Use of funds", STYLES["h3"])]
+    funds_block = [P(T("Use of funds", "Mittelverwendung"), STYLES["h3"])]
     if funds_entries:
-        funds_block += [pie_chart([v for _, v in funds_entries], size=64), Spacer(1, 4),
+        funds_block += [pie_chart([v for _, v in funds_entries], size=52), Spacer(1, 4),
                         legend_table(funds_entries, fmt=money)]
     else:
         funds_block.append(P("—", STYLES["td_label"]))
-    own_block = [P("Ownership structure (before this round)", STYLES["h3"])]
+    own_block = [P(T("Ownership structure (before this round)", "Beteiligungsstruktur (vor dieser Runde)"), STYLES["h3"])]
     if ownership_entries:
-        own_block += [pie_chart([v for _, v in ownership_entries], size=64), Spacer(1, 4),
+        own_block += [pie_chart([v for _, v in ownership_entries], size=52), Spacer(1, 4),
                       legend_table(ownership_entries, fmt=pct)]
     else:
         own_block.append(P("—", STYLES["td_label"]))
@@ -852,21 +1023,74 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
     return story
 
 
+# The wizard's use-of-funds categories (the English names are the keys stored in the input).
+USE_OF_FUNDS_DE = {
+    "Product and R&D": "Produkt und F&E", "Product & R&D": "Produkt und F&E",
+    "Sales and marketing": "Vertrieb und Marketing", "Sales & marketing": "Vertrieb und Marketing",
+    "Inventory": "Vorräte", "Operations": "Betrieb", "Capital expenditures": "Investitionen", "Others": "Sonstiges",
+}
+
+
 def zero_value_reason(output: dict) -> str:
     """Why the pre-money value is zero (the same wording as on the results page)."""
     debt = g(g(output, "equity_bridge", {}), "debt") or 0
     if debt > 0:
-        return (f"The value is €0 because the company's debt ({money(debt)}) is larger than the value the methods "
-                "find for the business, so the shares are worth about nothing before the new money comes in.")
-    return "The value rounds to €0: the methods used leave essentially no value for the shares before the new money."
+        return T(f"The value is €0 because the company's debt ({money(debt)}) is larger than the value the methods "
+                 "find for the business, so the shares are worth about nothing before the new money comes in.",
+                 f"Der Wert ist 0 €, weil die Schulden des Unternehmens ({money(debt)}) höher sind als der Wert, den "
+                 "die Methoden für das Geschäft ermitteln; die Anteile sind vor dem neuen Geld also etwa nichts wert.")
+    return T("The value rounds to €0: the methods used leave essentially no value for the shares before the new money.",
+             "Der Wert rundet auf 0 €: Die verwendeten Methoden lassen vor dem neuen Geld praktisch keinen Wert für "
+             "die Anteile übrig.")
+
+
+def _round_logic_section(output: dict) -> list:
+    """How a typical financing round at this stage would price the company: a cross-check, not in the blend."""
+    rl = g(output, "round_logic")
+    if not rl:
+        return []
+    story = [P(T("Round logic: how a typical round would price the company",
+                 "Rundenlogik: So würde eine typische Finanzierungsrunde bewerten"), STYLES["h3"])]
+    story.append(P(T(
+        f"Early rounds are usually priced by the share of the company investors buy. A typical {rl['round_name']} "
+        f"round sells {ve._pct0(rl['dilution_low'])}–{ve._pct0(rl['dilution_high'])} of the company (median "
+        f"{pct(rl['dilution_median'])}). Pre-money = amount raised × (1 − share) ÷ share. This is a cross-check "
+        "and is not part of the blended value.",
+        f"Frühe Runden werden meist über den Anteil bepreist, den Investoren kaufen. Eine typische "
+        f"{rl['round_name']}-Runde verkauft {ve._pct0(rl['dilution_low'])}–{ve._pct0(rl['dilution_high'])} des Unternehmens "
+        f"(Median {pct(rl['dilution_median'])}). Pre-Money = eingeworbener Betrag × (1 − Anteil) ÷ Anteil. Das ist "
+        "eine Gegenprobe und fließt nicht in den gewichteten Wert ein."), STYLES["sub"]))
+    position = {"below": T("below the usual range", "unter der üblichen Spanne"),
+                "above": T("above the usual range", "über der üblichen Spanne"),
+                "within": T("within the usual range", "in der üblichen Spanne")}[rl["raise_position"]]
+    rows = [
+        (T(f"Typical {rl['round_name']} round size", f"Typische Größe einer {rl['round_name']}-Runde"),
+         T(f"{money_compact(rl['typical_round_low'])} to {money_compact(rl['typical_round_high'])}",
+           f"{money_compact(rl['typical_round_low'])} bis {money_compact(rl['typical_round_high'])}")),
+        (T("Your round", "Ihre Runde"), f"{money(rl['capital_needed'])} ({position})"),
+        (T("Implied pre-money (typical stake, low to high)", "Daraus folgende Pre-Money-Bewertung (typischer Anteil)"),
+         T(f"{money_compact(rl['implied_pre_money_low'])} to {money_compact(rl['implied_pre_money_high'])} "
+           f"(median {money_compact(rl['implied_pre_money_median'])})",
+           f"{money_compact(rl['implied_pre_money_low'])} bis {money_compact(rl['implied_pre_money_high'])} "
+           f"(Median {money_compact(rl['implied_pre_money_median'])})")),
+    ]
+    if rl.get("dilution_at_blend") is not None:
+        rows.append((T("Share the round buys at the blended value", "Anteil, den die Runde beim gewichteten Wert kauft"),
+                     pct(rl["dilution_at_blend"])))
+    story.append(info_table(rows, col_widths=[CONTENT_W * 0.55, CONTENT_W * 0.45]))
+    return story
 
 
 def _valuation_summary_page(output: dict) -> list:
-    story = [P("Valuation", STYLES["h2"])]
-    story.append(P(
+    story = [P(T("Valuation", "Bewertung"), STYLES["h2"])]
+    story.append(P(T(
         "Each method estimates the company's equity value before the new investment (pre-money). "
-        "They are blended using weights for the company's stage; a method that can't give a meaningful "
-        "value for this company is left out and the other weights are scaled up.", STYLES["sub"]))
+        "They are blended using weights for the company's stage; a method that doesn't apply to this company "
+        "is left out and the other weights are scaled up, and a method that finds no value counts as €0.",
+        "Jede Methode schätzt den Wert des Eigenkapitals vor der neuen Investition (Pre-Money). Die Ergebnisse werden "
+        "mit Gewichten für die Phase des Unternehmens kombiniert; eine Methode, die nicht zum Unternehmen passt, "
+        "entfällt und die anderen Gewichte werden hochskaliert, und eine Methode, die keinen Wert findet, zählt mit "
+        "0 €."), STYLES["sub"]))
 
     method_values = g(output, "method_values", {})
     rows, cats, vals = [], [], []
@@ -874,166 +1098,206 @@ def _valuation_summary_page(output: dict) -> list:
         status = mv.get("status")
         if status == "ok":
             value, weighted = money(mv.get("pre_money_value")), money(mv.get("weighted_value"))
-            cats.append(METHOD_CHART_LABELS.get(key, key))
+            cats.append(method_chart_label(key))
             vals.append(mv.get("pre_money_value") or 0)
         elif status == "not_used":
-            value, weighted = "not used at this stage", "—"
+            value, weighted = T("not used at this stage", "in dieser Phase nicht verwendet"), "—"
         else:
-            value, weighted = "not meaningful", "—"
-        rows.append([METHOD_LABELS.get(key, key), pct(mv.get("weight")), pct(mv.get("weight_used")), value, weighted])
-    cats.append("Blended")
+            value, weighted = T("not meaningful", "nicht aussagekräftig"), "—"
+        rows.append([method_label(key), pct(mv.get("weight")), pct(mv.get("weight_used")), value, weighted])
+    cats.append(T("Blended", "Gewichtet"))
     vals.append(g(output, "blended_pre_money_valuation") or 0)
 
-    total_row = ["Blended pre-money valuation", "", "", "", money(g(output, "blended_pre_money_valuation"))]
+    total_row = [T("Blended pre-money valuation", "Gewichtete Pre-Money-Bewertung"), "", "", "",
+                 money(g(output, "blended_pre_money_valuation"))]
     story.append(data_table(
-        ["Method", "Stage weight", "Weight used", "Pre-money value", "Weighted value"], rows,
+        [T("Method", "Methode"), T("Stage weight", "Gewicht der Phase"), T("Weight used", "Verwendetes Gewicht"),
+         T("Pre-money value", "Pre-Money-Wert"), T("Weighted value", "Gewichteter Wert")], rows,
         total_row=total_row, total_label_span=4,
         col_widths=[CONTENT_W * 0.32, CONTENT_W * 0.13, CONTENT_W * 0.13, CONTENT_W * 0.22, CONTENT_W * 0.20],
     ))
     for key, mv in method_values.items():
-        if mv.get("status") == "not_meaningful":
-            story.append(P(f"{METHOD_LABELS.get(key, key)}: {mv.get('note')}", STYLES["sub"]))
+        if mv.get("status") == "not_meaningful" or (mv.get("status") == "ok" and mv.get("note")):
+            story.append(P(f"{method_label(key)}: {mv.get('note')}", STYLES["sub"]))
         elif key == "scorecard" and mv.get("status") == "not_used":
-            story.append(P(f"Scorecard: not used at this stage. {SCORECARD_NOT_USED}", STYLES["sub"]))
-    story.append(Spacer(1, 12))
-    story.append(bar_chart(cats, vals, color=NAVY_LINE, width=CONTENT_W, height=130))
-    story.append(Spacer(1, 12))
+            story.append(P(T(f"Scorecard: not used at this stage. {scorecard_not_used()}",
+                             f"Scorecard: in dieser Phase nicht verwendet. {scorecard_not_used()}"), STYLES["sub"]))
+    story.append(Spacer(1, 8))
+    story.append(bar_chart(cats, vals, color=NAVY_LINE, width=CONTENT_W, height=100))
+    story.append(Spacer(1, 8))
 
     def callout(label, value, emphasize=False):
         t = Table([[P(label, STYLES["callout_label"]), P(value, STYLES["callout_value"])]],
                   colWidths=[CONTENT_W * 0.6, CONTENT_W * 0.4])
         t.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), TOTAL_BG if emphasize else ROW_STRIPE),
-            ("TOPPADDING", (0, 0), (-1, -1), 9), ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
+            ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
             ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ]))
         return t
 
-    story.append(callout("Pre-money valuation", money(g(output, "blended_pre_money_valuation"))))
+    story.append(callout(T("Pre-money valuation", "Pre-Money-Bewertung"), money(g(output, "blended_pre_money_valuation"))))
     if (g(output, "blended_pre_money_valuation") or 0) < 0.5:
         story.append(Spacer(1, 4))
         story.append(P(zero_value_reason(output), STYLES["sub"]))
-    story.append(Spacer(1, 6))
-    story.append(callout("Capital being raised", money(g(output, "capital_needed"))))
-    story.append(Spacer(1, 6))
-    story.append(callout("Post-money valuation", money(g(output, "post_money_valuation")), emphasize=True))
+    story.append(Spacer(1, 4))
+    story.append(callout(T("Capital being raised", "Eingeworbenes Kapital"), money(g(output, "capital_needed"))))
+    story.append(Spacer(1, 4))
+    story.append(callout(T("Post-money valuation", "Post-Money-Bewertung"), money(g(output, "post_money_valuation")),
+                         emphasize=True))
+    story += _round_logic_section(output)
     return story
 
 
 def _warnings_page(output: dict) -> list:
     warnings = g(output, "warnings", []) or []
     has_checks = any(w.get("severity") == "warning" for w in warnings)
-    story = [P("Checks on your inputs" if has_checks else "Notes on how the data was used", STYLES["h2"])]
+    story = [P(T("Checks on your inputs", "Prüfung Ihrer Angaben") if has_checks
+               else T("Notes on how the data was used", "Hinweise zur Verwendung der Daten"), STYLES["h2"])]
     if not warnings:
-        story.append(P("No issues were found in the inputs.", STYLES["td_label"]))
+        story.append(P(T("No issues were found in the inputs.", "In den Angaben wurden keine Probleme gefunden."),
+                       STYLES["td_label"]))
         return story
-    story.append(P("The calculation ran, but the points marked as warnings deserve a second look before the numbers "
-                   "are shared; notes explain how the data was used." if has_checks else
-                   "Nothing here needs fixing: these notes explain how your figures and the market data were "
-                   "used.", STYLES["sub"]))
-    rows = [["Warning" if w.get("severity") == "warning" else "Note", w.get("message")] for w in warnings]
-    t = data_table(["Type", "Detail"], rows, col_widths=[CONTENT_W * 0.14, CONTENT_W * 0.86], text_table=True)
+    story.append(P(T("The calculation ran, but the points marked as warnings deserve a second look before the numbers "
+                     "are shared; notes explain how the data was used.",
+                     "Die Berechnung ist gelaufen, aber die als Warnung markierten Punkte sollten Sie prüfen, bevor Sie "
+                     "die Zahlen weitergeben; Hinweise erklären, wie die Daten verwendet wurden.") if has_checks else
+                   T("Nothing here needs fixing: these notes explain how your figures and the market data were used.",
+                     "Hier muss nichts korrigiert werden: Die Hinweise erklären, wie Ihre Zahlen und die Marktdaten "
+                     "verwendet wurden."), STYLES["sub"]))
+    rows = [[T("Warning", "Warnung") if w.get("severity") == "warning" else T("Note", "Hinweis"), w.get("message")]
+            for w in warnings]
+    t = data_table([T("Type", "Art"), T("Detail", "Details")], rows,
+                   col_widths=[CONTENT_W * 0.14, CONTENT_W * 0.86], text_table=True)
     story.append(t)
     return story
 
 
-SCENARIO_FALLS_NOTE = (
-    "Here a higher Year-1 revenue gives a lower value: in your plan, extra revenue costs more cash than it "
-    "brings in (for example losses at the planned margin, or the working capital it ties up), so the "
-    "cash-flow based values go down.")
+def scenario_falls_note() -> str:
+    return T("Here a higher Year-1 revenue gives a lower value: in your plan, extra revenue costs more cash than it "
+             "brings in (for example losses at the planned margin, or the working capital it ties up), so the "
+             "cash-flow based values go down.",
+             "Hier ergibt ein höherer Umsatz in Jahr 1 einen niedrigeren Wert: In Ihrem Plan kostet zusätzlicher Umsatz "
+             "mehr Geld, als er einbringt (zum Beispiel Verluste bei der geplanten Marge oder gebundenes Working "
+             "Capital); die Cashflow-basierten Werte sinken deshalb.")
 
 
 def _scenario_sensitivity_page(scenarios: dict) -> list:
-    story = [P("Scenario & sensitivity", STYLES["h2"])]
-    story.append(P(
+    story = [P(T("Scenario & sensitivity", "Szenarien & Sensitivität"), STYLES["h2"])]
+    story.append(P(T(
         "How the valuation shifts if Year-1 revenue comes in above or below plan (later years scale with "
-        "it). Scorecard and Comparables don't move: they use your questionnaire answers and last-12-month "
-        "EBITDA, not projected revenue.", STYLES["sub"],
+        "it). Scorecard and Comparables don't move: they use your questionnaire answers and the last 12 months' "
+        "figures, not projected revenue.",
+        "Wie sich die Bewertung verschiebt, wenn der Umsatz in Jahr 1 über oder unter dem Plan liegt (die späteren "
+        "Jahre skalieren mit). Scorecard und Vergleichsmethode bewegen sich nicht: Sie verwenden Ihre Antworten im "
+        "Fragebogen und die Zahlen der letzten 12 Monate, nicht den geplanten Umsatz."), STYLES["sub"],
     ))
     if not scenarios:
-        story.append(P("Scenario data wasn't available when this report was generated.", STYLES["td_label"]))
+        story.append(P(T("Scenario data wasn't available when this report was generated.",
+                         "Szenariodaten waren bei der Erstellung dieses Berichts nicht verfügbar."), STYLES["td_label"]))
         return story
 
     labels = list(scenarios.keys())
     n = len(labels)
     values = [scenarios[l].get("blended_pre_money_valuation") or 0 for l in labels]
     if max(values) - min(values) < 1:
-        story.append(P(
+        story.append(P(T(
             f"The value is the same in every scenario ({money(values[0])}): only methods that don't use projected "
             "revenue give a value for this company, so a higher or lower Year-1 revenue doesn't change it.",
-            STYLES["td_label"]))
+            f"Der Wert ist in jedem Szenario gleich ({money(values[0])}): Nur Methoden, die den geplanten Umsatz nicht "
+            "verwenden, ergeben einen Wert für dieses Unternehmen; ein höherer oder niedrigerer Umsatz in Jahr 1 ändert "
+            "ihn deshalb nicht."), STYLES["td_label"]))
         return story
 
     def val(label, key):
         mv = scenarios[label].get("method_values", {}).get(key, {})
         if mv.get("status") == "ok":
             return money_compact(mv.get("pre_money_value"))
-        return "not used" if mv.get("status") == "not_used" else "n/m"
+        return T("not used", "nicht verw.") if mv.get("status") == "not_used" else "n/m"
 
-    rows = [[METHOD_CHART_LABELS[k]] + [val(l, k) for l in labels]
+    rows = [[method_chart_label(k)] + [val(l, k) for l in labels]
             for k in ("scorecard", "venture_capital", "comparables", "dcf")]
-    total_row = ["Blended pre-money"] + [money_compact(scenarios[l].get("blended_pre_money_valuation")) for l in labels]
+    total_row = [T("Blended pre-money", "Gewichtete Pre-Money")] + [
+        money_compact(scenarios[l].get("blended_pre_money_valuation")) for l in labels]
     col_w = [CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n
-    story.append(data_table(["Method"] + labels, rows, total_row=total_row, col_widths=col_w))
-    story.append(P("The weights stay as in the main result; a method that gives no positive value in a scenario "
-                   "counts as €0." + (" n/m = left out of the blend, as in the main result."
-                                      if any(scenarios[l].get("method_values", {}).get(k, {}).get("status") == "not_meaningful"
-                                             for l in labels for k in ("scorecard", "venture_capital", "comparables", "dcf"))
-                                      else "")
-                   + (" " + SCENARIO_FALLS_NOTE
-                      if any(b < a - 1 for a, b in zip(values, values[1:])) else ""), STYLES["sub"]))
+    story.append(data_table([T("Method", "Methode")] + [scenario_label(l) for l in labels], rows,
+                            total_row=total_row, col_widths=col_w))
+    any_nm = any(scenarios[l].get("method_values", {}).get(k, {}).get("status") == "not_meaningful"
+                 for l in labels for k in ("scorecard", "venture_capital", "comparables", "dcf"))
+    story.append(P(T("The weights stay as in the main result; a method that gives no positive value in a scenario "
+                     "counts as €0.", "Die Gewichte bleiben wie im Hauptergebnis; eine Methode, die in einem Szenario "
+                     "keinen positiven Wert ergibt, zählt mit 0 €.")
+                   + (T(" n/m = left out of the blend, as in the main result.",
+                        " n/m = nicht in der Gewichtung, wie im Hauptergebnis.") if any_nm else "")
+                   + (" " + scenario_falls_note() if any(b < a - 1 for a, b in zip(values, values[1:])) else ""),
+                   STYLES["sub"]))
     story.append(Spacer(1, 10))
-    story.append(P("Blended pre-money valuation across scenarios", STYLES["h3"]))
-    story.append(bar_chart(labels, [scenarios[l].get("blended_pre_money_valuation") or 0 for l in labels],
+    story.append(P(T("Blended pre-money valuation across scenarios", "Gewichtete Pre-Money-Bewertung je Szenario"),
+                   STYLES["h3"]))
+    story.append(bar_chart([scenario_label(l) for l in labels],
+                           [scenarios[l].get("blended_pre_money_valuation") or 0 for l in labels],
                            color=NAVY_LINE, width=CONTENT_W, height=115))
     return story
 
 
-SCORECARD_NOT_USED = (
-    "The Scorecard compares a pre-revenue company with the typical pre-revenue company in its region, so it "
-    "applies only at the Idea and Development stages; companies with revenue are valued on their numbers by "
-    "the other methods.")
+def scorecard_not_used() -> str:
+    return T("The Scorecard compares a pre-revenue company with the typical pre-revenue company in its region, so it "
+             "applies only at the Idea and Development stages; companies with revenue are valued on their numbers by "
+             "the other methods.",
+             "Die Scorecard vergleicht ein Unternehmen vor Umsatzbeginn mit dem typischen Unternehmen vor Umsatzbeginn "
+             "in seiner Region; sie gilt deshalb nur in der Ideen- und Entwicklungsphase. Unternehmen mit Umsatz "
+             "werden von den anderen Methoden anhand ihrer Zahlen bewertet.")
 
 
 def _scorecard_page(sc: dict, cp: dict, mv: Optional[dict] = None) -> list:
-    story = [P("Scorecard method", STYLES["h2"])]
+    story = [P(T("Scorecard method", "Scorecard-Methode"), STYLES["h2"])]
     if mv and mv.get("status") == "not_used":
-        story.append(P(f"Not used for this company. {SCORECARD_NOT_USED}", STYLES["td_label"]))
+        story.append(P(T(f"Not used for this company. {scorecard_not_used()}",
+                         f"Für dieses Unternehmen nicht verwendet. {scorecard_not_used()}"), STYLES["td_label"]))
         return story
-    story += _method_value_header("Pre-money valuation", money(g(sc, "pre_money_valuation")))
+    story += _method_value_header(T("Pre-money valuation", "Pre-Money-Bewertung"), money(g(sc, "pre_money_valuation")))
     bench = g(sc, "benchmark_pre_money_valuation")
     factor = g(sc, "total_factor")
     source = g(sc, "benchmark_source")
     basis = g(sc, "benchmark_basis") or ""
     basis = basis[:1].lower() + basis[1:] if basis.startswith("Average") else basis
-    bench_src = ("your own benchmark" if source == "user_override"
+    bench_src = (T("your own benchmark", "Ihr eigener Vergleichswert") if source == "user_override"
                  else basis if source == "country_table"
-                 else f"{basis}, converted to euros")
+                 else T(f"{basis}, converted to euros", f"{basis}, umgerechnet in Euro"))
     region = g(cp, "business_territory_region")
-    where = ("like yours" if source == "user_override"
-             else f"in {g(cp, 'country')}" if source == "country_table"
-             else "in the US" if region == "US"
-             else "anywhere (all-region figure)" if region == "Global"
-             else f"in {short_region(region)}")
-    story += _how(
-        f"A typical pre-revenue company {where} "
-        f"is valued at about {money(bench)} before investment ({bench_src}). Your answers score this company at "
-        f"{pct(factor)} of that typical company overall, so {money(bench)} × {pct(factor)} = "
-        f"{money(g(sc, 'pre_money_valuation'))}.")
+    country = g(cp, "country") or ""
+    where = (T("like yours", "wie Ihres") if source == "user_override"
+             else T(f"in {country}", f"in {ve.country_in_text(country)}") if source == "country_table"
+             else T("in the US", "in den USA") if region == "US"
+             else T("anywhere (all-region figure)", "irgendwo (Wert aller Regionen)") if region == "Global"
+             else T(f"in {short_region(region)}", f"in {short_region(region)}"))
+    pre = money(g(sc, "pre_money_valuation"))
+    story += _how(T(
+        f"A typical pre-revenue company {where} is valued at about {money(bench)} before investment ({bench_src}). "
+        f"Your answers score this company at {pct(factor)} of that typical company overall, so {money(bench)} × "
+        f"{pct(factor)} = {pre}.",
+        f"Ein typisches Unternehmen vor Umsatzbeginn {where} wird vor der Investition mit etwa {money(bench)} bewertet "
+        f"({bench_src}). Nach Ihren Antworten erreicht dieses Unternehmen insgesamt {pct(factor)} dieses typischen "
+        f"Unternehmens, also {money(bench)} × {pct(factor)} = {pre}."))
     criteria = g(sc, "criteria", {})
-    rows = [[CRITERIA_LABELS.get(k, k), pct(c.get("weight")), pct(c.get("score")), money(c.get("amount_assigned"))]
+    rows = [[criteria_label(k), pct(c.get("weight")), pct(c.get("score")), money(c.get("amount_assigned"))]
             for k, c in criteria.items()]
-    total_row = ["Pre-money valuation", "", pct(factor), money(g(sc, "pre_money_valuation"))]
+    total_row = [T("Pre-money valuation", "Pre-Money-Bewertung"), "", pct(factor), pre]
     story.append(data_table(
-        ["Criterion", "Weight", "Score vs typical", "Benchmark × weight × score"], rows,
+        [T("Criterion", "Kriterium"), T("Weight", "Gewicht"), T("Score vs typical", "Wert ggü. typisch"),
+         T("Benchmark × weight × score", "Vergleichswert × Gewicht × Wert")], rows,
         total_row=total_row, col_widths=[CONTENT_W * 0.38, CONTENT_W * 0.14, CONTENT_W * 0.2, CONTENT_W * 0.28],
     ))
-    story.append(P("Method: Bill Payne's Scorecard (Ohio TechAngels). A score above 100% means stronger than "
-                   "the typical company on that criterion.", STYLES["sub"]))
+    story.append(P(T("Method: Bill Payne's Scorecard (Ohio TechAngels). A score above 100% means stronger than "
+                     "the typical company on that criterion.",
+                     "Methode: Scorecard nach Bill Payne (Ohio TechAngels). Ein Wert über 100 % bedeutet stärker als "
+                     "das typische Unternehmen bei diesem Kriterium."), STYLES["sub"]))
     if g(sc, "benchmark_to_be_sourced"):
-        story.append(P(f"Note: a {safe(g(cp, 'country'))}-specific benchmark by stage is still to be sourced; "
-                       "the Europe figure is used as a placeholder until it is.", STYLES["sub"]))
+        story.append(P(T(f"Note: a {safe(country)}-specific benchmark by stage is still to be sourced; "
+                         "the Europe figure is used as a placeholder until it is.",
+                         f"Hinweis: Ein Vergleichswert je Phase für {ve.country_in_text(country)} muss noch belegt "
+                         "werden; bis dahin wird der Wert für Europa verwendet."), STYLES["sub"]))
     return story
 
 
@@ -1041,188 +1305,288 @@ def _method_value_header(label: str, value: str) -> list:
     return [P(label, STYLES["metric_label"]), P(value, STYLES["metric_value"])]
 
 
-def _benchmark_source_note(source: str, label: str = "EV/EBITDA multiple") -> Optional[str]:
+def _benchmark_source_note(source: str, label: Optional[str] = None) -> Optional[str]:
+    label = label or T("EV/EBITDA multiple", "EV/EBITDA-Multiplikator")
     if source == "industry_global":
-        return f"Note: no usable regional {label} — this industry's global figure is used."
+        return T(f"Note: no usable regional {label} — this industry's global figure is used.",
+                 f"Hinweis: kein verwendbarer regionaler {label} — der weltweite Wert dieser Branche wird verwendet.")
     if source == "cross_industry":
-        return f"Note: no usable {label} for this industry — the median across all industries is used."
+        return T(f"Note: no usable {label} for this industry — the median across all industries is used.",
+                 f"Hinweis: kein verwendbarer {label} für diese Branche — der Median aller Branchen wird verwendet.")
     return None
 
 
 def _vc_page(vc: dict, output: Optional[dict] = None) -> list:
-    story = [P("Venture Capital method", STYLES["h2"])]
-    story += _method_value_header("Pre-money valuation", money(g(vc, "pre_money_valuation")))
-    T = g(vc, "time_to_exit")
+    story = [P(T("Venture Capital method", "Venture-Capital-Methode"), STYLES["h2"])]
+    story += _method_value_header(T("Pre-money valuation", "Pre-Money-Bewertung"), money(g(vc, "pre_money_valuation")))
+    T_ = g(vc, "time_to_exit")
     r = g(vc, "target_return")
     story += _not_meaningful(g(vc, "not_meaningful_reason"))
+    story += _counts_as_zero(g(vc, "no_value_reason"))
     if g(vc, "post_money_valuation") is not None:
-        story += _how(
-            f"Projected EBITDA in the exit year ({g(vc, 'exit_year_label')}) of {money(g(vc, 'exit_year_ebitda'))} "
-            f"× the industry EV/EBITDA multiple of {multiple(g(vc, 'ev_ebitda_multiple'))} gives an exit value of "
-            f"{money(g(vc, 'exit_value'))}. An investor who needs a {pct(r)} annual return values that today at "
-            f"{money(g(vc, 'exit_value'))} ÷ (1 + {pct(r)})^{T} = {money(g(vc, 'post_money_valuation'))} "
-            + (f"after the investment. Minus the {money(g(vc, 'investment_amount'))} being raised = "
-               f"{money(g(vc, 'pre_money_valuation'))} before it."
-               if g(vc, "pre_money_valuation") is not None else
-               f"after the investment. That is less than the {money(g(vc, 'investment_amount'))} being raised, "
-               "so this method leaves no positive value before the investment and is left out of the blend."))
-    story.append(P("Exit value", STYLES["h3"]))
+        y, ebitda, mult, exit_v = (g(vc, "exit_year_label"), money(g(vc, "exit_year_ebitda")),
+                                   multiple(g(vc, "ev_ebitda_multiple")), money(g(vc, "exit_value")))
+        post, invest, pre = (money(g(vc, "post_money_valuation")), money(g(vc, "investment_amount")),
+                             money(g(vc, "pre_money_valuation")))
+        no_value = g(vc, "no_value_reason")
+        story += _how(T(
+            f"Projected EBITDA in the exit year ({y}) of {ebitda} × the industry EV/EBITDA multiple of {mult} gives an "
+            f"exit value of {exit_v}. An investor who needs a {pct(r)} annual return values that today at {exit_v} ÷ "
+            f"(1 + {pct(r)})^{T_} = {post} "
+            + (f"after the investment. Minus the {invest} being raised = {pre} before it." if not no_value else
+               f"after the investment. That is less than the {invest} being raised, so this method leaves no value "
+               "before the investment and counts as €0 in the blend."),
+            f"Das geplante EBITDA im Exit-Jahr ({y}) von {ebitda} × der EV/EBITDA-Multiplikator der Branche von {mult} "
+            f"ergibt einen Exit-Wert von {exit_v}. Ein Investor, der {pct(r)} Rendite pro Jahr braucht, bewertet das "
+            f"heute mit {exit_v} ÷ (1 + {pct(r)})^{T_} = {post} "
+            + (f"nach der Investition. Abzüglich der eingeworbenen {invest} = {pre} davor." if not no_value else
+               f"nach der Investition. Das ist weniger als die eingeworbenen {invest}; diese Methode lässt vor der "
+               "Investition also keinen Wert übrig und zählt mit 0 € in der Gewichtung.")))
+    story.append(P(T("Exit value", "Exit-Wert"), STYLES["h3"]))
+    y = g(vc, "exit_year_label")
     story.append(info_table([
-        (f"Exit-year ({g(vc, 'exit_year_label')}) revenue", money(g(vc, "exit_year_revenue"))),
-        (f"Exit-year ({g(vc, 'exit_year_label')}) EBITDA", money(g(vc, "exit_year_ebitda"))),
-        ("EV/EBITDA multiple", multiple(g(vc, "ev_ebitda_multiple"))),
+        (T(f"Exit-year ({y}) revenue", f"Umsatz im Exit-Jahr ({y})"), money(g(vc, "exit_year_revenue"))),
+        (T(f"Exit-year ({y}) EBITDA", f"EBITDA im Exit-Jahr ({y})"), money(g(vc, "exit_year_ebitda"))),
+        (T("EV/EBITDA multiple", "EV/EBITDA-Multiplikator"), multiple(g(vc, "ev_ebitda_multiple"))),
         # A non-positive exit value has no meaning; show a dash rather than a negative amount.
-        ("Exit value (enterprise value)", money(g(vc, "exit_value")) if (g(vc, "exit_value") or 0) > 0 else "—"),
-        ("Less: debt (assumed still outstanding at exit)", money(-(g(vc, "debt") or 0))),
-        ("Exit value for shareholders",
+        (T("Exit value (enterprise value)", "Exit-Wert (Unternehmenswert)"),
+         money(g(vc, "exit_value")) if (g(vc, "exit_value") or 0) > 0 else "—"),
+        (T("Less: debt (assumed still outstanding at exit)", "Abzüglich Schulden (beim Exit noch offen angenommen)"),
+         money(-(g(vc, "debt") or 0))),
+        (T("Exit value for shareholders", "Exit-Wert für die Gesellschafter"),
          money(g(vc, "exit_equity_value")) if (g(vc, "exit_equity_value") or 0) > 0 else "—"),
     ]))
     note = _benchmark_source_note(g(vc, "ev_ebitda_multiple_source"))
     if note:
         story.append(P(note, STYLES["sub"]))
-    story.append(P("Value today and the new investor's stake", STYLES["h3"]))
+    story.append(P(T("Value today and the new investor's stake", "Wert heute und Anteil des neuen Investors"), STYLES["h3"]))
     story.append(info_table([
-        ("Years to exit", T),
-        ("Investor's target annual return (for this stage)", pct(r)),
-        ("Post-money valuation", money(g(vc, "post_money_valuation"))),
-        ("Investment", money(g(vc, "investment_amount"))),
-        ("Pre-money valuation", money(g(vc, "pre_money_valuation"))),
-        ("Investor ownership after the round (this method alone)", pct(g(vc, "ownership_fraction_investors"))),
-        ("Existing shareholders after the round (this method alone)", pct(g(vc, "ownership_fraction_entrepreneurs"))),
-        ("Existing shares (count)", f"{g(vc, 'number_of_existing_shares', 0):,.0f}"),
-        ("New shares to issue (count)",
-         f"{round(g(vc, 'number_of_new_shares')):,}" if g(vc, "number_of_new_shares") is not None else "—"),
-        ("Price per new share", money2(g(vc, "price_per_share"))),
+        (T("Years to exit", "Jahre bis zum Exit"), T_),
+        (T("Investor's target annual return (for this stage)", "Zielrendite des Investors pro Jahr (für diese Phase)"),
+         pct(r)),
+        (T("Post-money valuation", "Post-Money-Bewertung"), money(g(vc, "post_money_valuation"))),
+        (T("Investment", "Investition"), money(g(vc, "investment_amount"))),
+        (T("Pre-money valuation", "Pre-Money-Bewertung"), money(g(vc, "pre_money_valuation"))),
+        (T("Investor ownership after the round (this method alone)",
+           "Anteil des Investors nach der Runde (nur diese Methode)"), pct(g(vc, "ownership_fraction_investors"))),
+        (T("Existing shareholders after the round (this method alone)",
+           "Bisherige Gesellschafter nach der Runde (nur diese Methode)"), pct(g(vc, "ownership_fraction_entrepreneurs"))),
+        (T("Existing shares (count)", "Bestehende Anteile (Anzahl)"), count(g(vc, "number_of_existing_shares", 0))),
+        (T("New shares to issue (count)", "Neue Anteile (Anzahl)"), count(g(vc, "number_of_new_shares"))),
+        (T("Price per new share", "Preis je neuem Anteil"), money2(g(vc, "price_per_share"))),
     ]))
     post = g(output or {}, "post_money_valuation")
     capital = g(output or {}, "capital_needed")
     if post and capital and g(vc, "ownership_fraction_investors") is not None:
-        story.append(P(
+        story.append(P(T(
             f"These shares and stakes are what this method alone implies. At the blended valuation used in the rest "
             f"of this report (post-money {money(post)}), the {money(capital)} being raised buys "
-            f"{pct(capital / post)} of the company.", STYLES["sub"]))
+            f"{pct(capital / post)} of the company.",
+            f"Diese Anteile ergeben sich aus dieser Methode allein. Beim gewichteten Wert, der im übrigen Bericht "
+            f"verwendet wird (Post-Money {money(post)}), kaufen die eingeworbenen {money(capital)} "
+            f"{pct(capital / post)} des Unternehmens."), STYLES["sub"]))
     return story
 
 
 def _comparables_page(cm: dict, cp: dict) -> list:
-    story = [P("Comparables method (EV/EBITDA multiple)", STYLES["h2"])]
-    story += _method_value_header("Pre-money valuation", money(g(cm, "pre_money_valuation")))
+    story = [P(T("Comparables method (revenue or EBITDA multiple)",
+                 "Vergleichsmethode (Umsatz- oder EBITDA-Multiplikator)"), STYLES["h2"])]
+    story += _method_value_header(T("Pre-money valuation", "Pre-Money-Bewertung"), money(g(cm, "pre_money_valuation")))
     story += _not_meaningful(g(cm, "not_meaningful_reason"))
+    arr = g(cm, "revenue_basis") == "arr"
+    basis_used = g(cm, "basis_used")
+    rev_label = (T("ARR (annual recurring revenue)", "ARR (jährlich wiederkehrender Umsatz)") if arr
+                 else T("revenue, last 12 months", "Umsatz der letzten 12 Monate"))
+    rev_mult_label = (T("SaaS ARR multiple (listed SaaS companies)", "SaaS-ARR-Multiplikator (börsennotierte SaaS-Firmen)")
+                      if arr else T("EV/Sales multiple (trailing)", "EV/Umsatz-Multiplikator (letzte 12 Monate)"))
     if g(cm, "pre_money_valuation") is not None:
-        story += _how(
-            f"Profitable public {safe(g(cp, 'industry'))} companies are valued at about "
-            f"{multiple(g(cm, 'ev_ebitda_multiple'))} their last-12-month EBITDA. Your last-12-month EBITDA of "
-            f"{money(g(cm, 'trailing_ebitda'))} × {multiple(g(cm, 'ev_ebitda_multiple'))} = "
-            f"{money(g(cm, 'public_company_ev'))}. A private company of this stage is harder to sell than a listed "
-            f"one, so a {pct(g(cm, 'private_company_discount'))} discount gives an enterprise value of "
-            f"{money(g(cm, 'enterprise_value'))}; minus debt and plus cash gives the equity value.")
+        ind = safe(g(cp, "industry"))
+        ebitda_v, rev_v = money(g(cm, "ebitda_based_ev")), money(g(cm, "revenue_based_ev"))
+        used_text = (T(f"Your EBITDA gives more ({ebitda_v} against {rev_v} on revenue), so EBITDA is used.",
+                       f"Ihr EBITDA ergibt mehr ({ebitda_v} gegenüber {rev_v} über den Umsatz), deshalb wird das "
+                       "EBITDA verwendet.")
+                     if basis_used == "ebitda" else
+                     T(f"Your {rev_label} gives more ({rev_v} against {ebitda_v} on EBITDA), so revenue is used: young "
+                       "companies are compared on revenue until their profit is the bigger value driver.",
+                       f"Ihr {rev_label} ergibt mehr ({rev_v} gegenüber {ebitda_v} über das EBITDA), deshalb wird der "
+                       "Umsatz verwendet: Junge Unternehmen werden über den Umsatz verglichen, bis ihr Gewinn der "
+                       "größere Werttreiber ist."))
+        story += _how(T(
+            f"Listed {ind} companies are valued at about {multiple(g(cm, 'ev_ebitda_multiple'))} their last-12-month "
+            f"EBITDA and {multiple(g(cm, 'revenue_multiple'))} their "
+            + ("annual recurring revenue (listed SaaS companies)" if arr else "revenue")
+            + f". The method takes the higher of the two values. {used_text} A private company of this stage is "
+            f"harder to sell than a listed one, so a {pct(g(cm, 'private_company_discount'))} discount gives an "
+            f"enterprise value of {money(g(cm, 'enterprise_value'))}; minus debt and plus cash gives the equity value. "
+            "This method looks at today's figures, not at your growth plan; the Venture Capital and DCF methods use the "
+            "plan.",
+            f"Börsennotierte Unternehmen der Branche {ind} werden mit etwa dem {multiple(g(cm, 'ev_ebitda_multiple'))} "
+            f"ihres EBITDA der letzten 12 Monate und dem {multiple(g(cm, 'revenue_multiple'))} ihres "
+            + ("jährlich wiederkehrenden Umsatzes (börsennotierte SaaS-Firmen)" if arr else "Umsatzes")
+            + f" bewertet. Die Methode nimmt den höheren der beiden Werte. {used_text} Ein nicht börsennotiertes "
+            f"Unternehmen dieser Phase ist schwerer zu verkaufen, deshalb ergibt ein Abschlag von "
+            f"{pct(g(cm, 'private_company_discount'))} einen Unternehmenswert von {money(g(cm, 'enterprise_value'))}; "
+            "abzüglich Schulden und zuzüglich liquider Mittel ergibt sich der Wert des Eigenkapitals. Diese Methode "
+            "betrachtet die heutigen Zahlen, nicht Ihren Wachstumsplan; die Venture-Capital- und die DCF-Methode "
+            "verwenden den Plan."))
     used = g(cm, "pre_money_valuation") is not None
-    # When the method doesn't apply (e.g. negative EBITDA), the inputs are shown but not
+    # When the method doesn't apply (e.g. no revenue), the inputs are shown but not
     # the meaningless results of multiplying them.
     shown = lambda v: v if used else "—"  # noqa: E731
     story.append(info_table([
-        ("EBITDA, last 12 months", money(g(cm, "trailing_ebitda"))),
-        ("EV/EBITDA multiple (trailing)", multiple(g(cm, "ev_ebitda_multiple"))),
-        ("Value at the public-company multiple", shown(money(g(cm, "public_company_ev")))),
-        ("Private-company discount (for this stage)", f"−{pct(g(cm, 'private_company_discount'))}"),
-        ("Enterprise value", shown(money(g(cm, "enterprise_value")))),
-        ("Less: debt", money(-(g(cm, "debt") or 0))),
-        ("Plus: cash", money(g(cm, "cash"))),
-        ("Equity value (pre-money)", money(g(cm, "equity_value"))),
+        (T("EBITDA, last 12 months", "EBITDA, letzte 12 Monate"), money(g(cm, "trailing_ebitda"))),
+        (T("× EV/EBITDA multiple (trailing)", "× EV/EBITDA-Multiplikator (letzte 12 Monate)"),
+         multiple(g(cm, "ev_ebitda_multiple"))),
+        (T("= Value on EBITDA (zero if EBITDA is negative)", "= Wert über das EBITDA (null bei negativem EBITDA)"),
+         shown(money(g(cm, "ebitda_based_ev")))),
+        (rev_label[:1].upper() + rev_label[1:], money(g(cm, "revenue_amount"))),
+        ("× " + rev_mult_label, multiple(g(cm, "revenue_multiple"))),
+        (T("= Value on revenue", "= Wert über den Umsatz"), shown(money(g(cm, "revenue_based_ev")))),
+        (T("Higher of the two (public-company value)", "Höherer der beiden Werte (Börsenwert)"),
+         shown(money(g(cm, "public_company_ev")))),
+        (T("Private-company discount (for this stage)", "Abschlag für nicht börsennotierte Unternehmen (diese Phase)"),
+         f"−{pct(g(cm, 'private_company_discount'))}"),
+        (T("Enterprise value", "Unternehmenswert"), shown(money(g(cm, "enterprise_value")))),
+        (T("Less: debt", "Abzüglich Schulden"), money(-(g(cm, "debt") or 0))),
+        (T("Plus: cash", "Zuzüglich liquider Mittel"), money(g(cm, "cash"))),
+        (T("Equity value (pre-money)", "Wert des Eigenkapitals (Pre-Money)"), money(g(cm, "equity_value"))),
     ]))
     note = _benchmark_source_note(g(cm, "ev_ebitda_multiple_source"))
     if note:
         story.append(P(note, STYLES["sub"]))
+    if basis_used == "revenue":
+        note = _benchmark_source_note(g(cm, "revenue_multiple_source"), T("EV/Sales multiple", "EV/Umsatz-Multiplikator"))
+        if note:
+            story.append(P(note, STYLES["sub"]))
     return story
 
 
 def _dcf_page(dcf: dict, wacc: dict, years: list, german: Optional[dict] = None) -> list:
-    story = [P("Discounted cash flow (DCF) method", STYLES["h2"])]
-    story += _method_value_header("Pre-money valuation", money(g(dcf, "pre_money_valuation")))
+    story = [P(T("Discounted cash flow (DCF) method", "Discounted-Cashflow-Methode (DCF)"), STYLES["h2"])]
+    story += _method_value_header(T("Pre-money valuation", "Pre-Money-Bewertung"), money(g(dcf, "pre_money_valuation")))
     story += _not_meaningful(g(dcf, "not_meaningful_reason"))
+    story += _counts_as_zero(g(dcf, "no_value_reason"))
     r = g(dcf, "discount_rate")
-    if g(dcf, "pre_money_valuation") is not None:
-        story += _how(
+    if g(dcf, "pre_money_valuation") is not None and not g(dcf, "no_value_reason"):
+        ev, p_, risk_ev, pre = (money(g(dcf, "enterprise_value")), pct(g(dcf, "survival_probability")),
+                                money(g(dcf, "risk_adjusted_enterprise_value")), money(g(dcf, "pre_money_valuation")))
+        story += _how(T(
             f"Five years of projected free cash flow plus a terminal value for the years after, discounted at the "
-            f"company's cost of capital ({pct2(r)}), are worth {money(g(dcf, 'enterprise_value'))} if the business "
-            f"keeps going. About {pct(g(dcf, 'survival_probability'))} of companies at this stage survive, so the "
-            f"expected value is {money(g(dcf, 'risk_adjusted_enterprise_value'))}; minus debt and plus cash gives "
-            f"{money(g(dcf, 'pre_money_valuation'))}.")
+            f"company's cost of capital ({pct2(r)}), are worth {ev} if the business keeps going. About {p_} of "
+            f"companies at this stage survive, so the expected value is {risk_ev}; minus debt and plus cash gives {pre}.",
+            f"Fünf Jahre geplanter freier Cashflow plus ein Endwert für die Jahre danach, abgezinst mit den "
+            f"Kapitalkosten des Unternehmens ({pct2(r)}), sind {ev} wert, wenn das Geschäft weiterläuft. Etwa {p_} der "
+            f"Unternehmen in dieser Phase überleben, der erwartete Wert ist also {risk_ev}; abzüglich Schulden und "
+            f"zuzüglich liquider Mittel ergibt das {pre}."))
 
     headers = [""] + [y.get("year_label", "") for y in years]
     amt = amount_format([y.get(k) for y in years for k in ("ebit", "tax_on_ebit", "da", "capex", "change_in_working_capital",
                                                           "unlevered_fcf")])
     rows = [
         ["EBIT"] + [amt(y.get("ebit")) for y in years],
-        *([["Tax rate (German schedule)"] + [pct(y.get("tax_rate")) for y in years]] if german else []),
-        ["Tax on EBIT"] + [amt(-y.get("tax_on_ebit", 0)) for y in years],
-        ["Add back D&A"] + [amt(y.get("da")) for y in years],
-        ["Capital expenditure"] + [amt(-y.get("capex", 0)) for y in years],
-        ["Change in working capital"] + [amt(-y.get("change_in_working_capital", 0)) for y in years],
+        *([[T("Tax rate (German schedule)", "Steuersatz (deutscher Verlauf)")] + [pct(y.get("tax_rate")) for y in years]]
+          if german else []),
+        [T("Tax on EBIT", "Steuern auf das EBIT")] + [amt(-y.get("tax_on_ebit", 0)) for y in years],
+        [T("Add back D&A", "Zuzüglich Abschreibungen")] + [amt(y.get("da")) for y in years],
+        [T("Capital expenditure", "Investitionen")] + [amt(-y.get("capex", 0)) for y in years],
+        [T("Change in working capital", "Veränderung Working Capital")]
+        + [amt(-y.get("change_in_working_capital", 0)) for y in years],
     ]
-    total_row = ["Free cash flow"] + [amt(v) for v in g(dcf, "unlevered_fcf_by_year", [])]
+    total_row = [T("Free cash flow", "Freier Cashflow")] + [amt(v) for v in g(dcf, "unlevered_fcf_by_year", [])]
     n = max(len(years), 1)
-    story.append(P("Unlevered free cash flow (negative numbers reduce cash)", STYLES["h3"]))
+    story.append(P(T("Unlevered free cash flow (negative numbers reduce cash)",
+                     "Freier Cashflow vor Finanzierung (negative Zahlen verringern die liquiden Mittel)"), STYLES["h3"]))
     story.append(data_table(headers, rows, total_row=total_row,
                             col_widths=[CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n))
     story.append(Spacer(1, 8))
 
     tv_share = g(dcf, "terminal_value_share")
-    # When the method isn't used (e.g. negative enterprise value), the values derived from the
-    # cash flows have no meaning: show dashes rather than negative amounts.
-    used = g(dcf, "pre_money_valuation") is not None
+    no_value = g(dcf, "no_value_reason")
+    # When the method isn't used, the values derived from the cash flows have no meaning: show dashes.
+    used = g(dcf, "pre_money_valuation") is not None and not no_value
     # Half-width table: compact amounts from a billion euros up, so nothing wraps.
     big = amount_format([g(dcf, k) for k in ("pv_of_fcf", "pv_of_terminal_value", "enterprise_value",
                                              "risk_adjusted_enterprise_value", "debt", "cash", "equity_value")],
                         limit=1_000_000_000)
-    shown = lambda v: big(v) if used else "—"  # noqa: E731
+    shown = lambda v: big(v) if (used or no_value) else "—"  # noqa: E731
     value_rows = info_table([
-        ("PV of 5 years of free cash flow", shown(g(dcf, "pv_of_fcf"))),
-        ("PV of terminal value", shown(g(dcf, "pv_of_terminal_value"))),
-        ("Enterprise value (if the business survives)", shown(g(dcf, "enterprise_value"))),
-        ("Terminal value share of that value",
+        (T("PV of 5 years of free cash flow", "Barwert der Cashflows aus 5 Jahren"), shown(g(dcf, "pv_of_fcf"))),
+        (T("PV of terminal value", "Barwert des Endwerts"), shown(g(dcf, "pv_of_terminal_value"))),
+        (T("Enterprise value (if the business survives)", "Unternehmenswert (wenn das Geschäft überlebt)"),
+         shown(g(dcf, "enterprise_value"))),
+        (T("Terminal value share of that value", "Anteil des Endwerts daran"),
          "—" if not used else
-         "over 100% (Years 1-5 burn cash)" if tv_share is not None and tv_share > 1 else pct(tv_share)),
-        ("Probability of survival (for this stage)", pct(g(dcf, "survival_probability"))),
-        ("Risk-adjusted enterprise value", shown(g(dcf, "risk_adjusted_enterprise_value"))),
-        ("Less: debt", big(-(g(dcf, "debt") or 0))),
-        ("Plus: cash", big(g(dcf, "cash"))),
-        ("Equity value (pre-money)", big(g(dcf, "equity_value"))),
+         T("over 100% (Years 1-5 burn cash)", "über 100 % (Jahre 1-5 verbrauchen Geld)")
+         if tv_share is not None and tv_share > 1 else pct(tv_share)),
+        (T("Probability of survival (for this stage)", "Überlebenswahrscheinlichkeit (diese Phase)"),
+         pct(g(dcf, "survival_probability"))),
+        (T("Risk-adjusted enterprise value", "Risikobereinigter Unternehmenswert"),
+         big(0) if no_value else shown(g(dcf, "risk_adjusted_enterprise_value"))),
+        (T("Less: debt", "Abzüglich Schulden"), big(-(g(dcf, "debt") or 0))),
+        (T("Plus: cash", "Zuzüglich liquider Mittel"), big(g(dcf, "cash"))),
+        (T("Equity value (pre-money)", "Wert des Eigenkapitals (Pre-Money)"), big(g(dcf, "equity_value"))),
     ], col_widths=[HALF_W * 0.68, HALF_W * 0.32])
     rate_rows = info_table([
-        ("Risk-free rate (10-year Bund)" if german else "Risk-free rate", pct2(g(wacc, "risk_free_rate"))),
-        ("Beta (industry)", f"{g(wacc, 'beta', 0):.2f}"),
-        ("Country equity risk premium", pct2(g(wacc, "country_equity_risk_premium"))),
-        ("Cost of equity", pct2(g(wacc, "cost_of_equity"))),
-        ("Cost of debt after tax", pct2(g(wacc, "after_tax_cost_of_debt"))),
-        ("Equity / debt weights", f"{pct(g(wacc, 'equity_pct_capital'))} / {pct(g(wacc, 'debt_pct_capital'))}"),
-        ("Discount rate (WACC)", pct2(r)),
-        ("Long-run growth after Year 5", pct2(g(dcf, "perpetual_growth_rate"))),
-        ("Tax rate after Year 5 (also in WACC)" if german else "Tax rate", pct2(g(dcf, "tax_rate"))),
+        (T("Risk-free rate (10-year Bund)", "Risikofreier Zins (10-jährige Bundesanleihe)") if german
+         else T("Risk-free rate", "Risikofreier Zins"), pct2(g(wacc, "risk_free_rate"))),
+        (T("Beta (industry)", "Beta (Branche)"), _n(g(wacc, "beta", 0), 2)),
+        (T("Country equity risk premium", "Marktrisikoprämie des Landes"), pct2(g(wacc, "country_equity_risk_premium"))),
+        (T("Cost of equity", "Eigenkapitalkosten"), pct2(g(wacc, "cost_of_equity"))),
+        (T("Cost of debt after tax", "Fremdkapitalkosten nach Steuern"), pct2(g(wacc, "after_tax_cost_of_debt"))),
+        (T("Equity / debt weights", "Gewichte Eigen- / Fremdkapital"),
+         f"{pct(g(wacc, 'equity_pct_capital'))} / {pct(g(wacc, 'debt_pct_capital'))}"),
+        (T("Discount rate (WACC)", "Diskontsatz (WACC)"), pct2(r)),
+        (T("Long-run growth after Year 5", "Langfristiges Wachstum nach Jahr 5"), pct2(g(dcf, "perpetual_growth_rate"))),
+        (T("Tax rate after Year 5 (also in WACC)", "Steuersatz nach Jahr 5 (auch im WACC)") if german
+         else T("Tax rate", "Steuersatz"), pct2(g(dcf, "tax_rate"))),
     ], col_widths=[HALF_W * 0.62, HALF_W * 0.38])
-    story.append(side_by_side([P("From cash flows to equity value", STYLES["h3"]), value_rows],
-                              [P("Discount rate", STYLES["h3"]), rate_rows]))
-    if german:
-        story.append(P(f"The terminal value starts from Year-5 free cash flow taxed at the long-run rate of "
-                       f"{pct(g(dcf, 'tax_rate'))} ({money(g(dcf, 'terminal_fcf'))}), because German corporate tax "
-                       "keeps falling after Year 5 under the enacted schedule.", STYLES["sub"]))
+    story.append(side_by_side([P(T("From cash flows to equity value", "Von den Cashflows zum Eigenkapitalwert"),
+                                 STYLES["h3"]), value_rows],
+                              [P(T("Discount rate", "Diskontsatz"), STYLES["h3"]), rate_rows]))
+    if used:
+        g_ = pct(g(dcf, "perpetual_growth_rate"))
+        story.append(P(T(
+            f"The terminal value treats the years after Year 5 as a business growing {g_} a year: Year-5 profit fully "
+            "taxed, capex at least D&A and working capital growing at that rate"
+            + (f", taxed at the long-run rate of {pct(g(dcf, 'tax_rate'))} because German corporate tax keeps falling "
+               "after Year 5 under the enacted schedule" if german else "")
+            + f" (starting cash flow {money(g(dcf, 'terminal_fcf'))}).",
+            f"Der Endwert behandelt die Jahre nach Jahr 5 als ein Geschäft, das jährlich um {g_} wächst: Gewinn aus "
+            "Jahr 5 voll versteuert, Investitionen mindestens in Höhe der Abschreibungen und Working Capital mit dieser "
+            "Rate wachsend"
+            + (f", versteuert mit dem langfristigen Satz von {pct(g(dcf, 'tax_rate'))}, weil die Körperschaftsteuer "
+               "nach dem beschlossenen Verlauf auch nach Jahr 5 weiter sinkt" if german else "")
+            + f" (Ausgangs-Cashflow {money(g(dcf, 'terminal_fcf'))})."), STYLES["sub"]))
     if g(dcf, "terminal_value_floor_applied"):
-        story.append(P("Note: the discount rate is close to the long-run growth rate, so the terminal value uses "
-                       "a minimum 2-point gap between them.", STYLES["sub"]))
+        story.append(P(T("Note: the discount rate is close to the long-run growth rate, so the terminal value uses "
+                         "a minimum 2-point gap between them.",
+                         "Hinweis: Der Diskontsatz liegt nahe an der langfristigen Wachstumsrate; der Endwert verwendet "
+                         "deshalb einen Mindestabstand von 2 Prozentpunkten."), STYLES["sub"]))
     return story
+
+
+def _de(d: dict, key: str) -> Optional[str]:
+    """A source text in the report's language (German version stored under key + '_de')."""
+    return (d.get(f"{key}_de") or d.get(key)) if _german() else d.get(key)
 
 
 def _country_inputs_section(country: str, specific: dict, output: dict) -> list:
     """Germany: the Bund rate, the tax schedule year by year and the stage benchmarks, with sources."""
-    story = [P(f"{esc(country)}-specific inputs", STYLES["h3"])]
+    story = [P(T(f"{esc(country)}-specific inputs", f"Besondere Angaben für {esc(ve.country_in_text(country))}"),
+               STYLES["h3"])]
     wacc = g(output, "wacc", {})
     rf = specific.get("risk_free_rate")
     if rf:
-        story.append(P(f"<b>Risk-free rate:</b> {pct2(g(wacc, 'risk_free_rate'))} (as of "
-                       f"{esc(format_date(rf.get('as_of')))}). {esc(rf.get('source'))}", STYLES["td_label"], raw=True))
-        story.append(P(f"<b>Country risk:</b> {esc(country)} is rated Aaa, so its country risk premium is 0 and "
-                       f"the equity risk premium is the mature-market premium of "
-                       f"{pct2(g(wacc, 'country_equity_risk_premium'))}.", STYLES["td_label"], raw=True))
+        story.append(P(T(f"<b>Risk-free rate:</b> {pct2(g(wacc, 'risk_free_rate'))} (as of "
+                         f"{esc(format_date(rf.get('as_of')))}). {esc(_de(rf, 'source'))}",
+                         f"<b>Risikofreier Zins:</b> {pct2(g(wacc, 'risk_free_rate'))} (Stand "
+                         f"{esc(format_date(rf.get('as_of')))}). {esc(_de(rf, 'source'))}"), STYLES["small"], raw=True))
+        story.append(P(T(f"<b>Country risk:</b> {esc(country)} is rated Aaa, so its country risk premium is 0 and "
+                         f"the equity risk premium is the mature-market premium of "
+                         f"{pct2(g(wacc, 'country_equity_risk_premium'))}.",
+                         f"<b>Länderrisiko:</b> {esc(ve.country_in_text(country))} hat das Rating Aaa; die "
+                         f"Länderrisikoprämie ist daher 0 und die Marktrisikoprämie entspricht der Prämie reifer Märkte "
+                         f"von {pct2(g(wacc, 'country_equity_risk_premium'))}."), STYLES["small"], raw=True))
         story.append(Spacer(1, 3))
 
     taxes = _german_taxes(output)
@@ -1230,40 +1594,52 @@ def _country_inputs_section(country: str, specific: dict, output: dict) -> list:
     if taxes and tax:
         rows = [[str(y.get("year")), pct(y.get("corporate_tax")), pct2(y.get("solidarity_surcharge")),
                  pct2(y.get("trade_tax")), pct2(y.get("combined"))] for y in taxes.get("calendar_years", [])]
-        story.append(P(f"Tax by calendar year, with a trade-tax Hebesatz of {_hebesatz_text(taxes)}. The last "
-                       "year's rate also applies after Year 5 (terminal value) and in the WACC.", STYLES["td_label"]))
-        story.append(data_table(["Year", "Corporate tax", "Solidarity surcharge", "Trade tax", "Combined"], rows,
+        story.append(P(T(f"Tax by calendar year, with a trade-tax Hebesatz of {_hebesatz_text(taxes)}. The last "
+                         "year's rate also applies after Year 5 (terminal value) and in the WACC.",
+                         f"Steuern je Kalenderjahr, mit einem Gewerbesteuer-Hebesatz von {_hebesatz_text(taxes)}. Der "
+                         "Satz des letzten Jahres gilt auch nach Jahr 5 (Endwert) und im WACC."), STYLES["small"]))
+        story.append(data_table([T("Year", "Jahr"), T("Corporate tax", "Körperschaftsteuer"),
+                                 T("Solidarity surcharge", "Solidaritätszuschlag"), T("Trade tax", "Gewerbesteuer"),
+                                 T("Combined", "Gesamt")], rows,
                                 col_widths=[CONTENT_W * 0.12, CONTENT_W * 0.22, CONTENT_W * 0.24,
                                             CONTENT_W * 0.2, CONTENT_W * 0.22]))
         years = g(g(output, "projections", {}), "years", [])
-        story.append(P("Projection years span two calendar years, so each uses the two years' rates weighted by "
-                       "days: " + ", ".join(f"{y.get('year_label')} {pct2(y.get('tax_rate'))}" for y in years)
-                       + ".", STYLES["sub"]))
+        story.append(P(T("Projection years span two calendar years, so each uses the two years' rates weighted by "
+                         "days: ", "Planjahre umfassen zwei Kalenderjahre; jedes verwendet die Sätze beider Jahre, "
+                         "nach Tagen gewichtet: ")
+                       + ", ".join(f"{y.get('year_label')} {pct2(y.get('tax_rate'))}" for y in years)
+                       + ".", STYLES["small_note"]))
         for key in ("corporate_tax_source", "solidarity_surcharge_source", "trade_tax_base_rate_source",
                     "average_hebesatz_source", "simplification"):
             if tax.get(key):
-                story.append(P(esc(tax[key]), STYLES["sub"]))
+                story.append(P(esc(_de(tax, key)), STYLES["small_note"]))
         story.append(Spacer(1, 3))
     elif tax:
-        story.append(P("Tax: your own flat rate was used instead of the German schedule.", STYLES["td_label"]))
+        story.append(P(T("Tax: your own flat rate was used instead of the German schedule.",
+                         "Steuern: Statt des deutschen Steuerverlaufs wurde Ihr eigener pauschaler Satz verwendet."),
+                       STYLES["small"]))
 
     sb = specific.get("stage_benchmarks")
     if sb:
-        flag = (" <b>The German figures are still to be sourced; these are placeholders.</b>"
+        flag = (T(" <b>The German figures are still to be sourced; these are placeholders.</b>",
+                  " <b>Die deutschen Werte müssen noch belegt werden; dies sind Platzhalter.</b>")
                 if any(r.get("to_be_sourced") for r in sb.get("stages", {}).values()) else "")
-        story.append(P(f"<b>Scorecard benchmark (Idea and Development stages):</b> {esc(sb.get('source'))}{flag}",
-                       STYLES["td_label"], raw=True))
+        story.append(P(T(f"<b>Scorecard benchmark (Idea and Development stages):</b> {esc(_de(sb, 'source'))}{flag}",
+                         f"<b>Scorecard-Vergleichswert (Ideen- und Entwicklungsphase):</b> {esc(_de(sb, 'source'))}{flag}"),
+                       STYLES["small"], raw=True))
     return story
 
 
 # Source sentences that concern one particular country or industry: shown only to that company.
-_SPECIFIC_SOURCE_SENTENCES = {"Russia": "country", "Retail (Online)": "industry"}
+# Words that mark such a sentence -> the country or industry it is about.
+_SPECIFIC_SOURCE_SENTENCES = {"Russia": "Russia", "Russland": "Russia", "Retail (Online)": "Retail (Online)"}
 
 
 def _relevant_sentences(text: str, country: Optional[str], industry: Optional[str]) -> str:
     keep = []
-    for sentence in re.split(r"(?<=[.;])\s+(?=[A-Z'])", text):
-        about = next((name for name in _SPECIFIC_SOURCE_SENTENCES if name in sentence), None)
+    # A full stop after a digit is a German date ("1. Januar"), not the end of a sentence.
+    for sentence in re.split(r"(?<=[.;])(?<!\d\.)\s+(?=[A-ZÄÖÜ'])", text):
+        about = next((subject for word, subject in _SPECIFIC_SOURCE_SENTENCES.items() if word in sentence), None)
         if about is None or about in (country, industry):
             keep.append(sentence)
     return " ".join(keep)
@@ -1272,64 +1648,109 @@ def _relevant_sentences(text: str, country: Optional[str], industry: Optional[st
 def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Optional[str],
                       country: Optional[str] = None, country_inputs: Optional[dict] = None,
                       output: Optional[dict] = None, industry: Optional[str] = None) -> list:
-    story = [P("Methods, data sources & disclaimer", STYLES["h2"])]
-    story.append(P("Methods", STYLES["h3"]))
+    story = [P(T("Methods, data sources & disclaimer", "Methoden, Datenquellen & Haftungsausschluss"), STYLES["h2"])]
+    story.append(P(T("Methods", "Methoden"), STYLES["h3"]))
     for text in (
-        "<b>Scorecard</b> (Bill Payne): compares a pre-revenue company with the typical pre-revenue company in "
-        "its region on six weighted criteria. Used only at the Idea and Development stages.",
-        "<b>Venture Capital</b>: values a projected exit and discounts it at the annual return an investor at "
-        "this stage targets. This is the only place a target return is used.",
-        "<b>Comparables</b>: applies public-company EV/EBITDA multiples to the last 12 months' EBITDA, with a "
-        "private-company discount, then subtracts debt and adds cash.",
-        "<b>Discounted cash flow</b>: discounts projected free cash flow and a terminal value at the cost of "
-        "capital (WACC), weights the result by the probability of survival, then subtracts debt and adds cash.",
-        "The four results are blended with weights for the company's stage. Methods that can't give a "
-        "meaningful value (for example, no positive EBITDA) are left out and the other weights are scaled up.",
+        T("<b>Scorecard</b> (Bill Payne): compares a pre-revenue company with the typical pre-revenue company in "
+          "its region on six weighted criteria. Used only at the Idea and Development stages.",
+          "<b>Scorecard</b> (Bill Payne): vergleicht ein Unternehmen vor Umsatzbeginn anhand von sechs gewichteten "
+          "Kriterien mit dem typischen Unternehmen vor Umsatzbeginn in seiner Region. Nur in der Ideen- und "
+          "Entwicklungsphase."),
+        T("<b>Venture Capital</b>: values a projected exit and discounts it at the annual return an investor at "
+          "this stage targets. This is the only place a target return is used.",
+          "<b>Venture Capital</b>: bewertet einen geplanten Exit und zinst ihn mit der Jahresrendite ab, die ein "
+          "Investor in dieser Phase anstrebt. Nur hier wird eine Zielrendite verwendet."),
+        T("<b>Comparables</b>: applies public-company multiples to the last 12 months, taking the higher of EBITDA × "
+          "EV/EBITDA and revenue × EV/Sales (ARR × the SaaS ARR multiple for subscription companies), with a "
+          "private-company discount, then subtracts debt and adds cash.",
+          "<b>Vergleichsmethode</b>: wendet Multiplikatoren börsennotierter Unternehmen auf die letzten 12 Monate an und "
+          "nimmt den höheren Wert aus EBITDA × EV/EBITDA und Umsatz × EV/Umsatz (bei Abo-Unternehmen ARR × "
+          "SaaS-ARR-Multiplikator), mit einem Abschlag für nicht börsennotierte Unternehmen; danach werden Schulden "
+          "abgezogen und liquide Mittel addiert."),
+        T("<b>Discounted cash flow</b>: discounts projected free cash flow and a terminal value at the cost of "
+          "capital (WACC), weights the result by the probability of survival, then subtracts debt and adds cash.",
+          "<b>Discounted Cashflow</b>: zinst geplante freie Cashflows und einen Endwert mit den Kapitalkosten (WACC) "
+          "ab, gewichtet das Ergebnis mit der Überlebenswahrscheinlichkeit, zieht Schulden ab und addiert liquide "
+          "Mittel."),
+        T("The four results are blended with weights for the company's stage. A method that doesn't apply to the "
+          "company (for example Comparables without revenue) is left out and the other weights are scaled "
+          "up; a method that applies but finds no value for the shares counts as €0, so a weaker plan never raises "
+          "the result.",
+          "Die vier Ergebnisse werden mit Gewichten für die Phase des Unternehmens kombiniert. Eine Methode, die nicht "
+          "zum Unternehmen passt (etwa die Vergleichsmethode ohne Umsatz), entfällt und die anderen Gewichte werden "
+          "hochskaliert; eine Methode, die passt, aber keinen Wert für die Anteile findet, zählt mit 0 €, sodass ein "
+          "schwächerer Plan das Ergebnis nie erhöht."),
+        T("<b>Round logic</b> (cross-check, not in the blend): the pre-money at which the amount raised buys the "
+          "share of the company typically sold in a round at this stage.",
+          "<b>Rundenlogik</b> (Gegenprobe, nicht in der Gewichtung): die Pre-Money-Bewertung, bei der der eingeworbene "
+          "Betrag den Anteil kauft, der in einer Runde dieser Phase typischerweise verkauft wird."),
     ):
-        story.append(P(text, STYLES["td_label"], raw=True))
-        story.append(Spacer(1, 3))
+        story.append(P(text, STYLES["small"], raw=True))
+        story.append(Spacer(1, 2))
 
     if stage_params:
-        story.append(P(f"Assumptions for the {safe(stage).lower()}", STYLES["h3"]))
+        story.append(P(T(f"Assumptions for the {safe(stage).lower()}", f"Annahmen für die {ve.stage_label(stage or '')}"),
+                       STYLES["h3"]))
         story.append(info_table([
-            ("Investor's target annual return (VC method)", pct(stage_params.get("vc_target_return"))),
-            ("Private-company discount (Comparables)", pct(stage_params.get("private_company_discount"))),
-            ("Probability of survival (DCF)", pct(stage_params.get("survival_probability"))),
+            (T("Investor's target annual return (VC method)", "Zielrendite des Investors pro Jahr (VC-Methode)"),
+             pct(stage_params.get("vc_target_return"))),
+            (T("Private-company discount (Comparables)", "Abschlag für nicht börsennotierte Unternehmen (Vergleich)"),
+             pct(stage_params.get("private_company_discount"))),
+            (T("Probability of survival (DCF)", "Überlebenswahrscheinlichkeit (DCF)"),
+             pct(stage_params.get("survival_probability"))),
         ]))
 
     if country_inputs:
         story += _country_inputs_section(country or "", country_inputs, output or {})
 
-    story.append(P("Data sources", STYLES["h3"]))
+    story.append(P(T("Data sources", "Datenquellen"), STYLES["h3"]))
+    rf_other = country_inputs and "risk_free_rate" in country_inputs
     labels = [
-        ("industry_benchmarks", "Industry benchmarks"),
-        ("country_data", "Country risk and tax"),
-        ("risk_free_rate", "Risk-free rate (other countries)" if country_inputs and "risk_free_rate" in country_inputs
-         else "Risk-free rate"),
-        ("perpetual_growth_rate", "Long-run growth"),
-        ("vc_target_return", "VC target returns"),
-        ("private_company_discount", "Private-company discount"),
-        ("survival_probability", "Survival probability"),
-        ("scorecard_benchmark", "Scorecard benchmark"),
-        ("scorecard", "Scorecard method"),
-        ("method_weights", "Method weights"),
+        ("industry_benchmarks", T("Industry benchmarks", "Branchenvergleichswerte")),
+        ("ev_sales_multiple", T("Revenue multiple", "Umsatz-Multiplikator")),
+        ("saas_arr_multiple", T("SaaS ARR multiple", "SaaS-ARR-Multiplikator")),
+        ("country_data", T("Country risk and tax", "Länderrisiko und Steuern")),
+        ("risk_free_rate", T("Risk-free rate (other countries)", "Risikofreier Zins (andere Länder)") if rf_other
+         else T("Risk-free rate", "Risikofreier Zins")),
+        ("perpetual_growth_rate", T("Long-run growth", "Langfristiges Wachstum")),
+        ("vc_target_return", T("VC target returns", "Zielrenditen VC")),
+        ("private_company_discount", T("Private-company discount", "Abschlag für nicht börsennotierte Unternehmen")),
+        ("survival_probability", T("Survival probability", "Überlebenswahrscheinlichkeit")),
+        ("scorecard_benchmark", T("Scorecard benchmark", "Scorecard-Vergleichswert")),
+        ("scorecard", T("Scorecard method", "Scorecard-Methode")),
+        ("method_weights", T("Method weights", "Gewichte der Methoden")),
+        ("round_benchmarks", T("Round logic", "Rundenlogik")),
     ]
+    comparables = g(output or {}, "comparables", {}) or {}
+    used_basis = comparables.get("basis_used") if comparables.get("pre_money_valuation") is not None else None
+    shown = {"ev_sales_multiple": used_basis == "revenue", "saas_arr_multiple": used_basis == "arr"}
     for key, label in labels:
-        if sources.get(key):
+        if sources.get(key) and shown.get(key, True):  # a multiple's source only where it was used
             story.append(P(f"<b>{esc(label)}:</b> {esc(_relevant_sentences(sources[key], country, industry))}",
-                           STYLES["td_label"], raw=True))
-            story.append(Spacer(1, 3))
+                           STYLES["small"], raw=True))
+            story.append(Spacer(1, 2))
 
     story.append(Spacer(1, 10))
-    disclaimer_box = Table([[P(
+    disclaimer_box = Table([[P(T(
         "<b>Disclaimer:</b> This tool is not a licensed financial advisor, investment advisor, or "
         "legal entity authorized to provide financial, investment, or legal advice. This report is "
         "intended for informational purposes only and should not be construed as a solicitation or "
-        "recommendation for any financial transaction. All valuations are based on information and "
+        "recommendation for any financial transaction. It is not a valuation under IDW S1 or the German valuation "
+        "law (Bewertungsgesetz) and can't be used for tax purposes, share transfers between shareholders or "
+        "employee share plans (VSOP/ESOP). All valuations are based on information and "
         "assumptions believed to be accurate at the time of preparation, but no guarantee is made "
         "regarding completeness, accuracy, or future performance. Consult a qualified financial, "
         "legal, or investment professional before making decisions based on this analysis. "
         f"{BRAND} by {AUTHOR}.",
+        "<b>Haftungsausschluss:</b> Dieses Tool ist kein zugelassener Finanz- oder Anlageberater und keine Stelle, "
+        "die Finanz-, Anlage- oder Rechtsberatung erbringen darf. Dieser Bericht dient nur der Information und ist "
+        "keine Aufforderung oder Empfehlung zu einer Finanztransaktion. Er ist keine Bewertung nach IDW S1 oder dem "
+        "Bewertungsgesetz und kann nicht für steuerliche Zwecke, Anteilsübertragungen zwischen Gesellschaftern oder "
+        "Mitarbeiterbeteiligungen (VSOP/ESOP) verwendet werden. Alle Bewertungen beruhen auf Angaben und Annahmen, "
+        "die bei der Erstellung für zutreffend gehalten wurden; für Vollständigkeit, Richtigkeit oder künftige "
+        "Entwicklung wird keine Gewähr übernommen. Ziehen Sie vor Entscheidungen auf Basis dieser Analyse "
+        "qualifizierte Finanz-, Rechts- oder Anlageberatung hinzu. "
+        f"{BRAND} von {AUTHOR}."),
         STYLES["disclaimer"], raw=True,
     )]], colWidths=[CONTENT_W])
     disclaimer_box.setStyle(TableStyle([
@@ -1369,9 +1790,9 @@ def build_pdf_bytes(
     ownership = g(payload, "ownership", []) or []
     sources = sources or {}
 
-    company_name = g(cp, "company_name") or "Untitled company"
+    company_name = g(cp, "company_name") or T("Untitled company", "Unbenanntes Unternehmen")
     date_str = format_date(g(output, "valuation_date"))
-    data_date = format_date(sources.get("data_as_of")) if sources.get("data_as_of") else "January 2026"
+    data_date = format_date(sources.get("data_as_of")) if sources.get("data_as_of") else T("January 2026", "Januar 2026")
     logo_bytes = _decode_logo(g(cp, "logo_base64"))
 
     buffer = io.BytesIO()
@@ -1379,7 +1800,7 @@ def build_pdf_bytes(
         buffer, pagesize=PAGE_SIZE,
         leftMargin=MARGIN_SIDE, rightMargin=MARGIN_SIDE,
         topMargin=MARGIN_TOP, bottomMargin=MARGIN_BOTTOM,
-        title=f"{company_name} - Valuation Report ({BRAND})",
+        title=f"{company_name} - {T('Valuation Report', 'Bewertungsbericht')} ({BRAND})",
         author=BRAND,
     )
     cover_frame = Frame(MARGIN_SIDE, MARGIN_BOTTOM, CONTENT_W, PAGE_H - MARGIN_TOP - MARGIN_BOTTOM, id="cover")
@@ -1411,8 +1832,10 @@ def build_pdf_bytes(
         story.append(PageBreak())
     story += _vc_page(g(output, "venture_capital", {}), output)
     story.append(PageBreak())
-    story += _comparables_page(g(output, "comparables", {}), cp)
-    story.append(PageBreak())
+    comparables_mv = g(output, "method_values", {}).get("comparables") or {}
+    if comparables_mv.get("status") != "not_meaningful":  # else the Valuation page gives the reason in one line
+        story += _comparables_page(g(output, "comparables", {}), cp)
+        story.append(PageBreak())
     story += _dcf_page(g(output, "dcf", {}), g(output, "wacc", {}), years, _german_taxes(output))
     story.append(PageBreak())
     story += _methodology_page(sources, stage_params, g(cp, "company_stage"), g(cp, "country"),

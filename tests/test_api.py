@@ -74,7 +74,7 @@ def test_default_region(client):
 def test_preview_and_scenarios(client):
     r = client.post("/valuations/preview", json=REFERENCE_CASE)
     assert r.status_code == 200
-    assert round(r.json()["blended_pre_money_valuation"]) == 911_380
+    assert round(r.json()["blended_pre_money_valuation"]) == 1_103_096
     assert len(client.post("/valuations/preview/scenarios", json=REFERENCE_CASE).json()) == 6
 
 
@@ -266,7 +266,11 @@ def test_pdf_explains_a_zero_value_and_fits_huge_numbers(client):
     huge = copy.deepcopy(GERMAN_CASE)
     huge["operating_performance"].update(current_revenue_last_12_months=80_000_000, current_ebitda=20_000_000)
     huge["financial_assumptions"].update(revenue_year1=90_000_000, revenue_growth_rates=[9.0, 5.0, 1.0, 0.5])
-    for case, check in ((zero, "The value is €0 because the company's debt"), (huge, None)):
+    # Debt above everything the methods find: a clear message, not a report of a €0 valuation.
+    for route in ("/valuations/preview", "/valuations/preview/report"):
+        r = client.post(route, json=zero)
+        assert r.status_code == 422 and "debt (€50,000,000) is larger than the value" in r.json()["detail"]
+    for case, check in ((huge, None),):
         pdf = client.post("/valuations/preview/report", json=case)
         text = "\n".join(p.extract_text() for p in PdfReader(io.BytesIO(pdf.content)).pages)
         assert not re.search(r"€[\d,]*,\d{0,2}\s*\n\s*\d", text)  # no amount wrapped across lines
@@ -304,5 +308,5 @@ def test_scenario_page_explains_a_value_that_falls_with_revenue():
     falling = {f"{p}%": scenario(1_000_000 - p * 1000) for p in (80, 90, 100, 110, 120, 130)}
     rising = {f"{p}%": scenario(1_000_000 + p * 1000) for p in (80, 90, 100, 110, 120, 130)}
     text = lambda s: " ".join(getattr(f, "text", "") for f in report._scenario_sensitivity_page(s))  # noqa: E731
-    assert report.SCENARIO_FALLS_NOTE in text(falling)
-    assert report.SCENARIO_FALLS_NOTE not in text(rising)
+    assert report.scenario_falls_note() in text(falling)
+    assert report.scenario_falls_note() not in text(rising)

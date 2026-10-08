@@ -107,7 +107,8 @@ GERMAN_CASE["operating_performance"].update({"current_ppe_value": 60000})
 # ---------------------------------------------------------------------------
 # First-principles helpers (no engine imports)
 # ---------------------------------------------------------------------------
-MIN_VALID = {"beta": 0.01, "equity_pct_capital": 0.01, "ev_ebitda_multiple": 0.01, "ebitda_margin": None}
+MIN_VALID = {"beta": 0.01, "equity_pct_capital": 0.01, "ev_ebitda_multiple": 0.01, "ev_sales_multiple": 0.01,
+             "ebitda_margin": None}
 
 
 def num_ok(v, min_valid):
@@ -183,13 +184,15 @@ def recompute(case):
     target = fa.get("target_ebitda_margin_override")
     target = bench(ind, "ebitda_margin", reg)[0] if target is None else target
     ltm_rev = op["current_revenue_last_12_months"]
-    start = max(-1.0, min(op["current_ebitda"] / ltm_rev, 0.9)) if ltm_rev > 0 else target
+    # without revenue yet, today's EBITDA (the operating loss) is measured against Year-1 revenue
+    start = max(-1.0, min(op["current_ebitda"] / (ltm_rev if ltm_rev > 0 else fa["revenue_year1"]), 0.9))
     da_pct = bench(ind, "da_pct_revenue", reg)[0]
     wc_pct = (bench(ind, "acc_receivable_pct_revenue", reg)[0] + bench(ind, "inventory_pct_revenue", reg)[0]
               - bench(ind, "acc_payable_pct_revenue", reg)[0])
     rev = [fa["revenue_year1"]]
     for gr in fa["revenue_growth_rates"]:
         rev.append(rev[-1] * (1 + gr))
+    g = mkt["perpetual_growth_rate"]
     prev_wc, nol, fcf, ebitdas = ltm_rev * wc_pct, 0.0, [], []
     for i, r in enumerate(rev):
         ebitda = r * (start + (target - start) * (i + 1) / 5)
@@ -203,7 +206,9 @@ def recompute(case):
         wc = r * wc_pct
         other = r * da_pct - fa["capex_by_year"][i] - (wc - prev_wc)
         fcf.append(ebit - taxable * tax_by_year[i] + other)
-        terminal_fcf = ebit - taxable * tax + other  # Year 5 re-taxed at the long-run rate
+        # Year 5 taxed in full at the long-run rate (no lasting loss carryforward), capex at least D&A,
+        # working capital growing at g
+        terminal_fcf = ebit - max(ebit, 0.0) * tax + r * da_pct - max(fa["capex_by_year"][i], r * da_pct) - wc * g
         prev_wc = wc
         ebitdas.append(ebitda)
     out.update(ebitda=ebitdas, fcf=fcf, start_margin=start, target_margin=target, tax_by_year=tax_by_year)
@@ -244,26 +249,31 @@ def recompute(case):
     post = (exit_equity / (1 + stage["vc_target_return"]) ** T
             if ebitdas[T - 1] > 0 and exit_equity > 0 and ind not in FINANCIALS else None)
     out["vc_post"] = post
-    out["vc"] = post - I if post is not None and post > I and ind not in FINANCIALS else None
-    if out["vc"] is not None:
+    # applies to every non-financial company; no value left before the round counts as 0
+    out["vc"] = None if ind in FINANCIALS else (post - I if post is not None and post > I else 0.0)
+    if out["vc"]:  # shares are only issued when the method leaves a positive pre-money value
         F = I / post
         out["vc_new_shares"] = case["vc_assumptions"]["number_of_existing_shares"] * F / (1 - F)
         out["vc_price"] = I / out["vc_new_shares"]
 
-    # --- Comparables: trailing EBITDA x multiple x (1 - private discount) - debt + cash ---
+    # --- Comparables: the higher of EBITDA x EV/EBITDA and revenue x EV/Sales (ARR x SaaS multiple when
+    # ARR is given), x (1 - private discount) - debt + cash ---
     ltm = op["current_ebitda"]
-    eq = ltm * mult * (1 - stage["private_company_discount"]) - debt + cash
+    arr = op.get("annual_recurring_revenue") or 0
+    revenue_value = (arr * REF["saas_arr_multiple"]["value"] if arr > 0
+                     else ltm_rev * bench(ind, "ev_sales_multiple", reg)[0])
+    public = max(max(ltm, 0) * mult, revenue_value)
+    eq = public * (1 - stage["private_company_discount"]) - debt + cash
     # equity can't be negative: floored at zero when debt exceeds the value
-    out["comparables"] = max(eq, 0.0) if ltm > 0 and ind not in FINANCIALS else None
+    out["comparables"] = max(eq, 0.0) if public > 0 and ind not in FINANCIALS else None
 
     # --- DCF at WACC, Gordon terminal value, x survival, - debt + cash ---
-    g = mkt["perpetual_growth_rate"]
     pv = sum(f / (1 + wacc) ** (i + 1) for i, f in enumerate(fcf))
     pv_tv = terminal_fcf * (1 + g) / (max(wacc, g + 0.02) - g) / (1 + wacc) ** 5
     ev = pv + pv_tv
-    eq = ev * stage["survival_probability"] - debt + cash
+    eq = max(ev, 0.0) * stage["survival_probability"] - debt + cash  # a business worth < 0 is worth 0
     out.update(dcf_pv_fcf=pv, dcf_pv_tv=pv_tv, dcf_ev=ev)
-    out["dcf"] = max(eq, 0.0) if ev > 0 and ind not in FINANCIALS else None
+    out["dcf"] = max(eq, 0.0) if ind not in FINANCIALS else None
 
     # --- blend: stage weights rescaled over the meaningful methods ---
     vals = {"scorecard": out["scorecard"], "venture_capital": out["vc"],
@@ -271,7 +281,8 @@ def recompute(case):
     w = stage["method_weights"]
     usable = {k: v for k, v in vals.items() if v is not None and w[k] > 0}
     total_w = sum(w[k] for k in usable)
-    out["blended"] = sum(v * w[k] for k, v in usable.items()) / total_w if total_w else None
+    blended = sum(v * w[k] for k, v in usable.items()) / total_w if total_w else None
+    out["blended"] = blended if blended else None  # no value at all: the engine gives a clear message instead
     out["post_money"] = out["blended"] + I if out["blended"] is not None else None
     out["method_values"] = vals
     return out
@@ -363,6 +374,11 @@ EDGE_CASES = {
                                         company_profile__country="United States",
                                         company_profile__business_territory_region="US"),
     "Debt larger than value (5M)": variant(financial_assumptions__existing_debt_balance=5_000_000),
+    "Debt larger than every method's value (10M)": variant(financial_assumptions__existing_debt_balance=10_000_000),
+    "Plan never profitable (target margin -30%)": variant(financial_assumptions__target_ebitda_margin_override=-0.3),
+    "SaaS with ARR (450k), loss-making": variant(operating_performance__annual_recurring_revenue=450_000,
+                                                 operating_performance__current_ebitda=-90_000),
+    "Huge capex in Y1 (2M)": variant(financial_assumptions__capex_by_year=[2_000_000, 30_000, 30_000, 30_000, 30_000]),
     "Raise larger than VC post-money (5M)": variant(funding__capital_needed=5_000_000),
     "Exit in 5 years": variant(company_profile__planned_time_to_exit_years=5),
     "Revenue collapses (-90% in Y2)": variant(financial_assumptions__revenue_growth_rates=[-0.9, 0.1, 0.1, 0.1]),

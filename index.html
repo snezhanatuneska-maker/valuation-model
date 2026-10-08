@@ -54,6 +54,14 @@ body {
   gap: 12px;
 }
 .masthead-tag { color: var(--brass-light); font-size: 13px; letter-spacing: 0.02em; }
+.lang-switch { display: inline-flex; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 6px; overflow: hidden; }
+.lang-switch button {
+  background: transparent; color: var(--paper-raised); border: none; padding: 4px 10px;
+  font: inherit; font-size: 12.5px; letter-spacing: 0.04em; cursor: pointer;
+}
+.lang-switch button[aria-pressed="true"] { background: var(--brass); color: var(--navy-deep); font-weight: 600; }
+.lang-switch button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: -2px; }
+.masthead-right { display: inline-flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .site-footer {
   max-width: 720px;
   margin: 0 auto;
@@ -533,7 +541,13 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
 <header class="masthead">
   <div class="masthead-inner">
     <h1 class="wordmark">Valuation Model</h1>
-    <span class="masthead-tag">Startup valuation for founders</span>
+    <span class="masthead-right">
+      <span class="masthead-tag">Startup valuation for founders</span>
+      <span class="lang-switch" role="group" aria-label="Sprache / language">
+        <button type="button" data-lang="de" lang="de" aria-pressed="false">DE</button>
+        <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+      </span>
+    </span>
   </div>
 </header>
 
@@ -553,7 +567,7 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
     <h2 id="landing-title">Free startup valuation for early-stage founders</h2>
     <p class="landing-lede">Find out what your company could be worth before you talk to investors, and see exactly how that number is reached.</p>
     <ul class="landing-points">
-      <li><strong>What you get</strong>A pre-money and post-money valuation blended from four standard methods (Scorecard, Venture Capital, Comparables, discounted cash flow), a 5-year projection, a revenue sensitivity check, and a PDF report that explains every number.</li>
+      <li><strong>What you get</strong>A pre-money and post-money valuation blended from four standard methods (Scorecard, Venture Capital, Comparables, discounted cash flow), a check against how a typical funding round at your stage would price you, a 5-year projection, a revenue sensitivity check, and a PDF report that explains every number.</li>
       <li><strong>How long it takes</strong>About 15 minutes if you have your last 12 months' figures and a simple 5-year plan at hand. Or see a finished example in one click.</li>
       <li><strong>Where the data comes from</strong>Industry benchmarks and country risk from Prof. Aswath Damodaran (NYU Stern, 2026), German tax law including the 2028&ndash;2032 corporate tax cuts, the 10-year Bund yield, and Equidam's 2026 early-stage valuation data. Every source is listed in the report.</li>
     </ul>
@@ -749,7 +763,7 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
 
     <!-- Step 3: Operating Performance -->
     <form class="wizard-step" data-step="3" id="step-3" novalidate>
-      <p class="step-intro">The company's actual (not projected) results for the last 12 months. Projected margins start from these figures, and the Comparables method uses this EBITDA.</p>
+      <p class="step-intro">The company's actual (not projected) results for the last 12 months. Projected margins start from these figures, and the Comparables method uses this revenue and EBITDA.</p>
 
       <div class="field-row">
         <div class="field">
@@ -770,6 +784,13 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
         <div class="field">
           <label for="current_ppe_value">Property, plant &amp; equipment, current value (&euro;)</label>
           <input type="number" id="current_ppe_value" min="0" step="1" value="0">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="annual_recurring_revenue">Annual recurring revenue, ARR (&euro;, optional)<button type="button" class="tip" data-term="arr" aria-label="What is ARR?">i</button></label>
+          <input type="number" id="annual_recurring_revenue" min="0" step="1">
+          <p class="field-hint">Subscription businesses only: monthly recurring revenue today × 12. The Comparables method then values it with the multiple of listed SaaS companies.</p>
         </div>
       </div>
     </form>
@@ -914,32 +935,232 @@ const API_BASE = window.VALUATION_API_BASE || "https://valuation-model-a1iu.onre
 const DEFAULT_COUNTRY = "Germany";
 const DEFAULT_REGION = "Europe (EU, UK, Switzerland & Scandinavia)";
 
+// ============================================================
+// Language (English / German). The page starts in the browser's language
+// (or ?lang=de / ?lang=en), the DE/EN switch changes it for this visit;
+// nothing is stored. Every request asks the API for the same language, so
+// results, checks and the PDF come back in it too.
+// ============================================================
+let LANG = (() => {
+  const fromUrl = new URLSearchParams(location.search).get("lang");
+  if (fromUrl === "de" || fromUrl === "en") return fromUrl;
+  return (navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en";
+})();
+const isDe = () => LANG === "de";
+// A text in the current language: tr("English", "Deutsch").
+const tr = (en, de) => (isDe() ? de : en);
+
+// The page's fixed texts in German, keyed by their English wording.
+const DE = {
+  "Valuation Model: free startup valuation": "Valuation Model: kostenlose Startup-Bewertung",
+  "Startup valuation for founders": "Startup-Bewertung für Gründerinnen und Gründer",
+  "Waking up the server, about 30 seconds…": "Der Server startet, etwa 30 Sekunden…",
+  "The free server sleeps when nobody is using it. The page continues on its own.": "Der kostenlose Server schläft, wenn ihn niemand nutzt. Die Seite macht von selbst weiter.",
+  "Free for founders in the FAU / Nuremberg start-up community": "Kostenlos für Gründerinnen und Gründer der FAU / Nürnberger Start-up-Community",
+  "Free startup valuation for early-stage founders": "Kostenlose Startup-Bewertung für Gründerinnen und Gründer in der Frühphase",
+  "Find out what your company could be worth before you talk to investors, and see exactly how that number is reached.": "Finden Sie heraus, was Ihr Unternehmen wert sein könnte, bevor Sie mit Investoren sprechen, und sehen Sie genau, wie die Zahl zustande kommt.",
+  "What you get": "Was Sie bekommen",
+  "A pre-money and post-money valuation blended from four standard methods (Scorecard, Venture Capital, Comparables, discounted cash flow), a check against how a typical funding round at your stage would price you, a 5-year projection, a revenue sensitivity check, and a PDF report that explains every number.": "Eine Pre-Money- und Post-Money-Bewertung aus vier gängigen Methoden (Scorecard, Venture Capital, Vergleichsmethode, Discounted Cashflow), einen Abgleich damit, wie eine typische Finanzierungsrunde in Ihrer Phase Sie bewerten würde, eine 5-Jahres-Planung, eine Umsatz-Sensitivität und einen PDF-Bericht, der jede Zahl erklärt.",
+  "How long it takes": "Wie lange es dauert",
+  "About 15 minutes if you have your last 12 months' figures and a simple 5-year plan at hand. Or see a finished example in one click.": "Etwa 15 Minuten, wenn Sie die Zahlen der letzten 12 Monate und einen einfachen 5-Jahres-Plan zur Hand haben. Oder sehen Sie sich mit einem Klick ein fertiges Beispiel an.",
+  "Where the data comes from": "Woher die Daten kommen",
+  "Industry benchmarks and country risk from Prof. Aswath Damodaran (NYU Stern, 2026), German tax law including the 2028–2032 corporate tax cuts, the 10-year Bund yield, and Equidam's 2026 early-stage valuation data. Every source is listed in the report.": "Branchenvergleichswerte und Länderrisiko von Prof. Aswath Damodaran (NYU Stern, 2026), deutsches Steuerrecht einschließlich der Körperschaftsteuersenkungen 2028–2032, die Rendite zehnjähriger Bundesanleihen und Equidams Bewertungsdaten 2026 für die Frühphase. Jede Quelle steht im Bericht.",
+  "Start your valuation": "Bewertung starten",
+  "Try with a sample company": "Mit einem Beispielunternehmen ausprobieren",
+  "An informed starting point for investor conversations, not a certified appraisal.": "Ein fundierter Ausgangspunkt für Gespräche mit Investoren, kein zertifiziertes Gutachten.",
+  "Demo version": "Demoversion",
+  "— your inputs are not stored. Close the tab and they're gone.": "— Ihre Eingaben werden nicht gespeichert. Schließen Sie den Tab, und sie sind weg.",
+  "of": "von",
+  "General information about the company being valued.": "Allgemeine Angaben zum bewerteten Unternehmen.",
+  "Company details": "Unternehmen",
+  "Company name": "Firmenname",
+  "Contact name": "Ansprechperson",
+  "Contact email": "E-Mail",
+  "Company address": "Adresse",
+  "Company website": "Website",
+  "e.g. www.example.com": "z. B. www.beispiel.de",
+  "Country": "Land",
+  "Business territory / region": "Geschäftsgebiet / Region",
+  "Industry benchmarks come from this region. It's set from the country; change it if you mainly sell elsewhere.": "Die Branchenvergleichswerte stammen aus dieser Region. Sie wird aus dem Land vorbelegt; ändern Sie sie, wenn Sie hauptsächlich anderswo verkaufen.",
+  "Business profile": "Geschäftsprofil",
+  "Industry": "Branche",
+  "Company stage": "Phase",
+  "Business activity": "Geschäftstätigkeit",
+  "e.g. Selling software": "z. B. Verkauf von Software",
+  "Business model": "Geschäftsmodell",
+  "e.g. SaaS": "z. B. SaaS",
+  "Exit strategy": "Exit-Strategie",
+  "e.g. B2B sale": "z. B. Verkauf an ein Unternehmen",
+  "Number of founders": "Anzahl der Gründer",
+  "Number of employees": "Anzahl der Mitarbeitenden",
+  "Year incorporated": "Gründungsjahr",
+  "e.g. 2024": "z. B. 2024",
+  "Financial profile": "Finanzprofil",
+  "Committed capital (€)": "Zugesagtes Kapital (€)",
+  "What is committed capital?": "Was ist zugesagtes Kapital?",
+  "Planned time to exit (years)": "Geplante Zeit bis zum Exit (Jahre)",
+  "1 to 5 years (the length of the projection).": "1 bis 5 Jahre (die Länge der Planung).",
+  "Valuation date": "Bewertungsdatum",
+  "Year 1 of the projection is the 12 months after this date.": "Jahr 1 der Planung sind die 12 Monate nach diesem Datum.",
+  "Corporate tax rate (%)": "Unternehmenssteuersatz (%)",
+  "Country rate": "Satz des Landes",
+  "Leave empty to use the country's statutory rate.": "Leer lassen, um den gesetzlichen Satz des Landes zu verwenden.",
+  "Tax (Germany)": "Steuern (Deutschland)",
+  "Corporate tax, solidarity surcharge and trade tax, year by year under the enacted cuts.": "Körperschaftsteuer, Solidaritätszuschlag und Gewerbesteuer, Jahr für Jahr nach den beschlossenen Senkungen.",
+  "Advanced: your municipality's Hebesatz": "Erweitert: der Hebesatz Ihrer Gemeinde",
+  "Trade-tax Hebesatz (%)": "Gewerbesteuer-Hebesatz (%)",
+  "National average": "Bundesdurchschnitt",
+  "e.g. 490 for Munich. Leave empty for the national average.": "z. B. 490 für München. Leer lassen für den Bundesdurchschnitt.",
+  "Report branding (optional)": "Branding des Berichts (optional)",
+  "Company logo": "Firmenlogo",
+  "Shown on the cover page and header of your downloadable PDF report instead of the default mark. PNG or JPEG, ideally with a transparent background.": "Erscheint auf dem Deckblatt und in der Kopfzeile Ihres PDF-Berichts statt des Standardzeichens. PNG oder JPEG, am besten mit transparentem Hintergrund.",
+  "Logo preview": "Logo-Vorschau",
+  "Remove logo": "Logo entfernen",
+  "These answers compare your team, product and market with a typical startup. They feed the Scorecard method, which counts only for pre-revenue companies (Idea and Development stages).": "Diese Antworten vergleichen Ihr Team, Produkt und Ihren Markt mit einem typischen Startup. Sie fließen in die Scorecard-Methode ein, die nur vor Umsatzbeginn zählt (Ideen- und Entwicklungsphase).",
+  "Loading question set…": "Fragen werden geladen…",
+  "Scorecard benchmark (optional)": "Scorecard-Vergleichswert (optional)",
+  "Typical pre-money valuation of a pre-revenue startup in your region (€)": "Typische Pre-Money-Bewertung eines Startups vor Umsatzbeginn in Ihrer Region (€)",
+  "Use the built-in benchmark": "Eingebauten Vergleichswert verwenden",
+  "Used only for pre-revenue companies (Idea and Development stages). The built-in figure is the median pre-seed valuation for your region from Equidam's Startup Valuation Delta, H1 2026 (US €4.53M, Europe €2.90M, Emerging Markets €2.37M, elsewhere the all-region median €4.57M). For Germany it uses Equidam's July 2026 average for German angel, pre-seed and seed rounds (€6.55M). If you know a better local figure, enter it here.": "Nur vor Umsatzbeginn verwendet (Ideen- und Entwicklungsphase). Der eingebaute Wert ist der Median der Pre-Seed-Bewertungen Ihrer Region aus Equidams Startup Valuation Delta, H1 2026 (USA 4,53 Mio. €, Europa 2,90 Mio. €, Schwellenländer 2,37 Mio. €, sonst der Median aller Regionen 4,57 Mio. €). Für Deutschland wird Equidams Durchschnitt für deutsche Angel-, Pre-Seed- und Seed-Runden vom Juli 2026 verwendet (6,55 Mio. €). Wenn Sie einen besseren lokalen Wert kennen, geben Sie ihn hier ein.",
+  "Key competitors": "Wichtigste Wettbewerber",
+  "Shown in the report for reference; not used in the calculation.": "Erscheint zur Information im Bericht; fließt nicht in die Berechnung ein.",
+  "Competitor 1": "Wettbewerber 1",
+  "Competitor 2": "Wettbewerber 2",
+  "Competitor 3": "Wettbewerber 3",
+  "The company's actual (not projected) results for the last 12 months. Projected margins start from these figures, and the Comparables method uses this revenue and EBITDA.": "Die tatsächlichen (nicht geplanten) Zahlen der letzten 12 Monate. Die geplanten Margen beginnen bei diesen Zahlen, und die Vergleichsmethode verwendet diesen Umsatz und dieses EBITDA.",
+  "Revenue, last 12 months (€)": "Umsatz, letzte 12 Monate (€)",
+  "EBITDA, last 12 months (€)": "EBITDA, letzte 12 Monate (€)",
+  "What is EBITDA?": "Was ist das EBITDA?",
+  "Enter a negative number for a loss.": "Für einen Verlust eine negative Zahl eingeben.",
+  "Cash currently available (€)": "Aktuell verfügbare liquide Mittel (€)",
+  "Property, plant & equipment, current value (€)": "Sachanlagen, aktueller Wert (€)",
+  "Annual recurring revenue, ARR (€, optional)": "Jährlich wiederkehrender Umsatz, ARR (€, optional)",
+  "What is ARR?": "Was ist ARR?",
+  "Subscription businesses only: monthly recurring revenue today × 12. The Comparables method then values it with the multiple of listed SaaS companies.": "Nur für Abo-Geschäfte: heutiger monatlich wiederkehrender Umsatz × 12. Die Vergleichsmethode bewertet ihn dann mit dem Multiplikator börsennotierter SaaS-Unternehmen.",
+  "A 5-year revenue and capital-expenditure plan. The EBITDA margin starts from your last 12 months and moves to the industry margin by Year 5, unless you set your own target below.": "Ein 5-Jahres-Plan für Umsatz und Investitionen. Die EBITDA-Marge beginnt bei Ihren letzten 12 Monaten und erreicht bis Jahr 5 die Branchenmarge, außer Sie geben unten ein eigenes Ziel ein.",
+  "Projected revenue, Year 1 (€)": "Geplanter Umsatz, Jahr 1 (€)",
+  "Revenue growth, year over year (%)": "Umsatzwachstum gegenüber dem Vorjahr (%)",
+  "Year 1": "Jahr 1", "Year 2": "Jahr 2", "Year 3": "Jahr 3", "Year 4": "Jahr 4", "Year 5": "Jahr 5",
+  "e.g. 10": "z. B. 10",
+  "E.g. 10 = revenue grows 10% over the prior year. Enter 0 for no growth.": "Z. B. 10 = der Umsatz wächst um 10 % gegenüber dem Vorjahr. 0 eingeben für kein Wachstum.",
+  "Planned capital expenditure (capex, €)": "Geplante Investitionen (Capex, €)",
+  "What is capex?": "Was ist Capex?",
+  "Leave a year empty if you plan no capex then.": "Ein Jahr leer lassen, wenn dann keine Investitionen geplant sind.",
+  "Existing interest-bearing debt (€)": "Bestehende verzinsliche Schulden (€)",
+  "Subtracted (and cash added) to turn enterprise value into equity value.": "Wird abgezogen (und die liquiden Mittel addiert), um vom Unternehmenswert zum Wert des Eigenkapitals zu kommen.",
+  "Year-5 EBITDA margin (%, optional)": "EBITDA-Marge in Jahr 5 (%, optional)",
+  "What is an EBITDA margin?": "Was ist eine EBITDA-Marge?",
+  "Industry margin": "Branchenmarge",
+  "Leave empty to use the industry's EBITDA margin.": "Leer lassen, um die EBITDA-Marge der Branche zu verwenden.",
+  "The capital being raised, and what it funds.": "Das einzuwerbende Kapital und wofür es verwendet wird.",
+  "Capital being raised (€)": "Einzuwerbendes Kapital (€)",
+  "What is pre-money and post-money?": "Was bedeuten Pre-Money und Post-Money?",
+  "Number of existing shares": "Anzahl bestehender Anteile",
+  "Used by the Venture Capital method to size the new investor's stake.": "Wird von der Venture-Capital-Methode verwendet, um den Anteil des neuen Investors zu bemessen.",
+  "Ownership structure": "Beteiligungsstruktur",
+  "Current shareholders and their ownership percentage, before this round. Optional; if you fill it in, it should add up to 100%.": "Bisherige Gesellschafter und ihre Anteile vor dieser Runde. Optional; wenn Sie es ausfüllen, sollte es zusammen 100 % ergeben.",
+  "Shareholder 1 name": "Gesellschafter 1", "Shareholder 2 name": "Gesellschafter 2", "Shareholder 3 name": "Gesellschafter 3",
+  "Shareholder 4 name": "Gesellschafter 4", "Shareholder 5 name": "Gesellschafter 5",
+  "Other minor shareholders": "Weitere Gesellschafter",
+  "Use of funds (optional, €)": "Mittelverwendung (optional, €)",
+  "Product & R&D": "Produkt & F&E",
+  "Sales & marketing": "Vertrieb & Marketing",
+  "Inventory": "Vorräte",
+  "Operations": "Betrieb",
+  "Capital expenditure (capex)": "Investitionen (Capex)",
+  "Others": "Sonstiges",
+  "Optional; if you fill it in, it should add up to the capital being raised.": "Optional; wenn Sie es ausfüllen, sollte es zusammen das einzuwerbende Kapital ergeben.",
+  "Back": "Zurück",
+  "Continue": "Weiter",
+  "Calculate valuation": "Bewertung berechnen",
+  "Calculating…": "Wird berechnet…",
+  "demo · informational estimate, not a certified appraisal": "Demo · unverbindliche Schätzung, kein zertifiziertes Gutachten",
+  "Privacy": "Datenschutz",
+  "Privacy in this demo": "Datenschutz in dieser Demo",
+  "Nothing is stored.": "Es wird nichts gespeichert.",
+  "What you enter is sent to the calculation server only to work out your result and build your PDF, and is discarded straight after. There is no database and no account.": "Ihre Eingaben werden nur an den Rechenserver geschickt, um Ihr Ergebnis und Ihr PDF zu erstellen, und danach sofort verworfen. Es gibt keine Datenbank und kein Konto.",
+  "Where it runs.": "Wo es läuft.",
+  "This page is hosted on GitHub Pages and the calculation server on Render (render.com). Like any web host, they may keep short-lived technical logs, such as your IP address and the time of a request, to run and protect their service.": "Diese Seite liegt auf GitHub Pages, der Rechenserver bei Render (render.com). Wie jeder Webhoster können sie kurzlebige technische Protokolle führen, etwa Ihre IP-Adresse und den Zeitpunkt einer Anfrage, um ihren Dienst zu betreiben und zu schützen.",
+  "No tracking.": "Kein Tracking.",
+  "No analytics, no advertising, no cookies, and nothing loaded from other websites. The page doesn't save anything in your browser.": "Keine Analyse, keine Werbung, keine Cookies und nichts, was von anderen Websites geladen wird. Die Seite speichert nichts in Ihrem Browser.",
+  "Your logo": "Ihr Logo",
+  ", if you add one, is only used to build your PDF and isn't kept.": " wird, falls Sie eines hinzufügen, nur für Ihr PDF verwendet und nicht aufbewahrt.",
+  "This demo is run by Snezhana Tuneska.": "Diese Demo wird von Snezhana Tuneska betrieben.",
+  "Close": "Schließen",
+};
+
+// English originals of translated text nodes and attributes, so switching back restores them exactly.
+const originalText = new WeakMap();
+const I18N_ATTRS = ["placeholder", "aria-label", "title", "alt"];
+
+function translateStaticPage() {
+  document.documentElement.lang = LANG;
+  document.title = tr("Valuation Model: free startup valuation", DE["Valuation Model: free startup valuation"]);
+  // Parts the script builds itself use tr() directly and are skipped here.
+  const skip = (el) => el.closest("script, style, #results-panel, #suggested-data-wrap, #scorecard-fields, #step-name, #stage-hint, #tax-hint, #hebesatz-hint, #german-tax-hint, #scorecard-stage-note, #form-error, #form-warning, #ownership-total, #uof-total, .lang-switch");
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!node.parentElement || skip(node.parentElement)) continue;
+    if (!originalText.has(node)) {
+      const key = node.nodeValue.replace(/\s+/g, " ").trim();
+      if (!DE[key]) continue;
+      originalText.set(node, node.nodeValue);
+    }
+    const en = originalText.get(node);
+    const key = en.replace(/\s+/g, " ").trim();
+    node.nodeValue = isDe() ? en.replace(key, DE[key]) : en;
+  }
+  for (const el of document.querySelectorAll(I18N_ATTRS.map((a) => `[${a}]`).join(","))) {
+    if (skip(el)) continue;
+    for (const attr of I18N_ATTRS) {
+      const store = `i18n${attr.replace(/-./g, (m) => m[1].toUpperCase()).replace(/^./, (c) => c.toUpperCase())}`;
+      if (!el.hasAttribute(attr)) continue;
+      if (el.dataset[store] === undefined) {
+        if (!DE[el.getAttribute(attr)]) continue;
+        el.dataset[store] = el.getAttribute(attr);
+      }
+      const en = el.dataset[store];
+      el.setAttribute(attr, isDe() ? DE[en] : en);
+    }
+  }
+  // The sixth shareholder field starts with a default name: follow the language while it's untouched.
+  const other = document.getElementById("shareholder_name_6");
+  if (other && [DE["Other minor shareholders"], "Other minor shareholders"].includes(other.value)) {
+    other.value = tr("Other minor shareholders", DE["Other minor shareholders"]);
+  }
+  for (const btn of document.querySelectorAll(".lang-switch button")) {
+    btn.setAttribute("aria-pressed", String(btn.dataset.lang === LANG));
+  }
+}
+
 // Human-readable labels for the 13 Scorecard questionnaire fields.
 // Keys must match MarketAndTeamAssessment field names exactly (also the
 // keys returned by /reference-data/scorecard-lookup).
 const SCORECARD_LABELS = {
-  management_team_experience: "Management team experience",
-  willingness_to_step_aside_for_ceo: "Willingness to step aside for an experienced CEO",
-  management_team_completeness: "How complete is the management team?",
-  product_development_stage: "Product development stage",
-  product_compelling_to_customers: "Is the product compelling to customers?",
-  product_can_be_duplicated: "Can this product be duplicated by others?",
-  strength_of_competitors_in_market: "Strength of competitors in the market",
-  strength_of_competitive_products: "Strength of competitive products",
-  target_market_size: "Target market size",
-  revenue_potential_in_5_years: "Revenue potential in 5 years",
-  sales_channels_partners: "Sales channels / sales partners",
-  marketing_partners: "Marketing partners",
-  need_for_additional_funding_rounds: "Need for additional funding rounds",
+  management_team_experience: ["Management team experience", "Erfahrung des Managementteams"],
+  willingness_to_step_aside_for_ceo: ["Willingness to step aside for an experienced CEO", "Bereitschaft, einer erfahrenen CEO Platz zu machen"],
+  management_team_completeness: ["How complete is the management team?", "Wie vollständig ist das Managementteam?"],
+  product_development_stage: ["Product development stage", "Entwicklungsstand des Produkts"],
+  product_compelling_to_customers: ["Is the product compelling to customers?", "Überzeugt das Produkt die Kunden?"],
+  product_can_be_duplicated: ["Can this product be duplicated by others?", "Können andere das Produkt kopieren?"],
+  strength_of_competitors_in_market: ["Strength of competitors in the market", "Stärke der Wettbewerber im Markt"],
+  strength_of_competitive_products: ["Strength of competitive products", "Stärke der Konkurrenzprodukte"],
+  target_market_size: ["Target market size", "Größe des Zielmarkts"],
+  revenue_potential_in_5_years: ["Revenue potential in 5 years", "Umsatzpotenzial in 5 Jahren"],
+  sales_channels_partners: ["Sales channels / sales partners", "Vertriebswege / Vertriebspartner"],
+  marketing_partners: ["Marketing partners", "Marketingpartner"],
+  need_for_additional_funding_rounds: ["Need for additional funding rounds", "Bedarf an weiteren Finanzierungsrunden"],
 };
+const scLabel = (key) => tr(...SCORECARD_LABELS[key]);
 
-// Same names as the PDF report (report.py METHOD_LABELS).
+// Same names as the PDF report (report.py _METHOD_LABELS).
 const METHOD_LABELS = {
-  scorecard: "Scorecard",
-  venture_capital: "Venture Capital",
-  comparables: "Comparables (EV/EBITDA multiple)",
-  dcf: "Discounted cash flow (DCF)",
+  scorecard: ["Scorecard", "Scorecard"],
+  venture_capital: ["Venture Capital", "Venture Capital"],
+  comparables: ["Comparables (revenue or EBITDA multiple)", "Vergleichsmethode (Umsatz- oder EBITDA-Multiplikator)"],
+  dcf: ["Discounted cash flow (DCF)", "Discounted Cashflow (DCF)"],
 };
+const methodLabel = (key) => (METHOD_LABELS[key] ? tr(...METHOD_LABELS[key]) : key);
 
 // ============================================================
 // State
@@ -956,20 +1177,39 @@ let regionTouched = false; // true once the user picks a region by hand
 function money(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
   if (Math.abs(n) < 0.5) n = 0; // never show "-€0"
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(isDe() ? "de-DE" : "en-US", {
     style: "currency", currency: "EUR", maximumFractionDigits: 0,
   }).format(n);
 }
 
+// 1.46M / 1,46 Mio. (for ranges, where exact euros would be false precision)
+function moneyShort(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  if (Math.abs(n) < 1e6) return money(Math.round(n / 1000) * 1000);
+  const m = (n / 1e6).toFixed(2);
+  return isDe() ? `${m.replace(".", ",")}\u00a0Mio.\u00a0€` : `€${m}M`;
+}
+
+function decimal(x, digits) {
+  const text = Number(x).toFixed(digits);
+  return isDe() ? text.replace(".", ",") : text;
+}
+
 function pct(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  return (n * 100).toFixed(1) + "%";
+  return decimal(n * 100, 1) + tr("%", "\u00a0%");
 }
 
 function pct2(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  return (n * 100).toFixed(2) + "%";
+  return decimal(n * 100, 2) + tr("%", "\u00a0%");
 }
+
+function pct0(n) {
+  return decimal(n * 100, 0) + tr("%", "\u00a0%");
+}
+
+const numberText = (x) => Number(x).toLocaleString(isDe() ? "de-DE" : "en-US");
 
 function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
@@ -1014,7 +1254,8 @@ function wakeServer() {
         } catch (_) { /* still starting */ }
         showWakeBanner(true);
         if (Date.now() > deadline) {
-          throw new Error("The valuation server isn't answering right now. Please try again in a few minutes.");
+          throw new Error(tr("The valuation server isn't answering right now. Please try again in a few minutes.",
+                             "Der Bewertungsserver antwortet gerade nicht. Bitte versuchen Sie es in ein paar Minuten noch einmal."));
         }
         await sleep(3000);
       }
@@ -1031,17 +1272,21 @@ function wakeServer() {
 const WAKING_STATUSES = new Set([502, 503, 504]);
 
 async function apiRequest(path, options = {}) {
+  // Every answer (results, checks, error messages, the PDF) comes back in the page's language
+  // (English is the API's default, so only German is asked for).
+  const url = isDe() ? `${API_BASE}${path}${path.includes("?") ? "&" : "?"}lang=de` : `${API_BASE}${path}`;
   for (let attempt = 0; attempt < 2; attempt++) {
     await wakeServer();
     try {
-      const res = await fetch(`${API_BASE}${path}`, {
+      const res = await fetch(url, {
         headers: { "Content-Type": "application/json" },
         ...options,
       });
       if (!WAKING_STATUSES.has(res.status) || attempt === 1) return res;
     } catch (_) {
       if (attempt === 1) {
-        throw new Error("Could not reach the valuation server. Check your connection and try again.");
+        throw new Error(tr("Could not reach the valuation server. Check your connection and try again.",
+                           "Der Bewertungsserver ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es noch einmal."));
       }
     }
     serverAwake = false; // fell asleep again: wake it and retry once
@@ -1085,21 +1330,35 @@ function todayIso() {
 // ============================================================
 let countryInfoCache = {};
 
+// Display names for stages, regions, countries and questionnaire answers in the page's language
+// ({value: label}); the values sent to the API are always the English ones.
+let labels = { stages: {}, regions: {}, countries: {}, countries_in_text: {}, scorecard_options: {} };
+let referenceLists = null;
+
+async function loadLanguageData() {
+  const [names, stageInfo] = await Promise.all([
+    apiFetch("/reference-data/labels"),
+    apiFetch("/reference-data/stage-descriptions"),
+  ]);
+  labels = names;
+  stageDescriptions = stageInfo || {};
+}
+
 async function loadReferenceData() {
-  const [countries, industries, stages, options, scorecardLookup, stageInfo] = await Promise.all([
+  const [countries, industries, stages, options, scorecardLookup] = await Promise.all([
     apiFetch("/reference-data/countries"),
     apiFetch("/reference-data/industries"),
     apiFetch("/reference-data/stages"),
     apiFetch("/reference-data/options"),
     apiFetch("/reference-data/scorecard-lookup"),
-    apiFetch("/reference-data/stage-descriptions"),
+    loadLanguageData(),
   ]);
-  stageDescriptions = stageInfo || {};
+  referenceLists = { countries, industries, stages, regions: options.business_territory_region, scorecardLookup };
 
-  fillSelect("country", countries);
+  fillSelect("country", countries, labels.countries, true);
   fillSelect("industry", industries);
-  fillSelect("company_stage", stages);
-  fillSelect("business_territory_region", options.business_territory_region);
+  fillSelect("company_stage", stages, labels.stages);
+  fillSelect("business_territory_region", options.business_territory_region, labels.regions);
   // Germany is the default experience; every other country still works the same way.
   if (countries.includes(DEFAULT_COUNTRY)) document.getElementById("country").value = DEFAULT_COUNTRY;
   if (options.business_territory_region.includes(DEFAULT_REGION)) {
@@ -1118,15 +1377,22 @@ function showStageHint() {
 }
 document.getElementById("company_stage").addEventListener("change", showStageHint);
 
-function fillSelect(id, values) {
+// names: optional {value: label}; sortByLabel: order by the shown name (countries in German).
+function fillSelect(id, values, names = null, sortByLabel = false) {
   const select = document.getElementById(id);
+  const chosen = select.value;
   select.innerHTML = "";
-  for (const value of values) {
+  const label = (v) => (names && names[v]) || v;
+  const ordered = sortByLabel && names
+    ? [...values].sort((a, b) => label(a).localeCompare(label(b), isDe() ? "de" : "en", { sensitivity: "base" }))
+    : values;
+  for (const value of ordered) {
     const opt = document.createElement("option");
     opt.value = value;
-    opt.textContent = value;
+    opt.textContent = label(value);
     select.appendChild(opt);
   }
+  if (chosen && values.includes(chosen)) select.value = chosen;
 }
 
 // No answer is pre-selected: an answer the founder didn't give must never
@@ -1134,23 +1400,36 @@ function fillSelect(id, values) {
 function buildScorecardFields(scorecardLookup) {
   const container = document.getElementById("scorecard-fields");
   container.innerHTML = "";
-  for (const [key, label] of Object.entries(SCORECARD_LABELS)) {
+  for (const key of Object.keys(SCORECARD_LABELS)) {
     const options = scorecardLookup[key] ? Object.keys(scorecardLookup[key]) : [];
     const field = document.createElement("div");
     field.className = "field";
     field.innerHTML = `
-      <label for="sc_${key}">${label}</label>
+      <label for="sc_${key}">${escapeHtml(scLabel(key))}</label>
       <select id="sc_${key}" class="sc-question"></select>
     `;
     container.appendChild(field);
-    fillSelect(`sc_${key}`, options);
+    fillSelect(`sc_${key}`, options, labels.scorecard_options[key]);
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = "Choose an answer\u2026";
+    placeholder.textContent = tr("Choose an answer\u2026", "Antwort wählen\u2026");
     const select = document.getElementById(`sc_${key}`);
     select.prepend(placeholder);
     select.value = "";
     placeholder.defaultSelected = true; // form.reset() returns to "no answer"
+  }
+}
+
+// After a language switch: the same answers, shown in the new language.
+function relabelScorecardFields() {
+  for (const key of Object.keys(SCORECARD_LABELS)) {
+    const select = document.getElementById(`sc_${key}`);
+    if (!select) continue;
+    select.previousElementSibling.textContent = scLabel(key);
+    for (const opt of select.options) {
+      opt.textContent = opt.value ? ((labels.scorecard_options[key] || {})[opt.value] || opt.value)
+                                  : tr("Choose an answer\u2026", "Antwort wählen\u2026");
+    }
   }
 }
 
@@ -1162,9 +1441,12 @@ function updateScorecardNote() {
   const note = document.getElementById("scorecard-stage-note");
   const stage = val("company_stage");
   if (!note || !stage) return;
+  const stageName = escapeHtml(stageInSentence(stage));
   note.innerHTML = isPreRevenueStage()
-    ? `<strong>Please answer every question.</strong> At the ${escapeHtml(stage.replace(/ stage$/i, ""))} stage the Scorecard is part of your valuation.`
-    : `<strong>Optional for your company.</strong> At the ${escapeHtml(stage.replace(/ stage$/i, ""))} stage your company is valued on its numbers and the Scorecard isn't used, so you can skip this step and press Continue.`;
+    ? tr(`<strong>Please answer every question.</strong> At the ${stageName} stage the Scorecard is part of your valuation.`,
+         `<strong>Bitte beantworten Sie alle Fragen.</strong> In der ${stageName} ist die Scorecard Teil Ihrer Bewertung.`)
+    : tr(`<strong>Optional for your company.</strong> At the ${stageName} stage your company is valued on its numbers and the Scorecard isn't used, so you can skip this step and press Continue.`,
+         `<strong>Für Ihr Unternehmen optional.</strong> In der ${stageName} wird Ihr Unternehmen anhand seiner Zahlen bewertet und die Scorecard nicht verwendet; Sie können diesen Schritt überspringen und auf Weiter klicken.`);
 }
 document.getElementById("company_stage").addEventListener("change", updateScorecardNote);
 
@@ -1172,7 +1454,9 @@ document.getElementById("company_stage").addEventListener("change", updateScorec
 const COUNTRIES_WITH_THE = new Set(["United States", "United Kingdom", "Netherlands", "Bahamas", "Philippines",
   "Maldives", "Cayman Islands", "Turks and Caicos Islands", "Solomon Islands", "Isle of Man", "Czech Republic",
   "Dominican Republic", "United Arab Emirates", "Congo (Democratic Republic)", "Congo (Republic)"]);
-const countryInText = (c) => (COUNTRIES_WITH_THE.has(c) ? `the ${c}` : c);
+const countryInText = (c) => (isDe() ? ((labels.countries_in_text || {})[c] || c) : (COUNTRIES_WITH_THE.has(c) ? `the ${c}` : c));
+// "Idea" (in "the Idea stage") / "Ideenphase" (in "der Ideenphase").
+const stageInSentence = (stage) => (isDe() ? (labels.stages[stage] || stage) : stage.replace(/ stage$/i, ""));
 
 // When the country changes: suggest its usual benchmark region (unless the
 // user already chose one) and show its statutory tax rate as the default.
@@ -1190,9 +1474,11 @@ async function onCountryChange() {
     const { info, region } = countryInfoCache[country];
     if (!regionTouched && region) document.getElementById("business_territory_region").value = region;
     const tax = info.corporate_tax_rate;
-    document.getElementById("dcf_tax_rate_override").placeholder = `${(tax * 100).toFixed(1)} (country rate)`;
-    document.getElementById("tax-hint").textContent =
-      `Leave empty to use the statutory rate of ${(tax * 100).toFixed(1)}% for ${countryInText(country)}.`;
+    document.getElementById("dcf_tax_rate_override").placeholder =
+      `${decimal(tax * 100, 1)} ${tr("(country rate)", "(Satz des Landes)")}`;
+    document.getElementById("tax-hint").textContent = tr(
+      `Leave empty to use the statutory rate of ${pct(tax)} for ${countryInText(country)}.`,
+      `Leer lassen, um den gesetzlichen Satz in ${countryInText(country)} (${pct(tax)}) zu verwenden.`);
     showGermanTax(info.country_specific && info.country_specific.tax);
   } catch (_) { /* hints only - ignore */ }
 }
@@ -1207,8 +1493,9 @@ function showGermanTax(tax) {
   document.getElementById("tax-german-field").hidden = !germanTax;
   if (!germanTax) return;
   const avg = Math.round(germanTax.average_hebesatz * 100);
-  document.getElementById("hebesatz-hint").textContent =
-    `e.g. 490 for Munich. Leave empty for the national average of ${avg}% (Destatis, ${germanTax.average_hebesatz_as_of}).`;
+  document.getElementById("hebesatz-hint").textContent = tr(
+    `e.g. 490 for Munich. Leave empty for the national average of ${avg}% (Destatis, ${germanTax.average_hebesatz_as_of}).`,
+    `z. B. 490 für München. Leer lassen für den Bundesdurchschnitt von ${avg}\u00a0% (Destatis, ${germanTax.average_hebesatz_as_of}).`);
   updateGermanTaxHint();
 }
 function updateGermanTaxHint() {
@@ -1219,11 +1506,16 @@ function updateGermanTaxHint() {
   const combined = (y) => germanTax.corporate_tax_by_year[y] * (1 + germanTax.solidarity_surcharge)
     + germanTax.trade_tax_base_rate * hebesatz;
   const first = years[0], last = years[years.length - 1];
-  document.getElementById("german-tax-hint").textContent =
+  const h = Math.round(hebesatz * 100);
+  document.getElementById("german-tax-hint").textContent = tr(
     `Corporate tax (${pct(germanTax.corporate_tax_by_year[first])} until ${first}, falling to ` +
     `${pct(germanTax.corporate_tax_by_year[last])} from ${last}) + 5.5% solidarity surcharge + trade tax at a ` +
-    `${Math.round(hebesatz * 100)}% Hebesatz: about ${pct(combined(first))} now, ${pct(combined(last))} from ${last}. ` +
-    `Each projection year uses its own rate.`;
+    `${h}% Hebesatz: about ${pct(combined(first))} now, ${pct(combined(last))} from ${last}. ` +
+    `Each projection year uses its own rate.`,
+    `Körperschaftsteuer (${pct(germanTax.corporate_tax_by_year[first])} bis ${first}, sinkend auf ` +
+    `${pct(germanTax.corporate_tax_by_year[last])} ab ${last}) + 5,5\u00a0% Solidaritätszuschlag + Gewerbesteuer bei ` +
+    `einem Hebesatz von ${h}\u00a0%: heute etwa ${pct(combined(first))}, ab ${last} ${pct(combined(last))}. ` +
+    `Jedes Planjahr verwendet seinen eigenen Satz.`);
 }
 document.getElementById("trade_tax_hebesatz").addEventListener("input", updateGermanTaxHint);
 document.getElementById("country").addEventListener("change", onCountryChange);
@@ -1271,32 +1563,38 @@ async function updateProjectionPreview() {
   const years = proj.years;
   const cells = (fn) => years.map((y) => `<td>${fn(y)}</td>`).join("");
   const startText = proj.starting_margin_source === "company"
-    ? `your last-12-month margin (${pct(proj.starting_ebitda_margin)})`
-    : `the industry margin (no revenue history)`;
+    ? tr(`your last-12-month margin (${pct(proj.starting_ebitda_margin)})`,
+         `Ihrer Marge der letzten 12 Monate (${pct(proj.starting_ebitda_margin)})`)
+    : tr(`your current EBITDA measured against Year-1 revenue (${pct(proj.starting_ebitda_margin)}, no revenue yet)`,
+         `Ihrem heutigen EBITDA im Verhältnis zum Umsatz in Jahr 1 (${pct(proj.starting_ebitda_margin)}, noch kein Umsatz)`);
   const stepped = proj.tax_schedule && proj.tax_schedule.basis === "germany_schedule";
   const targetText = proj.target_margin_source === "user_override"
-    ? `your Year-5 target (${pct(proj.target_ebitda_margin)})`
-    : `the ${escapeHtml(val("industry"))} margin (${pct(proj.target_ebitda_margin)})`;
+    ? tr(`your Year-5 target (${pct(proj.target_ebitda_margin)})`, `Ihr Ziel für Jahr 5 (${pct(proj.target_ebitda_margin)})`)
+    : tr(`the ${escapeHtml(val("industry"))} margin (${pct(proj.target_ebitda_margin)})`,
+         `die Marge der Branche ${escapeHtml(val("industry"))} (${pct(proj.target_ebitda_margin)})`);
+  const taxText = stepped
+    ? tr(`Tax steps down year by year under the German schedule (${pct(proj.tax_rate)} after Year 5).`,
+         `Die Steuern sinken Jahr für Jahr nach dem deutschen Steuerverlauf (${pct(proj.tax_rate)} nach Jahr 5).`)
+    : tr(`Tax rate ${pct(proj.tax_rate)}.`, `Steuersatz ${pct(proj.tax_rate)}.`);
 
   wrap.innerHTML = `
     <div class="suggested-data-wrap">
-      <h3>Projection used in the valuation</h3>
-      <p class="suggested-data-hint">${proj.starting_margin_source === "company"
-        ? `The EBITDA margin starts from ${startText} and moves in equal steps to ${targetText} by Year 5.`
-        : `With no revenue history, the projection uses ${targetText} as the EBITDA margin from Year 1.`} ${stepped ? `Tax steps down year by year under the German schedule (${pct(proj.tax_rate)} after Year 5).` : `Tax rate ${pct(proj.tax_rate)}.`}</p>
+      <h3>${tr("Projection used in the valuation", "Planung, die in die Bewertung eingeht")}</h3>
+      <p class="suggested-data-hint">${tr(`The EBITDA margin starts from ${startText} and moves in equal steps to ${targetText} by Year 5.`,
+        `Die EBITDA-Marge beginnt bei ${startText} und erreicht in gleichen Schritten bis Jahr 5 ${targetText}.`)} ${taxText}</p>
       <div style="overflow-x:auto">
       <table class="suggested-table">
         <thead><tr><th>&nbsp;</th>${years.map((y) => `<th>${y.year_label}<br><span style="font-weight:400">${escapeHtml(y.period_label)}</span></th>`).join("")}</tr></thead>
         <tbody>
-          <tr><td>Revenue</td>${cells((y) => money(y.revenue))}</tr>
-          <tr><td>EBITDA margin</td>${cells((y) => pct(y.ebitda_margin))}</tr>
-          <tr class="subtotal-row"><td>EBITDA<button type="button" class="tip" data-term="ebitda" aria-label="What is EBITDA?">i</button></td>${cells((y) => money(y.ebitda))}</tr>
-          <tr><td>Depreciation &amp; amortisation</td>${cells((y) => money(y.da))}</tr>
-          ${stepped ? `<tr><td>Tax rate</td>${cells((y) => pct(y.tax_rate))}</tr>` : ""}
-          <tr><td>Tax on EBIT</td>${cells((y) => money(-y.tax_on_ebit))}</tr>
-          <tr><td>Capital expenditure<button type="button" class="tip" data-term="capex" aria-label="What is capex?">i</button></td>${cells((y) => money(-y.capex))}</tr>
-          <tr><td>Change in working capital<button type="button" class="tip" data-term="working_capital" aria-label="What is working capital?">i</button></td>${cells((y) => money(-y.change_in_working_capital))}</tr>
-          <tr class="subtotal-row"><td>Free cash flow</td>${cells((y) => money(y.unlevered_fcf))}</tr>
+          <tr><td>${tr("Revenue", "Umsatz")}</td>${cells((y) => money(y.revenue))}</tr>
+          <tr><td>${tr("EBITDA margin", "EBITDA-Marge")}</td>${cells((y) => pct(y.ebitda_margin))}</tr>
+          <tr class="subtotal-row"><td>EBITDA${tipButton("ebitda", "EBITDA")}</td>${cells((y) => money(y.ebitda))}</tr>
+          <tr><td>${tr("Depreciation &amp; amortisation", "Abschreibungen")}</td>${cells((y) => money(y.da))}</tr>
+          ${stepped ? `<tr><td>${tr("Tax rate", "Steuersatz")}</td>${cells((y) => pct(y.tax_rate))}</tr>` : ""}
+          <tr><td>${tr("Tax on EBIT", "Steuern auf das EBIT")}</td>${cells((y) => money(-y.tax_on_ebit))}</tr>
+          <tr><td>${tr("Capital expenditure", "Investitionen")}${tipButton("capex", tr("capex", "Capex"))}</td>${cells((y) => money(-y.capex))}</tr>
+          <tr><td>${tr("Change in working capital", "Veränderung Working Capital")}${tipButton("working_capital", tr("working capital", "Working Capital"))}</td>${cells((y) => money(-y.change_in_working_capital))}</tr>
+          <tr class="subtotal-row"><td>${tr("Free cash flow", "Freier Cashflow")}</td>${cells((y) => money(y.unlevered_fcf))}</tr>
         </tbody>
       </table>
       </div>
@@ -1307,6 +1605,13 @@ async function updateProjectionPreview() {
 // ============================================================
 // Wizard navigation
 // ============================================================
+const STEP_NAMES = {
+  1: ["Company profile", "Unternehmensprofil"], 2: ["Market & team assessment", "Markt & Team"],
+  3: ["Operating performance", "Aktuelle Geschäftszahlen"], 4: ["Financial assumptions", "Finanzplanung"],
+  5: ["Ownership & funding", "Beteiligungen & Finanzierung"], 6: ["Results", "Ergebnis"],
+};
+const stepName = (step) => tr(...STEP_NAMES[step]);
+
 function goToStep(step, { fromHistory = false } = {}) {
   if (step === 6 && !lastResult && fromHistory) step = 5; // no result to show (e.g. after a reset)
   if (!fromHistory && step !== currentStep) {
@@ -1317,12 +1622,8 @@ function goToStep(step, { fromHistory = false } = {}) {
     el.classList.toggle("is-active", Number(el.dataset.step) === step);
   });
 
-  const stepNames = {
-    1: "Company profile", 2: "Market & team assessment", 3: "Operating performance",
-    4: "Financial assumptions", 5: "Ownership & funding", 6: "Results",
-  };
   document.getElementById("step-current").textContent = step;
-  document.getElementById("step-name").textContent = stepNames[step];
+  document.getElementById("step-name").textContent = stepName(step);
   document.getElementById("step-fill").style.width = `${(step / TOTAL_STEPS) * 100}%`;
 
   document.getElementById("btn-back").hidden = step === 1 || step === 6;
@@ -1345,28 +1646,34 @@ function goToStep(step, { fromHistory = false } = {}) {
 // listed again under "Checks on your inputs" in the results.
 // ------------------------------------------------------------
 const FIELD_NAMES = {
-  company_name: "Company name", valuation_date: "Valuation date",
-  planned_time_to_exit_years: "Planned time to exit", committed_capital: "Committed capital",
-  current_revenue_last_12_months: "Revenue in the last 12 months", current_ebitda: "EBITDA in the last 12 months",
-  cash_available: "Cash available", current_ppe_value: "Property, plant & equipment",
-  revenue_year1: "Year-1 revenue", existing_debt_balance: "Existing debt",
-  growth_y2: "Revenue growth in Year 2", growth_y3: "Revenue growth in Year 3",
-  growth_y4: "Revenue growth in Year 4", growth_y5: "Revenue growth in Year 5",
-  capex_y1: "Capex in Year 1", capex_y2: "Capex in Year 2", capex_y3: "Capex in Year 3",
-  capex_y4: "Capex in Year 4", capex_y5: "Capex in Year 5",
-  target_ebitda_margin_override: "Year-5 EBITDA margin", dcf_tax_rate_override: "Corporate tax rate",
-  trade_tax_hebesatz: "Hebesatz", capital_needed: "Capital being raised",
-  number_of_existing_shares: "Number of existing shares", benchmark_pre_money_override: "Your own benchmark",
-  num_founders: "Number of founders", num_employees: "Number of employees",
-  year_of_incorporation: "Year incorporated", contact_email: "Contact email",
+  company_name: ["Company name", "Firmenname"], valuation_date: ["Valuation date", "Bewertungsdatum"],
+  planned_time_to_exit_years: ["Planned time to exit", "Geplante Zeit bis zum Exit"],
+  committed_capital: ["Committed capital", "Zugesagtes Kapital"],
+  current_revenue_last_12_months: ["Revenue in the last 12 months", "Umsatz der letzten 12 Monate"],
+  current_ebitda: ["EBITDA in the last 12 months", "EBITDA der letzten 12 Monate"],
+  cash_available: ["Cash available", "Liquide Mittel"], current_ppe_value: ["Property, plant & equipment", "Sachanlagen"],
+  annual_recurring_revenue: ["Annual recurring revenue (ARR)", "Jährlich wiederkehrender Umsatz (ARR)"],
+  revenue_year1: ["Year-1 revenue", "Umsatz in Jahr 1"], existing_debt_balance: ["Existing debt", "Bestehende Schulden"],
+  growth_y2: ["Revenue growth in Year 2", "Umsatzwachstum in Jahr 2"], growth_y3: ["Revenue growth in Year 3", "Umsatzwachstum in Jahr 3"],
+  growth_y4: ["Revenue growth in Year 4", "Umsatzwachstum in Jahr 4"], growth_y5: ["Revenue growth in Year 5", "Umsatzwachstum in Jahr 5"],
+  capex_y1: ["Capex in Year 1", "Investitionen in Jahr 1"], capex_y2: ["Capex in Year 2", "Investitionen in Jahr 2"],
+  capex_y3: ["Capex in Year 3", "Investitionen in Jahr 3"], capex_y4: ["Capex in Year 4", "Investitionen in Jahr 4"],
+  capex_y5: ["Capex in Year 5", "Investitionen in Jahr 5"],
+  target_ebitda_margin_override: ["Year-5 EBITDA margin", "EBITDA-Marge in Jahr 5"],
+  dcf_tax_rate_override: ["Corporate tax rate", "Unternehmenssteuersatz"], trade_tax_hebesatz: ["Hebesatz", "Hebesatz"],
+  capital_needed: ["Capital being raised", "Einzuwerbendes Kapital"],
+  number_of_existing_shares: ["Number of existing shares", "Anzahl bestehender Anteile"],
+  benchmark_pre_money_override: ["Your own benchmark", "Ihr eigener Vergleichswert"],
+  num_founders: ["Number of founders", "Anzahl der Gründer"], num_employees: ["Number of employees", "Anzahl der Mitarbeitenden"],
+  year_of_incorporation: ["Year incorporated", "Gründungsjahr"], contact_email: ["Contact email", "E-Mail"],
 };
 
 function fieldName(el) {
-  if (FIELD_NAMES[el.id]) return FIELD_NAMES[el.id];
+  if (FIELD_NAMES[el.id]) return tr(...FIELD_NAMES[el.id]);
   const m = el.id.match(/^shareholder_pct_(\d)$/);
-  if (m) return `Shareholder ${m[1]}'s percentage`;
+  if (m) return tr(`Shareholder ${m[1]}'s percentage`, `Anteil von Gesellschafter ${m[1]}`);
   const label = document.querySelector(`label[for="${el.id}"]`);
-  return label ? label.textContent.trim() : "This field";
+  return label ? label.textContent.trim() : tr("This field", "Dieses Feld");
 }
 
 // A friendly message for a field the browser considers invalid, or null.
@@ -1375,17 +1682,24 @@ function fieldProblem(el) {
   const v = el.validity;
   if (v.valid) return null;
   const name = fieldName(el);
-  const fmt = (x) => (/year/.test(el.id) ? String(x) : Number(x).toLocaleString("en-US"));
-  if (v.valueMissing) return `${name} is missing. Please fill it in.`;
-  if (v.badInput) return `${name}: please enter a number (digits only, no currency signs or spaces).`;
+  const fmt = (x) => (/year/.test(el.id) ? String(x) : numberText(x));
+  if (v.valueMissing) return tr(`${name} is missing. Please fill it in.`, `${name} fehlt. Bitte ausfüllen.`);
+  if (v.badInput) return tr(`${name}: please enter a number (digits only, no currency signs or spaces).`,
+                            `${name}: Bitte eine Zahl eingeben (nur Ziffern, ohne Währungszeichen oder Leerzeichen).`);
   if (v.rangeUnderflow) {
-    return Number(el.min) === 0 ? `${name} can't be negative.` : `${name} must be at least ${fmt(el.min)}.`;
+    return Number(el.min) === 0 ? tr(`${name} can't be negative.`, `${name} kann nicht negativ sein.`)
+                                : tr(`${name} must be at least ${fmt(el.min)}.`, `${name} muss mindestens ${fmt(el.min)} sein.`);
   }
-  if (v.rangeOverflow) return `${name} can be at most ${fmt(el.max)}.`;
-  if (v.stepMismatch) return `${name}: please use ${Number(el.step) === 1 ? "whole numbers" : "fewer decimals"}.`;
-  if (v.typeMismatch && el.type === "email") return `${name} doesn't look like an email address (for example name@company.de).`;
-  if (v.typeMismatch) return `${name} doesn't look right. Please check it.`;
-  return `${name} doesn't look right. Please check it.`;
+  if (v.rangeOverflow) return tr(`${name} can be at most ${fmt(el.max)}.`, `${name} darf höchstens ${fmt(el.max)} sein.`);
+  if (v.stepMismatch) {
+    return Number(el.step) === 1 ? tr(`${name}: please use whole numbers.`, `${name}: Bitte ganze Zahlen verwenden.`)
+                                 : tr(`${name}: please use fewer decimals.`, `${name}: Bitte weniger Nachkommastellen verwenden.`);
+  }
+  if (v.typeMismatch && el.type === "email") {
+    return tr(`${name} doesn't look like an email address (for example name@company.de).`,
+              `${name} sieht nicht wie eine E-Mail-Adresse aus (zum Beispiel name@firma.de).`);
+  }
+  return tr(`${name} doesn't look right. Please check it.`, `${name} sieht nicht richtig aus. Bitte prüfen.`);
 }
 
 function markInvalid(el) {
@@ -1418,46 +1732,55 @@ function extraChecks(step) {
   if (step === 2 && isPreRevenueStage()) {
     const open = [...document.querySelectorAll(".sc-question")].filter((el) => !el.value);
     if (open.length) {
-      return { error: `Please answer all questions on this step (${open.length} still open): at the ${val("company_stage").replace(/ stage$/i, "")} stage the Scorecard is part of your valuation.`, field: open[0].id };
+      return { error: tr(`Please answer all questions on this step (${open.length} still open): at the ${stageInSentence(val("company_stage"))} stage the Scorecard is part of your valuation.`,
+                         `Bitte beantworten Sie alle Fragen dieses Schritts (${open.length} noch offen): In der ${stageInSentence(val("company_stage"))} ist die Scorecard Teil Ihrer Bewertung.`), field: open[0].id };
     }
   }
   if (step === 3) {
     const rev = Number(val("current_revenue_last_12_months") || 0);
     const ebitda = Number(val("current_ebitda") || 0);
     if (rev > 0 && ebitda > rev) {
-      return { error: "EBITDA can't be larger than revenue (it is what's left of revenue after operating costs). Please check both figures.", field: "current_ebitda" };
+      return { error: tr("EBITDA can't be larger than revenue (it is what's left of revenue after operating costs). Please check both figures.",
+                         "Das EBITDA kann nicht größer als der Umsatz sein (es ist, was vom Umsatz nach den operativen Kosten bleibt). Bitte prüfen Sie beide Zahlen."), field: "current_ebitda" };
     }
     if (rev === 0 && ebitda > 0) {
-      return { error: "With no revenue, EBITDA can't be positive. Enter 0 or a negative number (your operating loss).", field: "current_ebitda" };
+      return { error: tr("With no revenue, EBITDA can't be positive. Enter 0 or a negative number (your operating loss).",
+                         "Ohne Umsatz kann das EBITDA nicht positiv sein. Geben Sie 0 oder eine negative Zahl ein (Ihren operativen Verlust)."), field: "current_ebitda" };
     }
   }
   if (step === 4) {
     if (!(Number(val("revenue_year1")) > 0)) {
-      return { error: "Year-1 revenue must be above zero: the cash-flow methods need a revenue plan to build on.", field: "revenue_year1" };
+      return { error: tr("Year-1 revenue must be above zero: the cash-flow methods need a revenue plan to build on.",
+                         "Der Umsatz in Jahr 1 muss über null liegen: Die Cashflow-Methoden brauchen einen Umsatzplan."), field: "revenue_year1" };
     }
   }
   if (step === 5) {
     if (!(Number(val("capital_needed")) > 0)) {
-      return { error: "Please enter the amount you are raising in this round (above zero).", field: "capital_needed" };
+      return { error: tr("Please enter the amount you are raising in this round (above zero).",
+                         "Bitte geben Sie den Betrag ein, den Sie in dieser Runde einwerben (über null)."), field: "capital_needed" };
     }
     for (let i = 1; i <= 6; i++) {
       const name = (val(`shareholder_name_${i}`) || "").trim();
       const pctVal = val(`shareholder_pct_${i}`);
       if (pctVal !== "" && Number(pctVal) > 0 && !name) {
-        return { error: `Shareholder ${i} has a percentage but no name. Add a name or clear the percentage.`, field: `shareholder_name_${i}` };
+        return { error: tr(`Shareholder ${i} has a percentage but no name. Add a name or clear the percentage.`,
+                           `Gesellschafter ${i} hat einen Anteil, aber keinen Namen. Fügen Sie einen Namen hinzu oder löschen Sie den Anteil.`), field: `shareholder_name_${i}` };
       }
     }
     const owned = ownershipTotal();
     if (owned !== null && owned > 100.5) {
-      return { error: `Ownership adds up to ${owned.toFixed(1)}%, which is more than 100%. Please check the percentages.`, field: "shareholder_pct_1" };
+      return { error: tr(`Ownership adds up to ${owned.toFixed(1)}%, which is more than 100%. Please check the percentages.`,
+                         `Die Anteile ergeben zusammen ${decimal(owned, 1)}\u00a0%, also mehr als 100\u00a0%. Bitte prüfen Sie die Prozentwerte.`), field: "shareholder_pct_1" };
     }
     if (owned !== null && owned < 99.5) {
-      warnings.push(`Ownership adds up to ${owned.toFixed(1)}%, not 100%. The valuation still runs; add the remaining shareholders if you want the ownership chart in the report to be complete.`);
+      warnings.push(tr(`Ownership adds up to ${owned.toFixed(1)}%, not 100%. The valuation still runs; add the remaining shareholders if you want the ownership chart in the report to be complete.`,
+                       `Die Anteile ergeben zusammen ${decimal(owned, 1)}\u00a0%, nicht 100\u00a0%. Die Bewertung läuft trotzdem; ergänzen Sie die übrigen Gesellschafter, wenn das Beteiligungsdiagramm im Bericht vollständig sein soll.`));
     }
     const capital = Number(val("capital_needed"));
     const uses = useOfFundsTotal();
     if (uses !== null && Math.abs(uses - capital) > Math.max(1, 0.005 * capital)) {
-      warnings.push(`Use of funds adds up to ${money(uses)}, but you are raising ${money(capital)}. The valuation still runs; it is just flagged in the report.`);
+      warnings.push(tr(`Use of funds adds up to ${money(uses)}, but you are raising ${money(capital)}. The valuation still runs; it is just flagged in the report.`,
+                       `Die Mittelverwendung ergibt ${money(uses)}, Sie werben aber ${money(capital)} ein. Die Bewertung läuft trotzdem; es wird nur im Bericht vermerkt.`));
     }
   }
   return { warnings };
@@ -1495,12 +1818,13 @@ function validateStep(step) {
 function updateRunningTotals() {
   const owned = ownershipTotal();
   const ownEl = document.getElementById("ownership-total");
-  ownEl.textContent = owned === null ? "" : `Total so far: ${owned.toFixed(1)}%.`;
+  ownEl.textContent = owned === null ? "" : tr(`Total so far: ${owned.toFixed(1)}%.`, `Bisher zusammen: ${decimal(owned, 1)}\u00a0%.`);
   ownEl.classList.toggle("is-off", owned !== null && Math.abs(owned - 100) > 0.5);
   const uses = useOfFundsTotal();
   const capital = Number(val("capital_needed") || 0);
   const uofEl = document.getElementById("uof-total");
-  uofEl.textContent = uses === null ? "" : `Total so far: ${money(uses)}${capital > 0 ? ` of ${money(capital)}` : ""}.`;
+  uofEl.textContent = uses === null ? "" : tr(`Total so far: ${money(uses)}${capital > 0 ? ` of ${money(capital)}` : ""}.`,
+                                             `Bisher zusammen: ${money(uses)}${capital > 0 ? ` von ${money(capital)}` : ""}.`);
   uofEl.classList.toggle("is-off", uses !== null && capital > 0 && Math.abs(uses - capital) > Math.max(1, 0.005 * capital));
 }
 document.getElementById("step-5").addEventListener("input", updateRunningTotals);
@@ -1593,6 +1917,7 @@ function buildPayload() {
       current_ebitda: Number(val("current_ebitda") || 0),
       cash_available: Number(val("cash_available") || 0),
       current_ppe_value: Number(val("current_ppe_value") || 0),
+      annual_recurring_revenue: numOrNull("annual_recurring_revenue"),
     },
     financial_assumptions: {
       revenue_year1: Number(val("revenue_year1") || 0),
@@ -1650,84 +1975,113 @@ function showResultsError(message) {
   const panel = document.getElementById("results-panel");
   panel.hidden = false;
   panel.innerHTML = `<p class="form-error" style="margin-top:0; white-space:pre-line">${escapeHtml(message)}</p>
-    <button class="btn btn-ghost" id="btn-back-to-form">Back to the form</button>`;
+    <button class="btn btn-ghost" id="btn-back-to-form">${tr("Back to the form", "Zurück zum Formular")}</button>`;
   document.getElementById("btn-back-to-form").addEventListener("click", () => goToStep(5));
 }
 
 function methodValueCell(mv) {
   if (mv.status === "ok") return money(mv.pre_money_value);
-  if (mv.status === "not_used") return "not used at this stage";
-  return "not meaningful";
+  if (mv.status === "not_used") return tr("not used at this stage", "in dieser Phase nicht verwendet");
+  return tr("not meaningful", "nicht aussagekräftig");
 }
+
+const multipleText = (x) => `${decimal(x, 2)}×`;
+const countsAsZero = () => tr(" It counts as €0 in the blend.", " Sie zählt mit 0 € in der Gewichtung.");
 
 // One-line "why this number" per method, matching the PDF's explanations.
 function methodExplanation(key, o) {
   if (key === "scorecard") {
     const sc = o.scorecard;
-    if (o.method_values.scorecard.status === "not_used") return "Used only for pre-revenue companies (Idea and Development stages).";
+    if (o.method_values.scorecard.status === "not_used") {
+      return tr("Used only for pre-revenue companies (Idea and Development stages).",
+                "Nur vor Umsatzbeginn verwendet (Ideen- und Entwicklungsphase).");
+    }
     // Plain text: the caller escapes the whole explanation once.
-    const where = sc.benchmark_source === "country_table" ? `in ${val("country")}` : "in this region";
-    const basis = sc.benchmark_source === "user_override" ? " (your benchmark)"
-      : sc.benchmark_to_be_sourced ? " (placeholder: Europe figure, local benchmark to be sourced)"
+    const where = sc.benchmark_source === "country_table"
+      ? tr(`in ${val("country")}`, `in ${countryInText(val("country"))}`) : tr("in this region", "in dieser Region");
+    const basis = sc.benchmark_source === "user_override" ? tr(" (your benchmark)", " (Ihr Vergleichswert)")
+      : sc.benchmark_to_be_sourced ? tr(" (placeholder: Europe figure, local benchmark to be sourced)",
+                                        " (Platzhalter: Wert für Europa, lokaler Vergleichswert folgt)")
       : sc.benchmark_source === "country_table" ? ` (${sc.benchmark_basis})`
-      : " (Equidam H1 2026 median)";
-    return `A typical pre-revenue company ${where} is valued at ${money(sc.benchmark_pre_money_valuation)}${basis}; your answers score ${pct(sc.total_factor)} of that company.`;
+      : tr(" (Equidam H1 2026 median)", " (Median laut Equidam H1 2026)");
+    return tr(`A typical pre-revenue company ${where} is valued at ${money(sc.benchmark_pre_money_valuation)}${basis}; your answers score ${pct(sc.total_factor)} of that company.`,
+              `Ein typisches Unternehmen vor Umsatzbeginn ${where} wird mit ${money(sc.benchmark_pre_money_valuation)} bewertet${basis}; nach Ihren Antworten erreichen Sie ${pct(sc.total_factor)} davon.`);
   }
   if (key === "venture_capital") {
     const vc = o.venture_capital;
     if (vc.not_meaningful_reason) return vc.not_meaningful_reason;
-    return `${vc.exit_year_label} EBITDA ${money(vc.exit_year_ebitda)} × ${vc.ev_ebitda_multiple.toFixed(2)}× = exit value ${money(vc.exit_value)}, discounted ${vc.time_to_exit} year${vc.time_to_exit === 1 ? "" : "s"} at an investor's ${pct(vc.target_return)} target return = ${money(vc.post_money_valuation)} post-money, minus the ${money(vc.investment_amount)} raised.`;
+    if (vc.no_value_reason) return vc.no_value_reason + countsAsZero();
+    const years = vc.time_to_exit;
+    return tr(`${vc.exit_year_label} EBITDA ${money(vc.exit_year_ebitda)} × ${multipleText(vc.ev_ebitda_multiple)} = exit value ${money(vc.exit_value)}, discounted ${years} year${years === 1 ? "" : "s"} at an investor's ${pct(vc.target_return)} target return = ${money(vc.post_money_valuation)} post-money, minus the ${money(vc.investment_amount)} raised.`,
+              `EBITDA ${vc.exit_year_label} ${money(vc.exit_year_ebitda)} × ${multipleText(vc.ev_ebitda_multiple)} = Exit-Wert ${money(vc.exit_value)}, ${years} Jahr${years === 1 ? "" : "e"} abgezinst mit der Zielrendite eines Investors von ${pct(vc.target_return)} = ${money(vc.post_money_valuation)} Post-Money, abzüglich der eingeworbenen ${money(vc.investment_amount)}.`);
   }
   if (key === "comparables") {
     const c = o.comparables;
     if (c.not_meaningful_reason) return c.not_meaningful_reason;
-    return `Last-12-month EBITDA ${money(c.trailing_ebitda)} × ${c.ev_ebitda_multiple.toFixed(2)}× public-company multiple, less a ${pct(c.private_company_discount)} private-company discount, minus debt plus cash.`;
+    const discount = tr(`less a ${pct(c.private_company_discount)} private-company discount, minus debt plus cash.`,
+                        `abzüglich ${pct(c.private_company_discount)} Abschlag für nicht börsennotierte Unternehmen, abzüglich Schulden, zuzüglich liquider Mittel.`);
+    if (c.basis_used === "ebitda") {
+      return tr(`Last-12-month EBITDA ${money(c.trailing_ebitda)} × ${multipleText(c.ev_ebitda_multiple)} public-company multiple (more than revenue gives), `,
+                `EBITDA der letzten 12 Monate ${money(c.trailing_ebitda)} × ${multipleText(c.ev_ebitda_multiple)} Börsen-Multiplikator (mehr als über den Umsatz), `) + discount;
+    }
+    if (c.basis_used === "arr") {
+      return tr(`ARR ${money(c.revenue_amount)} × ${multipleText(c.revenue_multiple)} (listed SaaS companies; more than EBITDA gives), `,
+                `ARR ${money(c.revenue_amount)} × ${multipleText(c.revenue_multiple)} (börsennotierte SaaS-Firmen; mehr als über das EBITDA), `) + discount;
+    }
+    return tr(`Last-12-month revenue ${money(c.revenue_amount)} × ${multipleText(c.revenue_multiple)} EV/Sales of listed companies (more than EBITDA gives), `,
+              `Umsatz der letzten 12 Monate ${money(c.revenue_amount)} × ${multipleText(c.revenue_multiple)} EV/Umsatz börsennotierter Unternehmen (mehr als über das EBITDA), `) + discount;
   }
   if (key === "dcf") {
     const d = o.dcf;
     if (d.not_meaningful_reason) return d.not_meaningful_reason;
-    return `Free cash flows and terminal value discounted at ${pct2(d.discount_rate)} (WACC) = ${money(d.enterprise_value)} if the business survives; × ${pct(d.survival_probability)} survival probability, minus debt plus cash.`;
+    if (d.no_value_reason) return d.no_value_reason + countsAsZero();
+    return tr(`Free cash flows and terminal value discounted at ${pct2(d.discount_rate)} (WACC) = ${money(d.enterprise_value)} if the business survives; × ${pct(d.survival_probability)} survival probability, minus debt plus cash.`,
+              `Freie Cashflows und Endwert, abgezinst mit ${pct2(d.discount_rate)} (WACC) = ${money(d.enterprise_value)}, wenn das Geschäft überlebt; × ${pct(d.survival_probability)} Überlebenswahrscheinlichkeit, abzüglich Schulden, zuzüglich liquider Mittel.`);
   }
   return "";
 }
 
+const scenarioText = (label) => (isDe() ? label.replace("%", " %") : label);
+
 function scenarioBlock(scenarios) {
   if (!scenarios || Object.keys(scenarios).length === 0) return "";
   const blends = Object.values(scenarios).map((s) => s.blended_pre_money_valuation);
+  const title = `<h2 class="ledger-title" style="margin-top:32px">${tr("Scenario &amp; sensitivity", "Szenarien &amp; Sensitivität")}</h2>`;
   if (Math.max(...blends) - Math.min(...blends) < 1) {
-    return `
-    <h2 class="ledger-title" style="margin-top:32px">Scenario &amp; sensitivity</h2>
-    <p class="ledger-subtitle">The value stays at ${money(blends[0])} whatever Year-1 revenue turns out to be: only methods that don't use projected revenue give a value for this company, so there are no revenue scenarios to compare.</p>`;
+    return `${title}
+    <p class="ledger-subtitle">${tr(`The value stays at ${money(blends[0])} whatever Year-1 revenue turns out to be: only methods that don't use projected revenue give a value for this company, so there are no revenue scenarios to compare.`,
+      `Der Wert bleibt bei ${money(blends[0])}, egal wie hoch der Umsatz in Jahr 1 ausfällt: Nur Methoden, die den geplanten Umsatz nicht verwenden, ergeben einen Wert für dieses Unternehmen; es gibt also keine Umsatzszenarien zu vergleichen.`)}</p>`;
   }
   const labels = Object.keys(scenarios).map((l) => Number(l.replace("%", "")));
   const falls = blends.some((b, i) => i > 0 && b < blends[i - 1] - 1);
-  return `
-    <h2 class="ledger-title" style="margin-top:32px">Scenario &amp; sensitivity</h2>
-    <p class="ledger-subtitle">How the valuation shifts if Year-1 revenue comes in above or below plan. Scorecard and Comparables don't move: they use your answers and last-12-month EBITDA, not projected revenue. The weights stay as in your result above; a method that gives no positive value in a scenario counts as €0.${falls ? " " + "Here a higher Year-1 revenue gives a lower value: in your plan, extra revenue costs more cash than it brings in (for example losses at the planned margin, or the working capital it ties up), so the cash-flow based values go down." : ""}</p>
+  return `${title}
+    <p class="ledger-subtitle">${tr("How the valuation shifts if Year-1 revenue comes in above or below plan. Scorecard and Comparables don't move: they use your answers and the last 12 months' figures, not projected revenue. The weights stay as in your result above; a method that gives no positive value in a scenario counts as €0.",
+      "Wie sich die Bewertung verschiebt, wenn der Umsatz in Jahr 1 über oder unter dem Plan liegt. Scorecard und Vergleichsmethode bewegen sich nicht: Sie verwenden Ihre Antworten und die Zahlen der letzten 12 Monate, nicht den geplanten Umsatz. Die Gewichte bleiben wie oben; eine Methode, die in einem Szenario keinen positiven Wert ergibt, zählt mit 0 €.")}${falls ? " " + tr("Here a higher Year-1 revenue gives a lower value: in your plan, extra revenue costs more cash than it brings in (for example losses at the planned margin, or the working capital it ties up), so the cash-flow based values go down.",
+      "Hier ergibt ein höherer Umsatz in Jahr 1 einen niedrigeren Wert: In Ihrem Plan kostet zusätzlicher Umsatz mehr Geld, als er einbringt (zum Beispiel Verluste bei der geplanten Marge oder gebundenes Working Capital); die Cashflow-basierten Werte sinken deshalb.") : ""}</p>
     <div class="scenario-slider-row">
-      <label for="scenario-slider">Revenue scenario</label>
+      <label for="scenario-slider">${tr("Revenue scenario", "Umsatzszenario")}</label>
       <input type="range" id="scenario-slider" min="${Math.min(...labels)}" max="${Math.max(...labels)}" step="10" value="100">
-      <span id="scenario-slider-out">100%</span>
+      <span id="scenario-slider-out">${scenarioText("100%")}</span>
     </div>
     <table class="ledger-table" id="scenario-table">
-      <thead><tr><th>Method</th><th>Pre-money value</th></tr></thead>
+      <thead><tr><th>${tr("Method", "Methode")}</th><th>${tr("Pre-money value", "Pre-Money-Wert")}</th></tr></thead>
       <tbody id="scenario-table-body"></tbody>
-      <tbody><tr class="ledger-total-row"><td>Blended pre-money</td><td id="scenario-blended"></td></tr></tbody>
+      <tbody><tr class="ledger-total-row"><td>${tr("Blended pre-money", "Gewichtete Pre-Money-Bewertung")}</td><td id="scenario-blended"></td></tr></tbody>
     </table>
   `;
 }
 
 function updateScenarioDisplay(scenarios, label) {
   const s = scenarios[label];
-  document.getElementById("scenario-slider-out").textContent = label;
+  document.getElementById("scenario-slider-out").textContent = scenarioText(label);
   if (!s) {
     document.getElementById("scenario-table-body").innerHTML =
-      `<tr><td colspan="2" class="muted">No method gives a meaningful value in this scenario.</td></tr>`;
+      `<tr><td colspan="2" class="muted">${tr("No method gives a meaningful value in this scenario.", "In diesem Szenario ergibt keine Methode einen aussagekräftigen Wert.")}</td></tr>`;
     document.getElementById("scenario-blended").textContent = "—";
     return;
   }
   document.getElementById("scenario-table-body").innerHTML = Object.entries(s.method_values).map(([key, mv]) => `
-    <tr><td>${METHOD_LABELS[key] || key}</td><td class="${mv.status === "ok" ? "" : "muted"}">${methodValueCell(mv)}</td></tr>
+    <tr><td>${methodLabel(key)}</td><td class="${mv.status === "ok" ? "" : "muted"}">${methodValueCell(mv)}</td></tr>
   `).join("");
   document.getElementById("scenario-blended").textContent = money(s.blended_pre_money_valuation);
 }
@@ -1745,65 +2099,126 @@ function wireScenarioSlider(scenarios) {
 function checksBlock(warnings) {
   if (!warnings || warnings.length === 0) return "";
   const items = warnings.map((w) => `
-    <li class="${w.severity === "warning" ? "is-warning" : ""}"><strong>${w.severity === "warning" ? "Check" : "Note"}</strong>${escapeHtml(w.message)}</li>
+    <li class="${w.severity === "warning" ? "is-warning" : ""}"><strong>${w.severity === "warning" ? tr("Check", "Prüfen") : tr("Note", "Hinweis")}</strong>${escapeHtml(w.message)}</li>
   `).join("");
   const hasChecks = warnings.some((w) => w.severity === "warning");
   return `
-    <h2 class="ledger-title" style="margin-top:32px">${hasChecks ? "Checks on your inputs" : "Notes on how your figures were used"}</h2>
+    <h2 class="ledger-title" style="margin-top:32px">${hasChecks ? tr("Checks on your inputs", "Prüfung Ihrer Angaben") : tr("Notes on how your figures were used", "Hinweise zur Verwendung Ihrer Zahlen")}</h2>
     <p class="ledger-subtitle">${hasChecks
-      ? "The calculation ran, but the points marked “Check” deserve a second look before you share the numbers."
-      : "Nothing here needs fixing: these notes explain how your figures and the market data were used."}</p>
+      ? tr("The calculation ran, but the points marked “Check” deserve a second look before you share the numbers.",
+           "Die Berechnung ist gelaufen, aber die mit „Prüfen“ markierten Punkte sollten Sie sich ansehen, bevor Sie die Zahlen weitergeben.")
+      : tr("Nothing here needs fixing: these notes explain how your figures and the market data were used.",
+           "Hier muss nichts korrigiert werden: Die Hinweise erklären, wie Ihre Zahlen und die Marktdaten verwendet wurden.")}</p>
     <ul class="checks-list">${items}</ul>
   `;
+}
+
+// How a typical round at this stage would price the company: a cross-check next to the blend.
+function roundLogicBlock(result) {
+  const rl = result.round_logic;
+  if (!rl) return "";
+  const position = { below: tr("below the usual range", "unter der üblichen Spanne"),
+                     above: tr("above the usual range", "über der üblichen Spanne"),
+                     within: tr("within the usual range", "in der üblichen Spanne") }[rl.raise_position];
+  const rows = [
+    [tr(`Typical ${rl.round_name} round`, `Typische ${rl.round_name}-Runde`),
+     tr(`${moneyShort(rl.typical_round_low)} to ${moneyShort(rl.typical_round_high)}`, `${moneyShort(rl.typical_round_low)} bis ${moneyShort(rl.typical_round_high)}`)],
+    [tr("Your round", "Ihre Runde"), `${money(rl.capital_needed)} (${position})`],
+    [tr("Pre-money at a typical stake", "Pre-Money bei typischem Anteil"),
+     tr(`${moneyShort(rl.implied_pre_money_low)} to ${moneyShort(rl.implied_pre_money_high)} (median ${moneyShort(rl.implied_pre_money_median)})`,
+        `${moneyShort(rl.implied_pre_money_low)} bis ${moneyShort(rl.implied_pre_money_high)} (Median ${moneyShort(rl.implied_pre_money_median)})`)],
+  ];
+  if (rl.dilution_at_blend !== null) {
+    rows.push([tr("Stake your round buys at the blended value", "Anteil, den Ihre Runde beim gewichteten Wert kauft"), pct(rl.dilution_at_blend)]);
+  }
+  const outside = rl.dilution_at_blend !== null && (rl.dilution_at_blend < rl.dilution_low || rl.dilution_at_blend > rl.dilution_high);
+  return `
+    <h2 class="ledger-title" style="margin-top:32px">${tr("Round logic", "Rundenlogik")}${tipButton("round_logic", tr("round logic", "Rundenlogik"))}</h2>
+    <p class="ledger-subtitle">${tr(`Early rounds are usually priced by the share of the company investors buy: a typical ${rl.round_name} round sells ${pct0(rl.dilution_low)}–${pct0(rl.dilution_high)} (median ${pct(rl.dilution_median)}). This cross-check is not part of the blended value.`,
+      `Frühe Runden werden meist über den Anteil bepreist, den Investoren kaufen: Eine typische ${rl.round_name}-Runde verkauft ${pct0(rl.dilution_low)}–${pct0(rl.dilution_high)} (Median ${pct(rl.dilution_median)}). Diese Gegenprobe fließt nicht in den gewichteten Wert ein.`)}${outside
+      ? " " + tr("At your blended value the round would buy an unusual stake, so expect investors to negotiate towards the range above.",
+                 "Beim gewichteten Wert würde die Runde einen ungewöhnlichen Anteil kaufen; rechnen Sie damit, dass Investoren in Richtung der Spanne oben verhandeln.") : ""}</p>
+    <table class="ledger-table">
+      <tbody>${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</tbody>
+    </table>`;
 }
 
 // ------------------------------------------------------------
 // Plain-language explanations of financial terms, shown from the (i)
 // buttons next to them and listed together under "Key terms" in the results.
+// Each: [English title, English text, German title, German text].
 // ------------------------------------------------------------
 const TERMS = {
   ebitda: ["EBITDA",
-    "Earnings before interest, taxes, depreciation and amortisation: your revenue minus operating costs such as COGS (cost of goods sold: materials, production, hosting) and SG&A (selling, general and administrative costs: salaries, marketing, rent). It shows what the business itself earns before financing and accounting write-downs. A loss is a negative number."],
+    "Earnings before interest, taxes, depreciation and amortisation: your revenue minus operating costs such as COGS (cost of goods sold: materials, production, hosting) and SG&A (selling, general and administrative costs: salaries, marketing, rent). It shows what the business itself earns before financing and accounting write-downs. A loss is a negative number.",
+    "EBITDA",
+    "Ergebnis vor Zinsen, Steuern und Abschreibungen: Ihr Umsatz abzüglich der operativen Kosten wie Herstellkosten (Material, Produktion, Hosting) sowie Vertriebs- und Verwaltungskosten (Gehälter, Marketing, Miete). Es zeigt, was das Geschäft selbst verdient, vor Finanzierung und buchhalterischen Abschreibungen. Ein Verlust ist eine negative Zahl."],
   ebitda_margin: ["EBITDA margin",
-    "EBITDA as a percentage of revenue. A 15% margin means €15 of EBITDA for every €100 of revenue. If you leave this empty, the projection moves towards the typical margin of your industry by Year 5."],
+    "EBITDA as a percentage of revenue. A 15% margin means €15 of EBITDA for every €100 of revenue. If you leave this empty, the projection moves towards the typical margin of your industry by Year 5.",
+    "EBITDA-Marge",
+    "Das EBITDA in Prozent des Umsatzes. Eine Marge von 15 % bedeutet 15 € EBITDA je 100 € Umsatz. Wenn Sie das Feld leer lassen, bewegt sich die Planung bis Jahr 5 zur typischen Marge Ihrer Branche."],
   working_capital: ["Working capital",
-    "Cash tied up in day-to-day business: receivables (invoices customers haven't paid yet) plus inventory (stock not yet sold) minus payables (bills you haven't paid yet). When revenue grows, more cash gets tied up, which lowers free cash flow. The app uses typical levels for your industry."],
+    "Cash tied up in day-to-day business: receivables (invoices customers haven't paid yet) plus inventory (stock not yet sold) minus payables (bills you haven't paid yet). When revenue grows, more cash gets tied up, which lowers free cash flow. The app uses typical levels for your industry.",
+    "Working Capital",
+    "Im Tagesgeschäft gebundenes Geld: Forderungen (noch nicht bezahlte Kundenrechnungen) plus Vorräte (noch nicht verkaufte Ware) minus Verbindlichkeiten (noch nicht bezahlte Rechnungen). Wenn der Umsatz wächst, wird mehr Geld gebunden, und der freie Cashflow sinkt. Das Tool verwendet typische Werte Ihrer Branche."],
   capex: ["Capex (capital expenditure)",
-    "Money spent on things the company uses for several years, such as machines, equipment, vehicles or building software it capitalises. It isn't an operating cost, so it doesn't reduce EBITDA, but it does use cash."],
+    "Money spent on things the company uses for several years, such as machines, equipment, vehicles or building software it capitalises. It isn't an operating cost, so it doesn't reduce EBITDA, but it does use cash.",
+    "Capex (Investitionen)",
+    "Ausgaben für Dinge, die das Unternehmen mehrere Jahre nutzt, etwa Maschinen, Ausstattung, Fahrzeuge oder selbst entwickelte, aktivierte Software. Sie sind keine operativen Kosten, verringern also nicht das EBITDA, verbrauchen aber Geld."],
   hurdle_rate: ["Target return (hurdle rate)",
-    "The yearly return an investor expects at your stage to make up for the risk that many startups fail: from 65% a year at the Idea stage down to 20% for mature companies. The Venture Capital method discounts your future exit value at this rate."],
+    "The yearly return an investor expects at your stage to make up for the risk that many startups fail: from 65% a year at the Idea stage down to 20% for mature companies. The Venture Capital method discounts your future exit value at this rate.",
+    "Zielrendite",
+    "Die jährliche Rendite, die ein Investor in Ihrer Phase erwartet, um das Risiko auszugleichen, dass viele Startups scheitern: von 65 % pro Jahr in der Ideenphase bis 20 % für reife Unternehmen. Die Venture-Capital-Methode zinst Ihren künftigen Exit-Wert mit diesem Satz ab."],
   pre_post_money: ["Pre-money and post-money",
-    "Pre-money is what the company is worth just before the new investment; post-money is pre-money plus the money raised. Example: €250,000 invested at a €1,000,000 pre-money valuation gives a €1,250,000 post-money valuation, and the investor owns 250,000 / 1,250,000 = 20%."],
-  ev_ebitda: ["EV/EBITDA multiple",
-    "Enterprise value divided by EBITDA: how many years of EBITDA buyers pay for listed companies in your industry. The Comparables method applies it to your EBITDA, then takes a discount because a young private company is harder to sell."],
+    "Pre-money is what the company is worth just before the new investment; post-money is pre-money plus the money raised. Example: €250,000 invested at a €1,000,000 pre-money valuation gives a €1,250,000 post-money valuation, and the investor owns 250,000 / 1,250,000 = 20%.",
+    "Pre-Money und Post-Money",
+    "Pre-Money ist der Wert des Unternehmens direkt vor der neuen Investition; Post-Money ist Pre-Money plus das eingeworbene Geld. Beispiel: 250.000 € Investition bei 1.000.000 € Pre-Money ergeben 1.250.000 € Post-Money, und der Investor hält 250.000 / 1.250.000 = 20 %."],
+  ev_ebitda: ["Revenue and EBITDA multiples",
+    "Enterprise value divided by revenue or by EBITDA: what buyers pay for listed companies in your industry per euro of revenue or EBITDA. The Comparables method applies the multiple that gives your company more (young companies are compared on revenue until their profit is the bigger driver), then takes a discount because a young private company is harder to sell.",
+    "Umsatz- und EBITDA-Multiplikatoren",
+    "Unternehmenswert geteilt durch Umsatz oder EBITDA: was Käufer für börsennotierte Unternehmen Ihrer Branche je Euro Umsatz oder EBITDA zahlen. Die Vergleichsmethode verwendet den Multiplikator, der für Ihr Unternehmen mehr ergibt (junge Unternehmen werden über den Umsatz verglichen, bis ihr Gewinn der größere Werttreiber ist), und zieht einen Abschlag ab, weil ein junges, nicht börsennotiertes Unternehmen schwerer zu verkaufen ist."],
+  arr: ["ARR (annual recurring revenue)",
+    "For subscription businesses: the recurring revenue you have today, per year (monthly recurring revenue × 12). Listed SaaS companies are valued at a multiple of it, which the Comparables method uses when you enter it.",
+    "ARR (jährlich wiederkehrender Umsatz)",
+    "Bei Abo-Geschäften: der wiederkehrende Umsatz, den Sie heute haben, aufs Jahr gerechnet (monatlich wiederkehrender Umsatz × 12). Börsennotierte SaaS-Unternehmen werden mit einem Vielfachen davon bewertet; die Vergleichsmethode verwendet es, wenn Sie den Wert eingeben."],
+  round_logic: ["Round logic",
+    "How funding rounds are usually priced in practice: investors buy a typical share of the company for the money they put in. If €500,000 buys 20%, the post-money value is €2,500,000 and the pre-money value €2,000,000. The typical shares by stage come from Carta's data on thousands of rounds.",
+    "Rundenlogik",
+    "Wie Finanzierungsrunden in der Praxis meist bepreist werden: Investoren kaufen für ihr Geld einen typischen Anteil am Unternehmen. Wenn 500.000 € 20 % kaufen, ist der Post-Money-Wert 2.500.000 € und der Pre-Money-Wert 2.000.000 €. Die typischen Anteile je Phase stammen aus Cartas Daten zu Tausenden von Runden."],
   dcf: ["Discounted cash flow (DCF)",
-    "Adds up the cash your plan generates over five years plus a value for the years after, each discounted to today at the cost of capital (WACC), then weighs it by the chance that a company at your stage survives."],
+    "Adds up the cash your plan generates over five years plus a value for the years after, each discounted to today at the cost of capital (WACC), then weighs it by the chance that a company at your stage survives.",
+    "Discounted Cashflow (DCF)",
+    "Addiert das Geld, das Ihr Plan in fünf Jahren erwirtschaftet, plus einen Wert für die Jahre danach, jeweils mit den Kapitalkosten (WACC) auf heute abgezinst, und gewichtet das Ergebnis mit der Wahrscheinlichkeit, dass ein Unternehmen Ihrer Phase überlebt."],
   committed_capital: ["Committed capital",
-    "Money that founders and investors have already paid in or firmly promised, such as share capital or signed angel commitments. It appears in the report for context and doesn't change the valuation."],
+    "Money that founders and investors have already paid in or firmly promised, such as share capital or signed angel commitments. It appears in the report for context and doesn't change the valuation.",
+    "Zugesagtes Kapital",
+    "Geld, das Gründer und Investoren bereits eingezahlt oder fest zugesagt haben, etwa Stammkapital oder unterschriebene Angel-Zusagen. Es steht zur Information im Bericht und ändert die Bewertung nicht."],
 };
+const termTitle = (key) => (isDe() ? TERMS[key][2] : TERMS[key][0]);
+const termText = (key) => (isDe() ? TERMS[key][3] : TERMS[key][1]);
 // How each method is named inside a sentence ("only the Scorecard gives ...").
 const METHOD_IN_TEXT = {
-  scorecard: "the Scorecard",
-  venture_capital: "the Venture Capital method",
-  comparables: "the Comparables method",
-  dcf: "the DCF method",
+  scorecard: ["the Scorecard", "die Scorecard"],
+  venture_capital: ["the Venture Capital method", "die Venture-Capital-Methode"],
+  comparables: ["the Comparables method", "die Vergleichsmethode"],
+  dcf: ["the DCF method", "die DCF-Methode"],
 };
 const METHOD_TIPS = {
-  venture_capital: ["hurdle_rate", "a target return"],
-  comparables: ["ev_ebitda", "an EV/EBITDA multiple"],
-  dcf: ["dcf", "a DCF"],
+  venture_capital: ["hurdle_rate", ["a target return", "eine Zielrendite"]],
+  comparables: ["ev_ebitda", ["a revenue or EBITDA multiple", "ein Umsatz- oder EBITDA-Multiplikator"]],
+  dcf: ["dcf", ["a DCF", "ein DCF"]],
 };
 
 function tipButton(term, what) {
-  return `<button type="button" class="tip" data-term="${term}" aria-label="What is ${escapeHtml(what)}?">i</button>`;
+  return `<button type="button" class="tip" data-term="${term}" aria-label="${escapeHtml(tr(`What is ${what}?`, `Was ist ${what}?`))}">i</button>`;
 }
 
 function glossaryBlock() {
-  const order = ["pre_post_money", "ebitda", "ebitda_margin", "working_capital", "capex", "hurdle_rate", "ev_ebitda", "dcf", "committed_capital"];
+  const order = ["pre_post_money", "ebitda", "ebitda_margin", "working_capital", "capex", "hurdle_rate", "ev_ebitda", "arr", "round_logic", "dcf", "committed_capital"];
   return `
     <details class="glossary">
-      <summary>Key terms explained</summary>
-      <dl>${order.map((k) => `<dt>${escapeHtml(TERMS[k][0])}</dt><dd>${escapeHtml(TERMS[k][1])}</dd>`).join("")}</dl>
+      <summary>${tr("Key terms explained", "Begriffe erklärt")}</summary>
+      <dl>${order.map((k) => `<dt>${escapeHtml(termTitle(k))}</dt><dd>${escapeHtml(termText(k))}</dd>`).join("")}</dl>
     </details>`;
 }
 
@@ -1811,24 +2226,31 @@ function glossaryBlock() {
 function zeroValueReason(result) {
   const debt = (result.equity_bridge && result.equity_bridge.debt) || 0;
   return debt > 0
-    ? `The value is €0 because the company's debt (${money(debt)}) is larger than the value the methods find for the business, so the shares are worth about nothing before the new money comes in.`
-    : "The value rounds to €0: the methods used leave essentially no value for the shares before the new money.";
+    ? tr(`The value is €0 because the company's debt (${money(debt)}) is larger than the value the methods find for the business, so the shares are worth about nothing before the new money comes in.`,
+         `Der Wert ist 0 €, weil die Schulden des Unternehmens (${money(debt)}) höher sind als der Wert, den die Methoden für das Geschäft ermitteln; die Anteile sind vor dem neuen Geld also etwa nichts wert.`)
+    : tr("The value rounds to €0: the methods used leave essentially no value for the shares before the new money.",
+         "Der Wert rundet auf 0 €: Die verwendeten Methoden lassen vor dem neuen Geld praktisch keinen Wert für die Anteile übrig.");
 }
 
 function readResultBox(result, scenarios) {
   const used = Object.entries(result.method_values).filter(([, mv]) => mv.status === "ok" && mv.weight_used > 0);
-  const weights = used.map(([key, mv]) => `${METHOD_LABELS[key].replace(/ \(.*\)$/, "")} ${pct(mv.weight_used)}`).join(", ");
+  const weights = used.map(([key, mv]) => `${methodLabel(key).replace(/ \(.*\)$/, "")} ${pct(mv.weight_used)}`).join(", ");
   const blends = scenarios ? Object.values(scenarios).map((s) => s.blended_pre_money_valuation) : [];
   // The slider is only shown when the value actually moves with revenue (see scenarioBlock).
   const hasScenarios = blends.length > 0 && Math.max(...blends) - Math.min(...blends) >= 1;
   return `
     <div class="read-result">
-      <h3>How to read your result</h3>
-      <p>The four methods look at your company from different angles: how your team and market compare with a typical startup (Scorecard), what an investor could earn at exit (Venture Capital), what similar listed companies are worth (Comparables) and the cash your plan generates (DCF). That is why they rarely agree.
+      <h3>${tr("How to read your result", "So lesen Sie Ihr Ergebnis")}</h3>
+      <p>${tr("The four methods look at your company from different angles: how your team and market compare with a typical startup (Scorecard), what an investor could earn at exit (Venture Capital), what similar listed companies are worth (Comparables) and the cash your plan generates (DCF). That is why they rarely agree.",
+              "Die vier Methoden betrachten Ihr Unternehmen aus verschiedenen Blickwinkeln: wie Team und Markt im Vergleich zu einem typischen Startup dastehen (Scorecard), was ein Investor beim Exit verdienen könnte (Venture Capital), was ähnliche börsennotierte Unternehmen wert sind (Vergleichsmethode) und welches Geld Ihr Plan erwirtschaftet (DCF). Deshalb stimmen sie selten überein.")}
       ${used.length > 1
-        ? `The blended value weights them by your company's stage (here: ${escapeHtml(weights)}); a method that doesn't fit your company is left out.`
-        : `The blended value normally weights them by your company's stage, but with these inputs only ${METHOD_IN_TEXT[used[0][0]]} gives a meaningful value, so it carries the whole result; the checks below say why the others were left out.`}
-      ${hasScenarios ? "The revenue scenario slider further down shows how the value moves if Year-1 revenue comes in lower or higher than planned. " : ""}Treat the result as a well-reasoned starting point for a conversation with investors, not as a fixed price.</p>
+        ? tr(`The blended value weights them by your company's stage (here: ${escapeHtml(weights)}); a method that doesn't fit your company is left out.`,
+             `Der gewichtete Wert kombiniert sie nach der Phase Ihres Unternehmens (hier: ${escapeHtml(weights)}); eine Methode, die nicht zu Ihrem Unternehmen passt, entfällt.`)
+        : tr(`The blended value normally weights them by your company's stage, but with these inputs only ${METHOD_IN_TEXT[used[0][0]][0]} gives a meaningful value, so it carries the whole result; the checks below say why the others were left out.`,
+             `Der gewichtete Wert kombiniert sie normalerweise nach der Phase Ihres Unternehmens, aber mit diesen Angaben ergibt nur ${METHOD_IN_TEXT[used[0][0]][1]} einen aussagekräftigen Wert und trägt das ganze Ergebnis; die Hinweise unten sagen, warum die anderen entfallen.`)}
+      ${hasScenarios ? tr("The revenue scenario slider further down shows how the value moves if Year-1 revenue comes in lower or higher than planned. ",
+                          "Der Regler für Umsatzszenarien weiter unten zeigt, wie sich der Wert bewegt, wenn der Umsatz in Jahr 1 niedriger oder höher ausfällt als geplant. ") : ""}${tr("The round-logic table shows what a typical funding round at your stage would make of your raise. Treat the result as a well-reasoned starting point for a conversation with investors, not as a fixed price.",
+          "Die Tabelle zur Rundenlogik zeigt, was eine typische Finanzierungsrunde Ihrer Phase aus Ihrem Kapitalbedarf machen würde. Verstehen Sie das Ergebnis als gut begründeten Ausgangspunkt für Gespräche mit Investoren, nicht als festen Preis.")}</p>
     </div>`;
 }
 
@@ -1850,7 +2272,7 @@ function showTip(btn) {
   if (openTip && openTip !== btn) openTip.setAttribute("aria-expanded", "false");
   openTip = btn;
   btn.setAttribute("aria-expanded", "true");
-  tipBubble.innerHTML = `<strong>${escapeHtml(term[0])}</strong><br>${escapeHtml(term[1])}`;
+  tipBubble.innerHTML = `<strong>${escapeHtml(termTitle(btn.dataset.term))}</strong><br>${escapeHtml(termText(btn.dataset.term))}`;
   tipBubble.hidden = false;
   const r = btn.getBoundingClientRect();
   const w = tipBubble.offsetWidth;
@@ -1873,15 +2295,27 @@ document.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeTip(); });
 window.addEventListener("resize", closeTip);
 
-// A startup's value is uncertain: show how far apart the methods are and what a 20% revenue miss does.
-const METHOD_SHORT = { scorecard: "Scorecard", venture_capital: "Venture Capital", comparables: "Comparables", dcf: "DCF" };
+// A startup's value is uncertain: show how far apart the methods are, what a 20% revenue miss does,
+// and how a typical round would price the company.
+const METHOD_SHORT = { scorecard: ["Scorecard", "Scorecard"], venture_capital: ["Venture Capital", "Venture Capital"],
+                       comparables: ["Comparables", "Vergleichsmethode"], dcf: ["DCF", "DCF"] };
+const methodShort = (key) => tr(...METHOD_SHORT[key]);
 function rangeLines(result, scenarios) {
   const lines = [];
   const r = result.method_range;
-  if (r) lines.push(`Range across methods: ${money(r.low)} (${METHOD_SHORT[r.low_method]}) to ${money(r.high)} (${METHOD_SHORT[r.high_method]})`);
+  if (r) {
+    lines.push(tr(`Range across methods: ${money(r.low)} (${methodShort(r.low_method)}) to ${money(r.high)} (${methodShort(r.high_method)})`,
+                  `Spanne der Methoden: ${money(r.low)} (${methodShort(r.low_method)}) bis ${money(r.high)} (${methodShort(r.high_method)})`));
+  }
   const lo = scenarios && scenarios["80%"], hi = scenarios && scenarios["120%"];
   if (lo && hi && Math.abs(hi.blended_pre_money_valuation - lo.blended_pre_money_valuation) >= 1) {
-    lines.push(`If Year-1 revenue is 20% lower or higher: ${money(lo.blended_pre_money_valuation)} to ${money(hi.blended_pre_money_valuation)}`);
+    lines.push(tr(`If Year-1 revenue is 20% lower or higher: ${money(lo.blended_pre_money_valuation)} to ${money(hi.blended_pre_money_valuation)}`,
+                  `Wenn der Umsatz in Jahr 1 20 % niedriger oder höher ist: ${money(lo.blended_pre_money_valuation)} bis ${money(hi.blended_pre_money_valuation)}`));
+  }
+  const rl = result.round_logic;
+  if (rl) {
+    lines.push(tr(`Round logic (typical ${rl.round_name} stake): ${moneyShort(rl.implied_pre_money_low)} to ${moneyShort(rl.implied_pre_money_high)}`,
+                  `Rundenlogik (typischer ${rl.round_name}-Anteil): ${moneyShort(rl.implied_pre_money_low)} bis ${moneyShort(rl.implied_pre_money_high)}`));
   }
   return lines.map((l) => `<p class="headline-sub headline-range">${escapeHtml(l)}</p>`).join("");
 }
@@ -1894,48 +2328,54 @@ function renderResults(result, scenarios) {
 
   const rows = Object.entries(result.method_values).map(([key, mv]) => `
     <tr>
-      <td>${METHOD_LABELS[key] || key}${METHOD_TIPS[key] ? tipButton(...METHOD_TIPS[key]) : ""}<p class="method-notes">${escapeHtml(methodExplanation(key, result))}</p></td>
-      <td data-label="Weight">${pct(mv.weight_used)}</td>
-      <td data-label="Value" class="${mv.status === "ok" ? "" : "muted"}">${methodValueCell(mv)}</td>
-      <td data-label="Weighted">${mv.status === "ok" ? money(mv.weighted_value) : "—"}</td>
+      <td>${methodLabel(key)}${METHOD_TIPS[key] ? tipButton(METHOD_TIPS[key][0], tr(...METHOD_TIPS[key][1])) : ""}<p class="method-notes">${escapeHtml(methodExplanation(key, result))}</p></td>
+      <td data-label="${tr("Weight", "Gewicht")}">${pct(mv.weight_used)}</td>
+      <td data-label="${tr("Value", "Wert")}" class="${mv.status === "ok" ? "" : "muted"}">${methodValueCell(mv)}</td>
+      <td data-label="${tr("Weighted", "Gewichtet")}">${mv.status === "ok" ? money(mv.weighted_value) : "—"}</td>
     </tr>
   `).join("");
 
   const leftOut = Object.values(result.method_values).some((mv) => mv.status === "not_meaningful");
+  const company = lastResult && lastResult.payload ? lastResult.payload.company_profile.company_name : tr("Your company", "Ihr Unternehmen");
+  const asOf = new Date(result.valuation_date + "T00:00:00").toLocaleDateString(isDe() ? "de-DE" : "en-GB", { year: "numeric", month: "long", day: "numeric" });
 
   panel.innerHTML = `
     <div class="headline-result">
-      <p class="headline-label">${escapeHtml(lastResult && lastResult.payload ? lastResult.payload.company_profile.company_name : "Your company")}: pre-money valuation</p>
+      <p class="headline-label">${escapeHtml(company)}: ${tr("pre-money valuation", "Pre-Money-Bewertung")}</p>
       <p class="headline-value">${money(result.blended_pre_money_valuation)}</p>
-      <p class="headline-sub">Post-money ${money(result.post_money_valuation)} after raising ${money(result.capital_needed)}</p>
+      <p class="headline-sub">${tr(`Post-money ${money(result.post_money_valuation)} after raising ${money(result.capital_needed)}`,
+                                   `Post-Money ${money(result.post_money_valuation)} nach Aufnahme von ${money(result.capital_needed)}`)}</p>
       ${rangeLines(result, scenarios)}
       ${result.blended_pre_money_valuation < 0.5 ? `<p class="headline-sub" style="margin-top:8px">${escapeHtml(zeroValueReason(result))}</p>` : ""}
     </div>
     ${readResultBox(result, scenarios)}
-    <h2 class="ledger-title">Valuation summary</h2>
-    <p class="ledger-subtitle">Pre-money equity value as of ${escapeHtml(new Date(result.valuation_date + "T00:00:00").toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" }))}, blended across four methods with weights for the company's stage.${leftOut ? " Methods that can't give a meaningful value for this company are left out and the other weights scaled up." : ""}</p>
+    <h2 class="ledger-title">${tr("Valuation summary", "Bewertung im Überblick")}</h2>
+    <p class="ledger-subtitle">${tr(`Pre-money equity value as of ${escapeHtml(asOf)}, blended across four methods with weights for the company's stage.`,
+      `Pre-Money-Wert des Eigenkapitals zum ${escapeHtml(asOf)}, gewichtet aus vier Methoden nach der Phase des Unternehmens.`)}${leftOut ? tr(" Methods that don't apply to this company are left out and the other weights scaled up.",
+      " Methoden, die nicht zu diesem Unternehmen passen, entfallen, und die anderen Gewichte werden hochskaliert.") : ""}</p>
     <table class="ledger-table stacked">
       <thead>
-        <tr><th>Method</th><th>Weight</th><th>Pre-money value${tipButton("pre_post_money", "pre-money value")}</th><th>Weighted value</th></tr>
+        <tr><th>${tr("Method", "Methode")}</th><th>${tr("Weight", "Gewicht")}</th><th>${tr("Pre-money value", "Pre-Money-Wert")}${tipButton("pre_post_money", tr("pre-money value", "der Pre-Money-Wert"))}</th><th>${tr("Weighted value", "Gewichteter Wert")}</th></tr>
       </thead>
       <tbody>
         ${rows}
         <tr class="ledger-total-row">
-          <td colspan="3">Blended pre-money valuation</td>
+          <td colspan="3">${tr("Blended pre-money valuation", "Gewichtete Pre-Money-Bewertung")}</td>
           <td>${money(result.blended_pre_money_valuation)}</td>
         </tr>
       </tbody>
     </table>
     <div class="ledger-postmoney">
-      <span class="ledger-postmoney-label">Post-money (+ ${money(result.capital_needed)} raised)${tipButton("pre_post_money", "post-money value")}</span>
+      <span class="ledger-postmoney-label">${tr(`Post-money (+ ${money(result.capital_needed)} raised)`, `Post-Money (+ ${money(result.capital_needed)} eingeworben)`)}${tipButton("pre_post_money", tr("post-money value", "der Post-Money-Wert"))}</span>
       <span class="ledger-postmoney-value">${money(result.post_money_valuation)}</span>
     </div>
+    ${roundLogicBlock(result)}
     ${checksBlock(result.warnings)}
     ${scenarioBlock(scenarios)}
     <div class="results-actions">
-      <button class="btn btn-primary" id="btn-pdf">Download PDF report</button>
-      <button class="btn btn-ghost" id="btn-edit">Change inputs</button>
-      <button class="btn btn-ghost" id="btn-restart">Start a new valuation</button>
+      <button class="btn btn-primary" id="btn-pdf">${tr("Download PDF report", "PDF-Bericht herunterladen")}</button>
+      <button class="btn btn-ghost" id="btn-edit">${tr("Change inputs", "Angaben ändern")}</button>
+      <button class="btn btn-ghost" id="btn-restart">${tr("Start a new valuation", "Neue Bewertung starten")}</button>
     </div>
     ${glossaryBlock()}
   `;
@@ -1958,7 +2398,7 @@ async function downloadResultsPdf() {
   const btn = document.getElementById("btn-pdf");
   const originalText = btn.textContent;
   btn.disabled = true;
-  btn.textContent = "Preparing PDF\u2026";
+  btn.textContent = tr("Preparing PDF…", "PDF wird erstellt…");
   try {
     const res = await apiRequest("/valuations/preview/report", {
       method: "POST",
@@ -1980,13 +2420,13 @@ async function downloadResultsPdf() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${safeName}-Valuation-Report.pdf`;
+    a.download = `${safeName}-${tr("Valuation-Report", "Bewertungsbericht")}.pdf`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
   } catch (err) {
-    showFormError(`Could not generate the PDF report: ${err.message}`);
+    showFormError(tr(`Could not generate the PDF report: ${err.message}`, `Der PDF-Bericht konnte nicht erstellt werden: ${err.message}`));
   } finally {
     btn.disabled = false;
     btn.textContent = originalText;
@@ -2002,7 +2442,8 @@ document.getElementById("company_logo").addEventListener("change", (e) => {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
   if (file.size > MAX_LOGO_BYTES) {
-    showFormError("That logo file is larger than 2 MB \u2014 please choose a smaller image.");
+    showFormError(tr("That logo file is larger than 2 MB \u2014 please choose a smaller image.",
+                     "Die Logodatei ist größer als 2 MB \u2014 bitte wählen Sie ein kleineres Bild."));
     e.target.value = "";
     return;
   }
@@ -2064,7 +2505,7 @@ function sampleCompany(profile, industryMargin) {
                             : [between(30, 60), between(25, 45), between(20, 35), between(15, 25)];
   const founders = between(2, 3);
   return { profile, stage, preRevenue, ltmRevenue, ltmEbitda, year1, raise, capexY1, growth, founders,
-           name: `${pick(SAMPLE_NAMES)} ${profile.suffix} GmbH (sample)`, city: pick(SAMPLE_CITIES) };
+           name: `${pick(SAMPLE_NAMES)} ${profile.suffix} GmbH ${tr("(sample)", "(Beispiel)")}`, city: pick(SAMPLE_CITIES) };
 }
 
 // A sample is only shown if it demonstrates the methods cleanly: every method
@@ -2116,7 +2557,7 @@ function fillSample(c) {
   setVal("company_name", c.name);
   setVal("contact_name", "");
   setVal("contact_email", "");
-  setVal("address", `${c.city}, Germany`);
+  setVal("address", `${c.city}, ${tr("Germany", "Deutschland")}`);
   setVal("website", "");
   setVal("country", "Germany");
   setVal("business_territory_region", DEFAULT_REGION);
@@ -2245,7 +2686,7 @@ document.getElementById("btn-sample").addEventListener("click", async () => {
   try {
     await initPromise; // the dropdowns must be loaded before they can be filled
     if (!didInit) return;
-    btn.textContent = "Preparing a sample company\u2026";
+    btn.textContent = tr("Preparing a sample company\u2026", "Beispielunternehmen wird vorbereitet\u2026");
     lastResult = null;
     goToStep(1);
     document.getElementById("results-panel").innerHTML = ""; // never show the previous result meanwhile
@@ -2258,9 +2699,59 @@ document.getElementById("btn-sample").addEventListener("click", async () => {
     showFormError(err.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = "Try with a sample company";
+    btn.textContent = tr("Try with a sample company", DE["Try with a sample company"]);
   }
 });
+
+// ============================================================
+// Language switch: everything on screen follows, nothing typed is lost.
+// ============================================================
+async function setLanguage(lang) {
+  if (lang === LANG || !["de", "en"].includes(lang)) return;
+  LANG = lang;
+  const params = new URLSearchParams(location.search);
+  params.set("lang", lang);
+  history.replaceState(history.state, "", `${location.pathname}?${params}${location.hash}`);
+  translateStaticPage();
+  document.getElementById("step-name").textContent = stepName(currentStep);
+  clearFormError();
+  showFormWarnings([]);
+  if (referenceLists) {
+    try {
+      await loadLanguageData();
+    } catch (_) { /* labels stay in the previous language */ }
+    fillSelect("country", referenceLists.countries, labels.countries, true);
+    fillSelect("company_stage", referenceLists.stages, labels.stages);
+    fillSelect("business_territory_region", referenceLists.regions, labels.regions);
+    relabelScorecardFields();
+    showStageHint();
+    updateScorecardNote();
+    updateRunningTotals();
+    await onCountryChange();
+    if (currentStep === 4) updateProjectionPreview();
+  }
+  if (lastResult && currentStep === 6) {
+    // The checks and explanations come from the server: ask again in the new language.
+    document.getElementById("results-loading").hidden = false;
+    document.getElementById("results-panel").hidden = true;
+    try {
+      const body = JSON.stringify(lastResult.payload);
+      const [result, scenarios] = await Promise.all([
+        apiFetch("/valuations/preview", { method: "POST", body }),
+        apiFetch("/valuations/preview/scenarios", { method: "POST", body }).catch(() => null),
+      ]);
+      lastResult = { payload: lastResult.payload, output: result, scenarios };
+      renderResults(result, scenarios);
+    } catch (err) {
+      document.getElementById("results-loading").hidden = true;
+      showResultsError(err.message);
+    }
+  }
+}
+for (const btn of document.querySelectorAll(".lang-switch button")) {
+  btn.addEventListener("click", () => setLanguage(btn.dataset.lang));
+}
+translateStaticPage();
 
 // ============================================================
 // Startup
@@ -2275,7 +2766,7 @@ async function runInit() {
     await loadReferenceData();
   } catch (err) {
     didInit = false;
-    showFormError(`${err.message} Reload the page to try again.`);
+    showFormError(`${err.message} ${tr("Reload the page to try again.", "Laden Sie die Seite neu, um es noch einmal zu versuchen.")}`);
   }
 }
 

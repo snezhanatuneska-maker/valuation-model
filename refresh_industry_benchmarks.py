@@ -95,6 +95,7 @@ EBITDA_MARGIN = ("margin", r"^ebitda/sales$")
 EBIT_MARGIN = ("margin", r"^pre-tax unadjusted operating margin$")
 COVERAGE = ("dbtfund", r"^interest coverage ratio$")  # EBIT / interest
 DEBT_TO_EBITDA = ("dbtfund", r"^debt to ebitda$")
+EV_EBITDA_ALL_FIRMS = ("vebitda", r"^ev/ebitda$", 1)  # second block of vebitda.xls: all firms
 
 
 def derive_da(v):
@@ -108,7 +109,15 @@ def derive_book_interest_rate(v):
     return (v(EBIT_MARGIN) / v(EBITDA_MARGIN)) / (v(COVERAGE) * v(DEBT_TO_EBITDA)), (0.0, 0.25)
 
 
-DERIVED = {"da_pct_revenue": derive_da, "book_interest_rate": derive_book_interest_rate}
+def derive_ev_sales(v):
+    """EV / sales for all firms = (EV / EBITDA, all firms) x (EBITDA / sales, all firms). Both are Damodaran's
+    aggregate ratios (sum of EV / sum of EBITDA, sum of EBITDA / sum of sales) over the same firms, so their
+    product is sum of EV / sum of sales. Used by the Comparables method for companies without positive EBITDA."""
+    return v(EV_EBITDA_ALL_FIRMS) * v(EBITDA_MARGIN), (0.05, 40.0)
+
+
+DERIVED = {"da_pct_revenue": derive_da, "book_interest_rate": derive_book_interest_rate,
+           "ev_sales_multiple": derive_ev_sales}
 
 
 def norm(s):
@@ -208,7 +217,7 @@ def main():
                 row = rows.get(norm(src))
                 if row is None or too_few_firms(headers, row):
                     raise ValueError
-                x = num(row[column(headers, source[1], 0, fname)])
+                x = num(row[column(headers, source[1], source[2] if len(source) > 2 else 0, fname)])
                 if x == "NA" or x == 0:
                     raise ValueError
                 return x
