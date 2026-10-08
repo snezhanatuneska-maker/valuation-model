@@ -8,6 +8,53 @@
 
 ---
 
+## Fix status (8 October 2026, same day)
+
+You asked me to fix everything I found necessary, with German startups as the users. Everything below the next line is the original audit, kept as written. This section records what changed.
+
+**Verdict after the fixes: High for the logic, still an estimate.** A weaker plan no longer shows a higher value. I checked this on 3,948 German runs (every industry × stage, each input made 30% worse): the value never rose. Contradictory inputs are refused, a business with no value gets a message instead of a number, and saved valuations keep their figures. What remains is judgement: the stage weights, VC return and survival probability are the app's stated assumptions, and the methods still disagree, so founders should quote the range shown on the cover.
+
+| # | Finding | Status | What changed |
+|---|---|---|---|
+| C1 | Workbook-era reports too high | **No code change** | Your decision: whether to tell people who hold old reports. |
+| M1 | A failing method was dropped, so bad news raised the value | **Fixed** | "Doesn't apply" and "finds no value" are now separate. Comparables without positive EBITDA, and banks and insurers, are still left out (your decision 5). VC and DCF that apply but find no value now count as €0 (DCF: cash net of debt), with a note. Raising more money, more capex, less revenue, a lower margin or more debt now never raises the value. |
+| M2 | Revenue €0 with positive EBITDA accepted | **Fixed** | Refused, with the wizard's wording. Companies with no revenue yet now start the projection from **their own loss** (today's EBITDA ÷ Year-1 revenue) instead of the industry margin in Year 1. This applies your decision 2 to pre-revenue startups. |
+| M3 | EBITDA above revenue accepted | **Fixed** | Refused with a plain message (the wizard already did this; the API now does too). |
+| M4 | Absurd values with warnings only | **Fixed** | New warning when the value is above 50× last-year revenue. The PDF cover now says "Before sharing this report: N of your inputs need a second look", repeating the plausibility warning when it applies. |
+| M5 | Saved valuations recalculated on reopening | **Fixed** | The saved PDF and scenarios come from what was saved; `POST /{id}/rerun` is the explicit "recalculate with today's data". Valuations saved before today are re-run as before (their stored output may predate fields the report needs). |
+| m1 | VC method ignores cash | **Withdrawn, not a bug** | The VC method values the company from its exit, and reaching that exit spends both today's cash and the new money. The new money is subtracted, and today's cash is already used up inside the plan; adding it again would count it twice. Debt stays as decided (decision 6). |
+| m2 | Terminal value used Year 5's working-capital growth | **Fixed, and widened** | The years after Year 5 are now consistently a business growing 2% forever: working capital grows 2%, **capex at least D&A** (Damodaran's stable-growth rule), and profit **fully taxed**. The tax part fixes a bug the new direction tests found: losses carried into Year 5 lowered tax *forever*, so a bigger past loss gave a higher value (Werkpuls at −€100k EBITDA was worth more than at −€80k). |
+| m3 | Large Year-1 working-capital release | **Note added** | Info note when it exceeds 20% of Year-1 EBITDA. |
+| m4 | Weights "in proportion" | **Wording fixed** | The source note now gives the actual rounded weights and calls them an app assumption. |
+| m5 | WACC rounded to 0.25% | **Left as is** | €701 on the test case. Not worth changing every result for. |
+| m6 | €0 valuation reports | **Fixed** | A clear message instead ("None of the methods … finds any value for the business"), naming the debt when that is the cause. |
+| m7 | Browser tests never ran on GitHub | **Fixed** | The workflow installs Playwright and Chromium. All 26 browser tests pass here. |
+| m8 | Comparables ignores the growth plan | **Explained** | The Comparables page says so. |
+| New | Comparables just above break-even | **Open: QUESTIONS.md 13** | Still a jump at EBITDA = 0, because of decision 5. Options and a recommendation are in QUESTIONS.md. |
+| — | Excel column | **Still open** | Needs `audit_inputs/main file.xlsx`. |
+
+**Tests:** 251 pass, browser tests included (225 before). The 22 new tests in `tests/test_reliability.py` cover the direction checks on the Tanzania case and on Werkpuls, €0 methods, refused inputs, pre-revenue projections, the terminal year, the plausibility warning on the cover, the working-capital note, the weights text and saved valuations. 20 of them fail on the previous code. The independent recalculation (`audit/recompute.py`) was updated to the same rules and still matches the engine on every figure.
+
+**How values move** (before → after):
+
+| Case | Before | After | Why |
+|---|---|---|---|
+| Tanzania test case (your PDF case) | €911,380 | €907,043 | Terminal year: working capital at 2% |
+| German example (Beispiel Software GmbH) | €1,005,182 | €1,018,497 | Terminal year |
+| Werkpuls GmbH (German SaaS, live data) | €1,017,464 | €1,218,619 | Terminal year: Year 5 grows 25%, so the old model treated working capital as absorbing cash at that pace forever |
+| Werkpuls, pinned golden figures | €1,050,656.82 | €1,043,836.30 | Terminal year (capex at least D&A offsets the working-capital change) |
+| Werkpuls at Development stage, no revenue, −€300k EBITDA | €2,924,077 | €2,670,903 | Today's loss now carries into Year 1 |
+| Werkpuls at Idea stage, no revenue, −€60k EBITDA | €2,979,919 | €2,848,923 | Same |
+| Werkpuls raising €2.5M instead of €0.8M | €1,764,863 (higher than raising €0.8M!) | €1,151,465 (lower, as it should be) | VC counts as €0 instead of being dropped |
+| Werkpuls with Year-1 revenue €300k | €444,424 | €319,767 | Same |
+| German example, EBITDA €400k on €300k revenue | €3,625,254 | refused with a message | M3 |
+
+**Changes numbers customers have seen:** yes, every one of the "Before → After" rows above. Most valuations move by a few percent. Fast-growing companies (high Year-5 growth) rise. Pre-revenue companies with real losses, and cases where VC or DCF found no value, fall. Contradictory inputs are now refused.
+
+Not changed, for German users to know: existing tax-loss carryforwards (Verlustvortrag) can't be entered, and the German minimum taxation (Mindestbesteuerung: past losses offset profit in full only up to €1M a year, above that only 70%, 60% from 2028) and trade-tax add-backs aren't modelled. Both mostly matter for companies with large accumulated losses. Ask if you want them added.
+
+---
+
 ## 1. Verdict
 
 **Reliability today: Medium.** The arithmetic is now dependable:

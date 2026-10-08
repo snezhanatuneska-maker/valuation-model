@@ -90,17 +90,21 @@ def init_db() -> None:
         existing_cols = {row["name"] for row in conn.execute("PRAGMA table_info(valuations)")}
         if "owner_id" not in existing_cols:
             conn.execute("ALTER TABLE valuations ADD COLUMN owner_id TEXT")
+        # The revenue scenarios are stored with the result, so a saved report never changes later.
+        if "scenarios_json" not in existing_cols:
+            conn.execute("ALTER TABLE valuations ADD COLUMN scenarios_json TEXT")
 
 
-def save_valuation(company_name: str, input_dict: dict, output_dict: dict, owner_id: Optional[str] = None) -> str:
+def save_valuation(company_name: str, input_dict: dict, output_dict: dict, owner_id: Optional[str] = None,
+                   scenarios_dict: Optional[dict] = None) -> str:
     valuation_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     with _get_connection() as conn:
         conn.execute(
-            "INSERT INTO valuations (id, created_at, company_name, input_json, output_json, owner_id) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO valuations (id, created_at, company_name, input_json, output_json, owner_id, scenarios_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (valuation_id, created_at, company_name, json.dumps(input_dict), json.dumps(output_dict),
-             owner_id or None),
+             owner_id or None, None if scenarios_dict is None else json.dumps(scenarios_dict)),
         )
     return valuation_id
 
@@ -117,6 +121,8 @@ def get_valuation(valuation_id: str) -> Optional[dict]:
         "owner_id": row["owner_id"],
         "input": json.loads(row["input_json"]),
         "output": json.loads(row["output_json"]),
+        # None for valuations saved before the scenarios were stored with them.
+        "scenarios": json.loads(row["scenarios_json"]) if row["scenarios_json"] else None,
     }
 
 
@@ -221,6 +227,7 @@ def create_valuation(payload: ve.ValuationInput, owner_id: Optional[str] = None)
         input_dict=input_dict,
         output_dict=output_dict,
         owner_id=owner_id,
+        scenarios_dict=_scenarios_dict(payload),
     )
     record = get_valuation(valuation_id)
 
@@ -294,10 +301,12 @@ def preview_valuation_scenarios(payload: ve.ValuationInput) -> dict:
 
 @valuations_router.get("/{valuation_id}/scenarios", response_model=dict, dependencies=[Depends(_require_storage)])
 def get_valuation_scenarios(valuation_id: str) -> dict:
-    """Same as POST /valuations/preview/scenarios, but re-runs a previously saved valuation's inputs."""
+    """The revenue scenarios saved with a valuation (valuations saved before scenarios were stored are re-run)."""
     record = get_valuation(valuation_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"No valuation found with id {valuation_id!r}")
+    if record["scenarios"] is not None:
+        return record["scenarios"]
     return _scenarios_dict(_saved_input(record))
 
 
@@ -325,19 +334,20 @@ def rerun_valuation(valuation_id: str) -> dict:
             "output": dataclasses.asdict(_run(ve.run_valuation, payload))}
 
 
-def _pdf_response(payload: ve.ValuationInput, output_dict: dict) -> Response:
+def _pdf_response(payload: ve.ValuationInput, output_dict: dict, scenarios_dict: Optional[dict] = None) -> Response:
     """Builds the branded PDF report and wraps it as a one-click file download."""
     input_dict = payload.model_dump(mode="json")
     try:
         benchmark = ve.resolved_industry_benchmarks(payload.company_profile.industry)
     except Exception:
         benchmark = {}
-    try:
-        scenarios_dict = {
-            label: dataclasses.asdict(out) for label, out in ve.run_valuation_scenarios(payload).items()
-        }
-    except Exception:  # scenarios are optional extras; the report still builds without them
-        scenarios_dict = {}
+    if scenarios_dict is None:
+        try:
+            scenarios_dict = {
+                label: dataclasses.asdict(out) for label, out in ve.run_valuation_scenarios(payload).items()
+            }
+        except Exception:  # scenarios are optional extras; the report still builds without them
+            scenarios_dict = {}
     stage_params = ve.stage_parameters().get(payload.company_profile.company_stage)
     pdf_bytes = pdf_report.build_pdf_bytes(input_dict, output_dict, benchmark, scenarios_dict,
                                            ve.data_sources(), stage_params,
@@ -369,11 +379,15 @@ def preview_valuation_report(payload: ve.ValuationInput) -> Response:
 
 @valuations_router.get("/{valuation_id}/report", dependencies=[Depends(_require_storage)])
 def get_valuation_report(valuation_id: str) -> Response:
-    """Re-runs a previously saved valuation's inputs and returns the branded PDF report."""
+    """The branded PDF report of a saved valuation, with the figures as they were saved (a later data
+    refresh or method change doesn't alter them; POST /{id}/rerun recalculates with today's data).
+    Valuations saved before the scenarios were stored with them are re-run."""
     record = get_valuation(valuation_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"No valuation found with id {valuation_id!r}")
     payload = _saved_input(record)
+    if record["scenarios"] is not None:
+        return _pdf_response(payload, record["output"], record["scenarios"])
     result = _run(ve.run_valuation, payload)
     return _pdf_response(payload, dataclasses.asdict(result))
 

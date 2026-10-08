@@ -37,9 +37,9 @@ def test_reference_case_regression_values():
     """Pinned values (README "Verified numbers"); update deliberately if the method changes."""
     r = run(REFERENCE_CASE)
     got = {k: round(v.pre_money_value) for k, v in r.method_values.items()}
-    assert got == {"scorecard": 2_202_240, "venture_capital": 1_242_335, "comparables": 697_925, "dcf": 841_159}
-    assert round(r.blended_pre_money_valuation) == 911_380
-    assert round(r.post_money_valuation) == 1_211_380
+    assert got == {"scorecard": 2_202_240, "venture_capital": 1_242_335, "comparables": 697_925, "dcf": 828_766}
+    assert round(r.blended_pre_money_valuation) == 907_043
+    assert round(r.post_money_valuation) == 1_207_043
 
 
 def test_scorecard_rows_add_up_to_total():
@@ -82,11 +82,16 @@ def test_debt_and_cash_bridge():
     assert indebted.method_values["venture_capital"].pre_money_value < base.method_values["venture_capital"].pre_money_value
 
 
-def test_equity_never_negative_when_debt_is_huge():
-    r = run(variant(financial_assumptions__existing_debt_balance=50_000_000))
+def test_equity_never_negative_when_debt_is_large():
+    r = run(variant(financial_assumptions__existing_debt_balance=2_000_000))
     for mv in r.method_values.values():
         assert mv.pre_money_value is None or mv.pre_money_value >= 0
     assert any(w.code.startswith("zero_") for w in r.warnings)
+
+
+def test_debt_above_every_value_is_a_clear_message_not_a_zero_valuation():
+    with pytest.raises(ve.ValuationError, match="debt"):
+        run(variant(financial_assumptions__existing_debt_balance=50_000_000))
 
 
 def test_loss_making_company_drops_comparables_and_reweights():
@@ -225,9 +230,9 @@ def test_german_example_regression_values():
     """Pinned values for the German example (README); update deliberately if data or method change."""
     r = run(GERMAN_CASE)
     got = {k: round(v.pre_money_value) for k, v in r.method_values.items()}
-    assert got == {"scorecard": 2_696_070, "venture_capital": 971_446, "comparables": 749_919, "dcf": 1_289_361}
-    assert round(r.blended_pre_money_valuation) == 1_005_182
-    assert round(r.post_money_valuation) == 1_305_182
+    assert got == {"scorecard": 2_696_070, "venture_capital": 971_446, "comparables": 749_919, "dcf": 1_327_405}
+    assert round(r.blended_pre_money_valuation) == 1_018_497
+    assert round(r.post_money_valuation) == 1_318_497
 
 
 def test_germany_has_no_country_risk_premium():
@@ -275,7 +280,10 @@ def test_german_hebesatz_input():
 def test_user_tax_rate_still_overrides_german_schedule():
     r = run(german(company_profile__dcf_tax_rate_override=0.25))
     assert {y.tax_rate for y in r.projections.years} == {0.25} and r.projections.tax_rate == 0.25
-    assert r.dcf.terminal_fcf == r.projections.years[-1].unlevered_fcf
+    y5 = r.projections.years[-1]
+    # flat rate: Year-5 cash flow, with working capital growing at the long-run rate and capex at least D&A
+    assert r.dcf.terminal_fcf == pytest.approx(y5.unlevered_fcf + y5.change_in_working_capital + y5.capex
+                                               - max(y5.capex, y5.da) - y5.working_capital * r.dcf.perpetual_growth_rate)
 
 
 def test_hebesatz_ignored_outside_germany():
@@ -403,8 +411,8 @@ def test_scenarios_keep_the_main_weights_so_value_rises_with_revenue():
 def test_low_vc_value_is_explained():
     """By its own note, or (when it is the low end of a wide range) by the methods-disagree note."""
     notes = {w.code: w.message for w in run(SLIDER_CASE).warnings}
-    assert "vc_low" in notes or ("Venture Capital method only €" in notes.get("methods_disagree", "")
-                                 and "amount raised" in notes["methods_disagree"])
+    assert "vc_low" in notes or "zero_venture_capital" in notes or (
+        "Venture Capital method only €" in notes.get("methods_disagree", "") and "amount raised" in notes["methods_disagree"])
     assert "vc_low" not in {w.code for w in run(GERMAN_CASE).warnings}
 
 

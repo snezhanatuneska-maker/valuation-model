@@ -412,6 +412,18 @@ class OperatingPerformance(BaseModel):
     cash_available: float = Field(default=0.0, ge=0, le=MAX_AMOUNT)
     current_ppe_value: float = Field(default=0.0, ge=0, le=MAX_AMOUNT)
 
+    @field_validator("current_ebitda")
+    @classmethod
+    def _ebitda_within_revenue(cls, v, info):
+        """EBITDA is what is left of revenue after operating costs, so it can't be larger (same rule as the wizard)."""
+        revenue = info.data.get("current_revenue_last_12_months")
+        if revenue is not None and v > revenue:
+            if revenue == 0:
+                raise ValueError("with no revenue, EBITDA can't be positive; enter 0 or your operating loss as a "
+                                 "negative number")
+            raise ValueError("EBITDA can't be larger than revenue (it is what's left of revenue after operating costs)")
+        return v
+
 
 class FinancialAssumptions(BaseModel):
     revenue_year1: float = Field(gt=0, le=MAX_AMOUNT)
@@ -632,15 +644,15 @@ class YearProjection:
 class FinancialProjections:
     valuation_date: str
     starting_ebitda_margin: float
-    starting_margin_source: str  # "company" | "industry" (no revenue history)
+    starting_margin_source: str  # "company" (last-12-month margin) | "company_costs" (no revenue yet: EBITDA / Year-1 revenue)
     target_ebitda_margin: float
     target_margin_source: str  # "industry" | "user_override"
     tax_rate: float  # long-run rate (terminal value, WACC); the single rate unless taxes are stepped
     opening_working_capital: float
     years: list[YearProjection] = field(default_factory=list)
     tax_schedule: Optional[TaxSchedule] = None
-    # Year-5 free cash flow re-taxed at the long-run rate: the base of the
-    # terminal value. Equal to Year 5's free cash flow when the rate is flat.
+    # Base of the terminal value: Year-5 free cash flow taxed in full at the long-run
+    # rate, with the working-capital change at the long-run growth rate.
     terminal_fcf: Optional[float] = None
 
     def revenue(self) -> list[float]:
@@ -666,14 +678,15 @@ def build_projections(
     else:
         target_margin, target_src = bench.get("ebitda_margin"), "industry"
 
-    # Start from the company's own margin (if it has revenue) and move in equal
-    # steps to the target margin, reached in Year 5.
+    # Start from the company's own margin and move in equal steps to the target
+    # margin, reached in Year 5. Without revenue yet, today's EBITDA (usually the
+    # operating loss) is measured against the Year-1 revenue plan, so current
+    # costs carry into Year 1 instead of the industry margin applying at once.
     if operating.current_revenue_last_12_months > 0:
-        start_margin = operating.current_ebitda / operating.current_revenue_last_12_months
-        start_margin = max(-1.0, min(start_margin, 0.9))
-        start_src = "company"
+        start_margin, start_src = operating.current_ebitda / operating.current_revenue_last_12_months, "company"
     else:
-        start_margin, start_src = target_margin, "industry"
+        start_margin, start_src = operating.current_ebitda / assumptions.revenue_year1, "company_costs"
+    start_margin = max(-1.0, min(start_margin, 0.9))
 
     da_pct = bench.get("da_pct_revenue")
     wc_pct = (bench.get("acc_receivable_pct_revenue") + bench.get("inventory_pct_revenue")
@@ -716,7 +729,12 @@ def build_projections(
         prior_wc = working_capital
         capex = assumptions.capex_by_year[i]
         fcf = ebit - tax + da - capex - change_in_wc
-        terminal_fcf = ebit - taxable * taxes.long_run_rate + da - capex - change_in_wc
+        # Base of the terminal value, a business growing at the long-run rate forever: Year 5 taxed at the
+        # long-run rate on its full profit (losses carried into Year 5 are used up there, not a tax saving
+        # that lasts forever); capex at least D&A (a growing business can't invest less than its assets wear
+        # out); working capital growing at the long-run rate, not at Year 5's growth rate.
+        terminal_fcf = (ebit - max(ebit, 0.0) * taxes.long_run_rate + da - max(capex, da)
+                        - working_capital * market_parameters()["perpetual_growth_rate"])
 
         period_end = _add_years(vdate, i + 1) - timedelta(days=1)
         years.append(YearProjection(
@@ -937,7 +955,10 @@ class VCMethodResult:
     price_per_share: Optional[float]
     final_wealth_investors: Optional[float]
     final_wealth_entrepreneurs: Optional[float]
-    not_meaningful_reason: Optional[str]
+    not_meaningful_reason: Optional[str]  # the method doesn't apply to this company (left out of the blend)
+    # The method applies but leaves no value before the round, so it counts as €0 (not left out:
+    # dropping it would hand its weight to the other methods and raise the blend on bad news).
+    no_value_reason: Optional[str] = None
 
 
 def compute_venture_capital(
@@ -975,20 +996,20 @@ def compute_venture_capital(
         result["not_meaningful_reason"] = "EBITDA-based exit values don't apply to banks and insurers."
         return VCMethodResult(**result)
     if exit_value <= 0:
-        result["not_meaningful_reason"] = (
+        result.update(pre_money_valuation=0.0, no_value_reason=(
             f"Projected EBITDA in the exit year ({exit_year.year_label}) is not positive, "
-            "so there is no exit value to discount.")
+            "so there is no exit value."))
         return VCMethodResult(**result)
     if exit_equity <= 0:
-        result["not_meaningful_reason"] = "Debt is larger than the projected exit value."
+        result.update(pre_money_valuation=0.0, no_value_reason="Debt is larger than the projected exit value.")
         return VCMethodResult(**result)
 
     post = exit_equity / (1 + target_return) ** T
     result["post_money_valuation"] = post
     if post <= I:
-        result["not_meaningful_reason"] = (
+        result.update(pre_money_valuation=0.0, no_value_reason=(
             "The capital being raised is larger than the value the exit supports today, "
-            "so the pre-money value would be negative.")
+            "so nothing is left for the existing shares."))
         return VCMethodResult(**result)
 
     F = I / post
@@ -1106,7 +1127,10 @@ class DCFResult:
     equity_value: Optional[float]
     pre_money_valuation: Optional[float]
     debt_exceeds_value: bool
-    not_meaningful_reason: Optional[str]
+    not_meaningful_reason: Optional[str]  # the method doesn't apply to this company (left out of the blend)
+    # Applies, but the forecast cash flows are worth less than nothing: the business itself is
+    # valued at €0 (its owners would rather close it), leaving only cash net of debt.
+    no_value_reason: Optional[str] = None
 
 
 def _npv(rate: float, cashflows: list[float]) -> float:
@@ -1134,15 +1158,18 @@ def compute_dcf(
     tv = terminal_fcf * (1 + g) / (tv_rate - g)
     pv_tv = tv / (1 + r) ** n
     ev = pv_fcf + pv_tv
-    risk_adj_ev = ev * p
+    # A business whose cash flows are worth less than nothing is worth €0, not a negative amount:
+    # its owners can stop. So the value never jumps when the enterprise value crosses zero.
+    risk_adj_ev = max(ev, 0.0) * p
     cash = operating.cash_available
     equity = risk_adj_ev - debt + cash
 
-    reason = None
+    reason = no_value = None
     if company.industry in FINANCIAL_SECTOR_INDUSTRIES:
         reason = "Free-cash-flow DCF doesn't apply to banks and insurers."
     elif ev <= 0:
-        reason = "Projected free cash flows give a negative enterprise value."
+        no_value = ("Projected free cash flows give a negative enterprise value, so the business is valued at €0 "
+                    "and only cash net of debt is left.")
     floored = reason is None and equity < 0
     equity = max(equity, 0.0)
 
@@ -1166,6 +1193,7 @@ def compute_dcf(
         pre_money_valuation=None if reason else equity,
         debt_exceeds_value=floored,
         not_meaningful_reason=reason,
+        no_value_reason=no_value,
     )
 
 
@@ -1233,7 +1261,7 @@ def _pct(x: float) -> str:
 
 
 def _eur(x: float) -> str:
-    return f"€{x:,.0f}"
+    return f"{'-' if round(x) < 0 else ''}€{abs(x):,.0f}"  # -€100,000, as in the PDF; never "-€0"
 
 
 PRE_REVENUE_STAGES = {"Idea stage", "Development stage"}
@@ -1252,6 +1280,10 @@ _REVENUE_POTENTIAL_MAX_USD = {"< $20 Million": 20e6, "$20 to $50 Million": 50e6,
 _MARKET_SIZE_MAX_USD = {"< $50 million": 50e6, "$50 to $100 million": 100e6}
 # A Year-5 target margin more than this above the industry's is questioned (as for the starting margin).
 TARGET_MARGIN_GAP = 0.10
+# Blended value above this multiple of last-12-month revenue is questioned: startups are rarely valued higher.
+IMPLAUSIBLE_REVENUE_MULTIPLE = 50
+# A Year-1 cash release from working capital above this share of Year-1 EBITDA gets a note.
+WC_RELEASE_SHARE = 0.20
 
 
 def usd_per_eur() -> float:
@@ -1301,8 +1333,10 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
     else:
         margin_used = ("your own Year-5 target margin" if fa.target_ebitda_margin_override is not None
                        else "the industry average margin")
-        warn("no_revenue_history", f"No revenue in the last 12 months: the projection uses {margin_used} from "
-             "Year 1, and the Comparables method can't be applied.", "info")
+        warn("no_revenue_history", f"No revenue in the last 12 months: the projection starts from your current "
+             f"EBITDA ({_eur(op.current_ebitda)}) measured against Year-1 revenue, a "
+             f"{_pct(projections.starting_ebitda_margin)} margin, and moves to {margin_used} by Year 5. The "
+             "Comparables method can't be applied.", "info")
     # Growth above 100% a year is normal for a company that is only starting to sell.
     if ltm > 0 and any(g > 1.0 for g in fa.revenue_growth_rates):
         warn("high_growth", "One or more yearly growth rates is above 100%. Check these are realistic.")
@@ -1311,6 +1345,12 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
     if op.current_ppe_value > 2 * revenue_base:
         warn("ppe_scale", f"PP&E ({_eur(op.current_ppe_value)}) is {op.current_ppe_value / revenue_base:.1f}× "
              "revenue, which is unusual for most young companies. Check the figure.")
+    y1 = projections.years[0]
+    if y1.change_in_working_capital < 0 and -y1.change_in_working_capital > WC_RELEASE_SHARE * abs(y1.ebitda):
+        warn("wc_release", f"In Year 1, working capital releases {_eur(-y1.change_in_working_capital)} of cash: in this "
+             "industry, suppliers' credit (accounts payable) is larger than receivables and inventory, so growing "
+             f"revenue from {_eur(ltm)} to {_eur(y1.revenue)} frees cash. This raises the DCF value; check that your "
+             "suppliers will really give you this much credit.", "info")
     for y in projections.years:
         if y.capex > 0.3 * y.revenue:
             warn("capex_scale", f"Capex in {y.year_label} ({_eur(y.capex)}) is more than 30% of revenue.")
@@ -1432,8 +1472,15 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                  f"would buy {_pct(stake)} of the company (post-money {_eur(post)}). Early rounds usually sell well "
                  "under half of a company, so check the amount you are raising and your plan.")
 
+    blend = sum(mv.weighted_value for mv in method_values.values() if mv.weighted_value is not None)
+    if ltm > 0 and blend > IMPLAUSIBLE_REVENUE_MULTIPLE * ltm:
+        warn("implausible_value", f"The blended value ({_eur(blend)}) is {blend / ltm:,.0f}× the last 12 months' "
+             f"revenue. Startups are rarely valued above about {IMPLAUSIBLE_REVENUE_MULTIPLE}× revenue, so check the "
+             "growth plan, the target margin and the exit year before relying on this number.")
+
     rng = method_range(method_values)
-    disagree = bool(rng and rng.high > METHODS_DISAGREE_RATIO * rng.low)
+    # A method at €0 already has its own note saying why; no second "methods disagree" note for it.
+    disagree = bool(rng and rng.high > METHODS_DISAGREE_RATIO * rng.low and not method_values[rng.low_method].note)
     if disagree:
         apart = f"{rng.high / rng.low:.0f}× apart" if rng.low > 0 else "far apart"
         warn("methods_disagree", f"The methods disagree: {METHOD_NAMES[rng.high_method]} gives {_eur(rng.high)}, "
@@ -1444,7 +1491,8 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
     vc_mv = method_values["venture_capital"]
     raise_amount = inputs.funding.capital_needed
     # When the VC method is also the low end of a wide range, the note above already explains it.
-    if (vc_mv.status == "ok" and vc_mv.weight_used > 0 and vc_mv.pre_money_value < VC_LOW_SHARE_OF_RAISE * raise_amount
+    if (vc_mv.status == "ok" and vc_mv.weight_used > 0 and not vc_mv.note
+            and vc_mv.pre_money_value < VC_LOW_SHARE_OF_RAISE * raise_amount
             and not (disagree and rng.low_method == "venture_capital")):
         warn("vc_low", f"The Venture Capital method values the company at only {_eur(vc_mv.pre_money_value)} before "
              f"the round: the {_eur(raise_amount)} you are raising nearly uses up the value the projected exit "
@@ -1602,17 +1650,24 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
         raise ValuationError(
             "Banks and insurers can't be valued on EBITDA or free cash flow, and the Scorecard applies only to "
             "pre-revenue companies (Idea and Development stages), so this tool can't value this company.")
+
+    def advice() -> str:
+        if op.current_revenue_last_12_months == 0 and company.company_stage not in PRE_REVENUE_STAGES:
+            return ("Your company has no revenue yet: choose the Idea or Development stage, where the Scorecard "
+                    "(which doesn't need revenue or profits) is used.")
+        debt = inputs.financial_assumptions.existing_debt_balance
+        if debt > 0 and debt >= op.cash_available:
+            return (f"The company's debt ({_eur(debt)}) is larger than the value the methods find for the business, "
+                    "so the shares are worth nothing before the new money comes in.")
+        return ("Usually this means the plan never becomes profitable, or the amount raised is larger than "
+                "the plan supports. Check the revenue plan, the target margin and the amount you are raising.")
+
     if usable_weight <= 0:
         reasons = "\n".join(f"• {METHOD_NAMES[k]}: {r}" for k, (v, r) in raw.items() if r and weights[k] > 0)
-        if op.current_revenue_last_12_months == 0 and company.company_stage not in PRE_REVENUE_STAGES:
-            advice = ("Your company has no revenue yet: choose the Idea or Development stage, where the Scorecard "
-                      "(which doesn't need revenue or profits) is used.")
-        else:
-            advice = ("Usually this means the plan never becomes profitable, or the amount raised is larger than "
-                      "the plan supports. Check the revenue plan, the target margin and the amount you are raising.")
         raise ValuationError(
-            "None of the methods for this stage can give a value with these inputs:\n" + reasons + "\n\n" + advice)
+            "None of the methods for this stage can give a value with these inputs:\n" + reasons + "\n\n" + advice())
 
+    no_value = {"venture_capital": vc_result.no_value_reason, "dcf": dcf_result.no_value_reason}
     method_values = {}
     blended = 0.0
     for key, (value, reason) in raw.items():
@@ -1622,6 +1677,8 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
                                         if key == "scorecard" else "Not used at this stage.")
         elif value is None:
             status, note = "not_meaningful", reason
+        elif no_value.get(key):
+            status, note = "ok", f"{no_value[key]} It counts as {_eur(value)} in the blend."
         elif key in ("comparables", "dcf") and (comparables_result if key == "comparables" else dcf_result).debt_exceeds_value:
             status, note = "ok", "Debt exceeds the enterprise value, so the equity is worth about zero."
         else:
@@ -1633,6 +1690,16 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
         method_values[key] = MethodValue(
             pre_money_value=value, weight=w, weight_used=w_used, weighted_value=weighted,
             status=status, note=note)
+
+    counted = [mv for mv in method_values.values() if mv.status == "ok" and mv.weight_used > 0]
+    if blended <= 0 or all(mv.note for mv in counted):
+        # Every method that applies finds no value for the business itself (at most the cash on hand is left):
+        # say so, rather than report that as a valuation.
+        reasons = "\n".join(f"• {METHOD_NAMES[k]}: {mv.note}" for k, mv in method_values.items()
+                            if mv.note and mv.status != "not_used")
+        raise ValuationError(
+            "None of the methods for this stage finds any value for the business with these inputs:\n"
+            + reasons + "\n\n" + advice())
 
     capital_needed = inputs.funding.capital_needed
     warnings = collect_warnings(inputs, projections, dcf_result, bench, scorecard_result, method_values)

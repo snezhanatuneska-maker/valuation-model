@@ -580,6 +580,12 @@ def _how(text: str) -> list:
     return [box, Spacer(1, 10)]
 
 
+def _counts_as_zero(reason: Optional[str]) -> list:
+    if not reason:
+        return []
+    return [P(f"<b>Counts as €0 in the blend:</b> {esc(reason)}", STYLES["td_label"], raw=True), Spacer(1, 8)]
+
+
 def _not_meaningful(reason: Optional[str]) -> list:
     if not reason:
         return []
@@ -627,6 +633,13 @@ def _at_a_glance(output: dict, scenarios: dict) -> list:
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     story = [P("At a glance", STYLES["h3"]), table]
+    checks = [w for w in (g(output, "warnings", []) or []) if w.get("severity") == "warning"]
+    if checks:
+        story.append(P(f"<b>Before sharing this report:</b> {len(checks)} of your inputs "
+                       f"{'needs' if len(checks) == 1 else 'need'} a second look (see \"Checks on your inputs\")."
+                       + (" " + esc(next(w["message"] for w in checks if w.get("code") == "implausible_value"))
+                          if any(w.get("code") == "implausible_value" for w in checks) else ""),
+                       STYLES["sub"], raw=True))
     if rng:
         story.append(P("The methods look at the company from different angles and rarely agree; the range shows how "
                        "far apart they are. The revenue line shows how much the result depends on the plan.",
@@ -769,8 +782,9 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
         margin_text = (f"The EBITDA margin starts from your last-12-month margin ({pct(proj.get('starting_ebitda_margin'))}) "
                        f"and moves in equal steps to {target_name} ({pct(proj.get('target_ebitda_margin'))}) by Year 5.")
     else:
-        margin_text = (f"With no revenue history, the projection uses {target_name} "
-                       f"({pct(proj.get('target_ebitda_margin'))}) as the EBITDA margin from Year 1.")
+        margin_text = (f"The EBITDA margin starts from today's EBITDA ÷ Year-1 revenue "
+                       f"({pct(proj.get('starting_ebitda_margin'))}) and moves in equal steps to {target_name} "
+                       f"({pct(proj.get('target_ebitda_margin'))}) by Year 5.")
     story.append(P(
         f"Year 1 is the 12 months after the valuation date ({format_date(proj.get('valuation_date'))}). {margin_text}",
         STYLES["sub"]))
@@ -865,8 +879,9 @@ def _valuation_summary_page(output: dict) -> list:
     story = [P("Valuation", STYLES["h2"])]
     story.append(P(
         "Each method estimates the company's equity value before the new investment (pre-money). "
-        "They are blended using weights for the company's stage; a method that can't give a meaningful "
-        "value for this company is left out and the other weights are scaled up.", STYLES["sub"]))
+        "They are blended using weights for the company's stage; a method that doesn't apply to this company "
+        "is left out and the other weights are scaled up, and a method that finds no value counts as €0.",
+        STYLES["sub"]))
 
     method_values = g(output, "method_values", {})
     rows, cats, vals = [], [], []
@@ -891,7 +906,7 @@ def _valuation_summary_page(output: dict) -> list:
         col_widths=[CONTENT_W * 0.32, CONTENT_W * 0.13, CONTENT_W * 0.13, CONTENT_W * 0.22, CONTENT_W * 0.20],
     ))
     for key, mv in method_values.items():
-        if mv.get("status") == "not_meaningful":
+        if mv.get("status") == "not_meaningful" or (mv.get("status") == "ok" and mv.get("note")):
             story.append(P(f"{METHOD_LABELS.get(key, key)}: {mv.get('note')}", STYLES["sub"]))
         elif key == "scorecard" and mv.get("status") == "not_used":
             story.append(P(f"Scorecard: not used at this stage. {SCORECARD_NOT_USED}", STYLES["sub"]))
@@ -1055,6 +1070,7 @@ def _vc_page(vc: dict, output: Optional[dict] = None) -> list:
     T = g(vc, "time_to_exit")
     r = g(vc, "target_return")
     story += _not_meaningful(g(vc, "not_meaningful_reason"))
+    story += _counts_as_zero(g(vc, "no_value_reason"))
     if g(vc, "post_money_valuation") is not None:
         story += _how(
             f"Projected EBITDA in the exit year ({g(vc, 'exit_year_label')}) of {money(g(vc, 'exit_year_ebitda'))} "
@@ -1063,9 +1079,9 @@ def _vc_page(vc: dict, output: Optional[dict] = None) -> list:
             f"{money(g(vc, 'exit_value'))} ÷ (1 + {pct(r)})^{T} = {money(g(vc, 'post_money_valuation'))} "
             + (f"after the investment. Minus the {money(g(vc, 'investment_amount'))} being raised = "
                f"{money(g(vc, 'pre_money_valuation'))} before it."
-               if g(vc, "pre_money_valuation") is not None else
+               if not g(vc, "no_value_reason") else
                f"after the investment. That is less than the {money(g(vc, 'investment_amount'))} being raised, "
-               "so this method leaves no positive value before the investment and is left out of the blend."))
+               "so this method leaves no value before the investment and counts as €0 in the blend."))
     story.append(P("Exit value", STYLES["h3"]))
     story.append(info_table([
         (f"Exit-year ({g(vc, 'exit_year_label')}) revenue", money(g(vc, "exit_year_revenue"))),
@@ -1115,7 +1131,9 @@ def _comparables_page(cm: dict, cp: dict) -> list:
             f"{money(g(cm, 'trailing_ebitda'))} × {multiple(g(cm, 'ev_ebitda_multiple'))} = "
             f"{money(g(cm, 'public_company_ev'))}. A private company of this stage is harder to sell than a listed "
             f"one, so a {pct(g(cm, 'private_company_discount'))} discount gives an enterprise value of "
-            f"{money(g(cm, 'enterprise_value'))}; minus debt and plus cash gives the equity value.")
+            f"{money(g(cm, 'enterprise_value'))}; minus debt and plus cash gives the equity value. This method "
+            "looks only at the last 12 months, not at your growth plan; the Venture Capital and DCF methods use the "
+            "plan, which is why the results can differ a lot for a fast-growing company.")
     used = g(cm, "pre_money_valuation") is not None
     # When the method doesn't apply (e.g. negative EBITDA), the inputs are shown but not
     # the meaningless results of multiplying them.
@@ -1140,8 +1158,9 @@ def _dcf_page(dcf: dict, wacc: dict, years: list, german: Optional[dict] = None)
     story = [P("Discounted cash flow (DCF) method", STYLES["h2"])]
     story += _method_value_header("Pre-money valuation", money(g(dcf, "pre_money_valuation")))
     story += _not_meaningful(g(dcf, "not_meaningful_reason"))
+    story += _counts_as_zero(g(dcf, "no_value_reason"))
     r = g(dcf, "discount_rate")
-    if g(dcf, "pre_money_valuation") is not None:
+    if g(dcf, "pre_money_valuation") is not None and not g(dcf, "no_value_reason"):
         story += _how(
             f"Five years of projected free cash flow plus a terminal value for the years after, discounted at the "
             f"company's cost of capital ({pct2(r)}), are worth {money(g(dcf, 'enterprise_value'))} if the business "
@@ -1170,21 +1189,21 @@ def _dcf_page(dcf: dict, wacc: dict, years: list, german: Optional[dict] = None)
     tv_share = g(dcf, "terminal_value_share")
     # When the method isn't used (e.g. negative enterprise value), the values derived from the
     # cash flows have no meaning: show dashes rather than negative amounts.
-    used = g(dcf, "pre_money_valuation") is not None
+    used = g(dcf, "pre_money_valuation") is not None and not g(dcf, "no_value_reason")
     # Half-width table: compact amounts from a billion euros up, so nothing wraps.
     big = amount_format([g(dcf, k) for k in ("pv_of_fcf", "pv_of_terminal_value", "enterprise_value",
                                              "risk_adjusted_enterprise_value", "debt", "cash", "equity_value")],
                         limit=1_000_000_000)
     shown = lambda v: big(v) if used else "—"  # noqa: E731
     value_rows = info_table([
-        ("PV of 5 years of free cash flow", shown(g(dcf, "pv_of_fcf"))),
-        ("PV of terminal value", shown(g(dcf, "pv_of_terminal_value"))),
-        ("Enterprise value (if the business survives)", shown(g(dcf, "enterprise_value"))),
+        ("PV of 5 years of free cash flow", big(g(dcf, "pv_of_fcf")) if g(dcf, "no_value_reason") else shown(g(dcf, "pv_of_fcf"))),
+        ("PV of terminal value", big(g(dcf, "pv_of_terminal_value")) if g(dcf, "no_value_reason") else shown(g(dcf, "pv_of_terminal_value"))),
+        ("Enterprise value (if the business survives)", big(g(dcf, "enterprise_value")) if g(dcf, "no_value_reason") else shown(g(dcf, "enterprise_value"))),
         ("Terminal value share of that value",
          "—" if not used else
          "over 100% (Years 1-5 burn cash)" if tv_share is not None and tv_share > 1 else pct(tv_share)),
         ("Probability of survival (for this stage)", pct(g(dcf, "survival_probability"))),
-        ("Risk-adjusted enterprise value", shown(g(dcf, "risk_adjusted_enterprise_value"))),
+        ("Risk-adjusted enterprise value", big(0) if g(dcf, "no_value_reason") else shown(g(dcf, "risk_adjusted_enterprise_value"))),
         ("Less: debt", big(-(g(dcf, "debt") or 0))),
         ("Plus: cash", big(g(dcf, "cash"))),
         ("Equity value (pre-money)", big(g(dcf, "equity_value"))),
@@ -1202,10 +1221,13 @@ def _dcf_page(dcf: dict, wacc: dict, years: list, german: Optional[dict] = None)
     ], col_widths=[HALF_W * 0.62, HALF_W * 0.38])
     story.append(side_by_side([P("From cash flows to equity value", STYLES["h3"]), value_rows],
                               [P("Discount rate", STYLES["h3"]), rate_rows]))
-    if german:
-        story.append(P(f"The terminal value starts from Year-5 free cash flow taxed at the long-run rate of "
-                       f"{pct(g(dcf, 'tax_rate'))} ({money(g(dcf, 'terminal_fcf'))}), because German corporate tax "
-                       "keeps falling after Year 5 under the enacted schedule.", STYLES["sub"]))
+    if used:
+        story.append(P(f"The terminal value treats the years after Year 5 as a business growing "
+                       f"{pct(g(dcf, 'perpetual_growth_rate'))} a year: Year-5 profit fully taxed, capex at least "
+                       "D&A and working capital growing at that rate"
+                       + (f", taxed at the long-run rate of {pct(g(dcf, 'tax_rate'))} because German corporate tax "
+                          "keeps falling after Year 5 under the enacted schedule" if german else "")
+                       + f" (starting cash flow {money(g(dcf, 'terminal_fcf'))}).", STYLES["sub"]))
     if g(dcf, "terminal_value_floor_applied"):
         story.append(P("Note: the discount rate is close to the long-run growth rate, so the terminal value uses "
                        "a minimum 2-point gap between them.", STYLES["sub"]))
@@ -1283,8 +1305,10 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
         "private-company discount, then subtracts debt and adds cash.",
         "<b>Discounted cash flow</b>: discounts projected free cash flow and a terminal value at the cost of "
         "capital (WACC), weights the result by the probability of survival, then subtracts debt and adds cash.",
-        "The four results are blended with weights for the company's stage. Methods that can't give a "
-        "meaningful value (for example, no positive EBITDA) are left out and the other weights are scaled up.",
+        "The four results are blended with weights for the company's stage. A method that doesn't apply to the "
+        "company (for example Comparables without positive EBITDA) is left out and the other weights are scaled "
+        "up; a method that applies but finds no value for the shares counts as €0, so a weaker plan never raises "
+        "the result.",
     ):
         story.append(P(text, STYLES["td_label"], raw=True))
         story.append(Spacer(1, 3))

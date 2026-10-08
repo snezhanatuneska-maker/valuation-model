@@ -13,4 +13,6 @@ jobs:
         with:
           python-version-file: .python-version
       - run: pip install -r requirements-dev.txt
+      # The browser checks of the wizard (tests/test_frontend.py) are skipped without Playwright and Chromium.
+      - run: pip install playwright==1.63.0 && python -m playwright install --with-deps chromium
       - run: python -m pytest -q

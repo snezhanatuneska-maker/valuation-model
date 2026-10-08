@@ -129,11 +129,13 @@ one paragraph marked `COMMUNITY LINE`.
 | Comparables | Last-12-month EBITDA × EV/EBITDA multiple, less a private-company discount, minus debt plus cash | Private-company discount: 40% → 20% |
 | DCF | 5 years of free cash flow + Gordon terminal value at WACC, × probability of survival, minus debt plus cash | Survival: 30% → 95% |
 
-- Projected EBITDA margin starts from the company's own last-12-month margin and moves in equal steps to the industry EBITDA margin (Damodaran EBITDA/Sales, which includes R&D) by Year 5, unless the user sets a target.
+- Projected EBITDA margin starts from the company's own last-12-month margin (before revenue: today's EBITDA, usually the operating loss, divided by Year-1 revenue) and moves in equal steps to the industry EBITDA margin (Damodaran EBITDA/Sales, which includes R&D) by Year 5, unless the user sets a target.
+- The terminal value (years after Year 5) is a business growing at the long-run 2% forever: Year 5's profit taxed in full (no lasting loss carryforward), capex at least D&A, and working capital growing at 2%.
 - One tax rate for everything: the user's, else the country's statutory rate. Losses are carried forward.
   Germany is the exception (see below).
-- A method that can't give a meaningful value (e.g. no positive EBITDA, banks and insurers) is left out and the other stage weights are scaled up; every such case is explained in the results and the PDF.
-- Inputs that can't be valued are rejected with a plain-language message; implausible ones (revenue jumps, PP&E out of scale, ownership ≠ 100%, use of funds ≠ raise, …) produce warnings.
+- A method that doesn't apply to the company (Comparables without positive last-12-month EBITDA; VC, Comparables and DCF for banks and insurers) is left out and the other stage weights are scaled up. A method that applies but finds no value (the raise is larger than the exit supports; the cash flows are worth less than nothing) counts as €0 with a note, so a weaker plan never gives a higher value. If no method finds any value for the business, the user gets a plain-language message instead of a €0 valuation.
+- Inputs that can't be valued are rejected with a plain-language message (including EBITDA above revenue); implausible ones (revenue jumps, PP&E out of scale, ownership ≠ 100%, use of funds ≠ raise, a value above 50× revenue, …) produce warnings, and the PDF cover says how many inputs need a second look.
+- A saved valuation keeps the figures it was saved with (PDF and scenarios); `POST /valuations/{id}/rerun` recalculates with today's data.
 
 ## Germany (the default country)
 
@@ -151,9 +153,9 @@ German example (`GERMAN_CASE` in `audit/recompute.py`): Beispiel Software GmbH, 
 |---|---|
 | Venture Capital | 971,446 € |
 | Comparables | 749,919 € |
-| DCF | 1,289,361 € |
-| **Blended pre-money** | **1,005,182 €** |
-| **Post-money** | **1,305,182 €** |
+| DCF | 1,327,405 € |
+| **Blended pre-money** | **1,018,497 €** |
+| **Post-money** | **1,318,497 €** |
 
 ## Verified numbers (Valuativa DOO example)
 
@@ -168,9 +170,9 @@ cash €20,000, no debt. Year-1 revenue €1,000,000 growing 10% a year, capex
 | Scorecard | not used (company has revenue) |
 | Venture Capital | 1,242,335 € |
 | Comparables | 697,925 € |
-| DCF | 841,159 € |
-| **Blended pre-money** | **911,380 €** |
-| **Post-money** | **1,211,380 €** |
+| DCF | 828,766 € |
+| **Blended pre-money** | **907,043 €** |
+| **Post-money** | **1,207,043 €** |
 
 These are pinned in `tests/test_engine.py` and recomputed independently by
 `audit/recompute.py`.

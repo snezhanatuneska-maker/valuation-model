@@ -25,10 +25,10 @@ def test_method_range_lists_lowest_and_highest_method():
 
 
 def test_methods_far_apart_get_a_note_naming_the_cause():
-    r = run(WERKPULS)  # VC about €145k, DCF about €1.76M
+    r = run(WERKPULS)  # VC about €145k, DCF about €2.14M
     note = next(w for w in r.warnings if w.code == "methods_disagree")
     assert note.severity == "warning"
-    assert "€145,499" in note.message and "€1,764,863" in note.message and "12×" in note.message
+    assert "€145,499" in note.message and "€2,138,436" in note.message and "15×" in note.message
     assert "amount raised" in note.message  # the VC method is the low one: say what drives it
     assert "vc_low" not in {w.code for w in r.warnings}  # one note, not two saying the same
 

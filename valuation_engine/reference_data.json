@@ -14925,7 +14925,7 @@
     "scorecard": "Scorecard method (Bill Payne / Ohio TechAngels), which compares a pre-revenue company with the typical pre-revenue company in its region: criterion weights 30/25/15/10/10/10 (Payne's 'need for additional investment' and 'other' 5% each are combined into 'funding required'). Used only for the Idea and Development stages; companies with revenue are valued on their numbers.",
     "country_data_as_of": "2026-07-01",
     "scorecard_benchmark": "Equidam, Startup Valuation Delta H1 2026: median pre-seed valuations from 3,000+ valuations of pre-seed companies preparing their first institutional round (results of Equidam's five-method valuations, not prices paid in closed rounds). United States $5.16M, Europe $3.30M; Emerging Markets uses the average of the Africa ($2.99M) and Latin America ($2.40M) medians; Japan, China, India and Global use the all-region median ($5.20M). Converted to euros at the ECB reference rate of 1 July 2026 (1.1383 US$ per euro). Used only for pre-revenue stages (Idea, Development).",
-    "method_weights": "Stage weights carried over from the original workbook, except that the Scorecard's weight is moved to the other methods in proportion once a company has revenue (Startup and Expansion stages)."
+    "method_weights": "App assumption: stage weights carried over from the original workbook, except that once a company has revenue (Startup and Expansion stages) the Scorecard's weight is spread over the other three methods (roughly in proportion, rounded: Startup 30/35/35%, Expansion 15/42.5/42.5%)."
   },
   "stage_descriptions": {
     "Idea stage": "An idea or concept; no product and no revenue yet.",

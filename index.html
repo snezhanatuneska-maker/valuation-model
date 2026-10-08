@@ -1272,7 +1272,7 @@ async function updateProjectionPreview() {
   const cells = (fn) => years.map((y) => `<td>${fn(y)}</td>`).join("");
   const startText = proj.starting_margin_source === "company"
     ? `your last-12-month margin (${pct(proj.starting_ebitda_margin)})`
-    : `the industry margin (no revenue history)`;
+    : `your current EBITDA measured against Year-1 revenue (${pct(proj.starting_ebitda_margin)}, no revenue yet)`;
   const stepped = proj.tax_schedule && proj.tax_schedule.basis === "germany_schedule";
   const targetText = proj.target_margin_source === "user_override"
     ? `your Year-5 target (${pct(proj.target_ebitda_margin)})`
@@ -1281,9 +1281,7 @@ async function updateProjectionPreview() {
   wrap.innerHTML = `
     <div class="suggested-data-wrap">
       <h3>Projection used in the valuation</h3>
-      <p class="suggested-data-hint">${proj.starting_margin_source === "company"
-        ? `The EBITDA margin starts from ${startText} and moves in equal steps to ${targetText} by Year 5.`
-        : `With no revenue history, the projection uses ${targetText} as the EBITDA margin from Year 1.`} ${stepped ? `Tax steps down year by year under the German schedule (${pct(proj.tax_rate)} after Year 5).` : `Tax rate ${pct(proj.tax_rate)}.`}</p>
+      <p class="suggested-data-hint">The EBITDA margin starts from ${startText} and moves in equal steps to ${targetText} by Year 5. ${stepped ? `Tax steps down year by year under the German schedule (${pct(proj.tax_rate)} after Year 5).` : `Tax rate ${pct(proj.tax_rate)}.`}</p>
       <div style="overflow-x:auto">
       <table class="suggested-table">
         <thead><tr><th>&nbsp;</th>${years.map((y) => `<th>${y.year_label}<br><span style="font-weight:400">${escapeHtml(y.period_label)}</span></th>`).join("")}</tr></thead>
@@ -1676,6 +1674,7 @@ function methodExplanation(key, o) {
   if (key === "venture_capital") {
     const vc = o.venture_capital;
     if (vc.not_meaningful_reason) return vc.not_meaningful_reason;
+    if (vc.no_value_reason) return `${vc.no_value_reason} It counts as €0 in the blend.`;
     return `${vc.exit_year_label} EBITDA ${money(vc.exit_year_ebitda)} × ${vc.ev_ebitda_multiple.toFixed(2)}× = exit value ${money(vc.exit_value)}, discounted ${vc.time_to_exit} year${vc.time_to_exit === 1 ? "" : "s"} at an investor's ${pct(vc.target_return)} target return = ${money(vc.post_money_valuation)} post-money, minus the ${money(vc.investment_amount)} raised.`;
   }
   if (key === "comparables") {
@@ -1686,6 +1685,7 @@ function methodExplanation(key, o) {
   if (key === "dcf") {
     const d = o.dcf;
     if (d.not_meaningful_reason) return d.not_meaningful_reason;
+    if (d.no_value_reason) return `${d.no_value_reason} It counts as €0 in the blend.`;
     return `Free cash flows and terminal value discounted at ${pct2(d.discount_rate)} (WACC) = ${money(d.enterprise_value)} if the business survives; × ${pct(d.survival_probability)} survival probability, minus debt plus cash.`;
   }
   return "";
@@ -1913,7 +1913,7 @@ function renderResults(result, scenarios) {
     </div>
     ${readResultBox(result, scenarios)}
     <h2 class="ledger-title">Valuation summary</h2>
-    <p class="ledger-subtitle">Pre-money equity value as of ${escapeHtml(new Date(result.valuation_date + "T00:00:00").toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" }))}, blended across four methods with weights for the company's stage.${leftOut ? " Methods that can't give a meaningful value for this company are left out and the other weights scaled up." : ""}</p>
+    <p class="ledger-subtitle">Pre-money equity value as of ${escapeHtml(new Date(result.valuation_date + "T00:00:00").toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" }))}, blended across four methods with weights for the company's stage.${leftOut ? " Methods that don't apply to this company are left out and the other weights scaled up." : ""}</p>
     <table class="ledger-table stacked">
       <thead>
         <tr><th>Method</th><th>Weight</th><th>Pre-money value${tipButton("pre_post_money", "pre-money value")}</th><th>Weighted value</th></tr>

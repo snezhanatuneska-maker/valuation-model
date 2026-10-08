@@ -69,7 +69,11 @@ def test_dcf_arithmetic_with_hand_cash_flows():
 
 def test_pinned_dcf_discounts_terminal_value(pinned_run):
     d = pinned_run(WERKPULS).dcf
-    assert d.terminal_value == pytest.approx(4_037_085.62, abs=0.01)
+    # Year-5 FCF 474,951.25 for a business growing 2% forever: working capital grows 2% (176,175 x 2% = 3,523.50
+    # instead of Year 5's 35,235) and capex is at least D&A (117,450 instead of 80,000): 469,212.75,
+    # x 1.02 / (14% - 2%).
+    assert d.terminal_fcf == pytest.approx(469_212.75, abs=0.01)
+    assert d.terminal_value == pytest.approx(3_988_308.38, abs=0.01)
     assert d.pv_of_terminal_value == pytest.approx(d.terminal_value / 1.14 ** 5)
     assert d.enterprise_value == pytest.approx(d.pv_of_fcf + d.pv_of_terminal_value)
 
@@ -163,15 +167,18 @@ def test_live_run_matches_independent_recompute_and_is_plausible():
 
 def test_pinned_werkpuls_final_values(pinned_run):
     """The owner's accepted results for Werkpuls (QUESTIONS.md 1-6 decided 7 October 2026: keep the app's
-    method). Worked by hand: DCF 2,340,541.08 x 50% survival - 100,000 debt + 310,000 cash; VC exit
-    417,898.29 x 18 - 100,000 debt, / 1.5^4, - 800,000; blend 6/13 VC + 7/13 DCF (Comparables left out)."""
+    method). Worked by hand: DCF 2,315,207.71 x 50% survival - 100,000 debt + 310,000 cash; VC exit
+    417,898.29 x 18 - 100,000 debt, / 1.5^4, - 800,000; blend 6/13 VC + 7/13 DCF (Comparables left out).
+    Changed 8 October 2026 (AUDIT_REPORT.md, m2): the terminal year is a business growing 2% forever
+    (working capital grows 2%, capex at least D&A), so the DCF enterprise value moves from 2,340,541.08 and
+    the blend from 1,050,656.82."""
     r = pinned_run(WERKPULS)
-    assert r.dcf.enterprise_value == pytest.approx(2_340_541.08, abs=0.01)
-    assert r.dcf.pre_money_valuation == pytest.approx(1_380_270.54, abs=0.01)
+    assert r.dcf.enterprise_value == pytest.approx(2_315_207.71, abs=0.01)
+    assert r.dcf.pre_money_valuation == pytest.approx(1_367_603.85, abs=0.01)
     assert r.venture_capital.exit_value == pytest.approx(7_522_169.14, abs=0.01)
     assert r.venture_capital.pre_money_valuation == pytest.approx(666_107.49, abs=0.01)
     assert r.method_values["comparables"].status == "not_meaningful"
     assert r.method_values["scorecard"].status == "not_used"
     assert r.method_values["venture_capital"].weight_used == pytest.approx(6 / 13)
-    assert r.blended_pre_money_valuation == pytest.approx(1_050_656.82, abs=0.01)
-    assert r.post_money_valuation == pytest.approx(1_850_656.82, abs=0.01)
+    assert r.blended_pre_money_valuation == pytest.approx(1_043_836.30, abs=0.01)
+    assert r.post_money_valuation == pytest.approx(1_843_836.30, abs=0.01)
