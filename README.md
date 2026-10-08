@@ -14,6 +14,10 @@ projections, and a short qualitative questionnaire, it computes a blended
 pre-money and post-money valuation, flags implausible inputs, and generates a
 branded PDF report that explains how each number was reached.
 
+The wizard and the PDF report are available in **German and English** (DE / EN switch at the top right;
+the choice is kept only in the address, `?lang=de`, nothing is stored in the browser). The API answers in
+German when called with `?lang=de`; figures are identical in both languages.
+
 See `AUDIT_REPORT.md` for the October 2026 accuracy audit and what changed.
 
 This version is deliberately consolidated to a handful of files to make
@@ -126,14 +130,16 @@ one paragraph marked `COMMUNITY LINE`.
 |---|---|---|
 | Scorecard (Payne) | Typical pre-revenue pre-money for the region (Equidam H1 2026 median) × your weighted questionnaire score. Idea and Development stages only | — |
 | Venture Capital | Exit-year EBITDA × EV/EBITDA multiple, minus debt, discounted at the investor's target return; minus the raise | Target return: 65% (Idea) falling to 20% (Maturity) |
-| Comparables | Last-12-month EBITDA × EV/EBITDA multiple, less a private-company discount, minus debt plus cash | Private-company discount: 40% → 20% |
+| Comparables | The higher of last-12-month EBITDA × EV/EBITDA and last-12-month revenue × EV/Sales (for SaaS: ARR × the public SaaS EV/ARR multiple, if ARR is entered), less a private-company discount, minus debt plus cash | Private-company discount: 40% → 20% |
 | DCF | 5 years of free cash flow + Gordon terminal value at WACC, × probability of survival, minus debt plus cash | Survival: 30% → 95% |
 
 - Projected EBITDA margin starts from the company's own last-12-month margin (before revenue: today's EBITDA, usually the operating loss, divided by Year-1 revenue) and moves in equal steps to the industry EBITDA margin (Damodaran EBITDA/Sales, which includes R&D) by Year 5, unless the user sets a target.
 - The terminal value (years after Year 5) is a business growing at the long-run 2% forever: Year 5's profit taxed in full (no lasting loss carryforward), capex at least D&A, and working capital growing at 2%.
 - One tax rate for everything: the user's, else the country's statutory rate. Losses are carried forward.
   Germany is the exception (see below).
-- A method that doesn't apply to the company (Comparables without positive last-12-month EBITDA; VC, Comparables and DCF for banks and insurers) is left out and the other stage weights are scaled up. A method that applies but finds no value (the raise is larger than the exit supports; the cash flows are worth less than nothing) counts as €0 with a note, so a weaker plan never gives a higher value. If no method finds any value for the business, the user gets a plain-language message instead of a €0 valuation.
+- Comparables uses the revenue multiple when it gives the higher value, typically for loss-making or thin-margin companies. EV/Sales is Damodaran's EV/EBITDA (all firms) × EBITDA/Sales for the same industry and region, i.e. the sum of enterprise values over the sum of sales. So the method no longer drops out at break-even, and a lower EBITDA never raises the value.
+- **Round logic** (cross-check, not part of the blend): the typical round for the stage (Seed for Startup stage, etc.), its usual size and the share of the company it usually sells (dilution). The raise ÷ dilution × (1 − dilution) gives the pre-money that a typical round of your size implies; the result page and PDF compare it with the blended value and show the share your raise would buy at that value.
+- A method that doesn't apply to the company (Comparables without revenue, ARR or positive last-12-month EBITDA; VC, Comparables and DCF for banks and insurers) is left out and the other stage weights are scaled up. A method that applies but finds no value (the raise is larger than the exit supports; the cash flows are worth less than nothing) counts as €0 with a note, so a weaker plan never gives a higher value. If no method finds any value for the business, the user gets a plain-language message instead of a €0 valuation.
 - Inputs that can't be valued are rejected with a plain-language message (including EBITDA above revenue); implausible ones (revenue jumps, PP&E out of scale, ownership ≠ 100%, use of funds ≠ raise, a value above 50× revenue, …) produce warnings, and the PDF cover says how many inputs need a second look.
 - A saved valuation keeps the figures it was saved with (PDF and scenarios); `POST /valuations/{id}/rerun` recalculates with today's data.
 
@@ -152,10 +158,10 @@ German example (`GERMAN_CASE` in `audit/recompute.py`): Beispiel Software GmbH, 
 | Method | Value |
 |---|---|
 | Venture Capital | 971,446 € |
-| Comparables | 749,919 € |
+| Comparables | 1,134,461 € (revenue multiple) |
 | DCF | 1,327,405 € |
-| **Blended pre-money** | **1,018,497 €** |
-| **Post-money** | **1,318,497 €** |
+| **Blended pre-money** | **1,153,087 €** |
+| **Post-money** | **1,453,087 €** |
 
 ## Verified numbers (Valuativa DOO example)
 
@@ -169,10 +175,13 @@ cash €20,000, no debt. Year-1 revenue €1,000,000 growing 10% a year, capex
 |---|---|
 | Scorecard | not used (company has revenue) |
 | Venture Capital | 1,242,335 € |
-| Comparables | 697,925 € |
+| Comparables | 1,258,079 € (revenue multiple; the EBITDA multiple gives 697,925 €) |
 | DCF | 828,766 € |
-| **Blended pre-money** | **907,043 €** |
-| **Post-money** | **1,207,043 €** |
+| **Blended pre-money** | **1,103,096 €** |
+| **Post-money** | **1,403,096 €** |
+
+Round logic: a typical Seed round sells 15–25% of the company (median 19.5%), so a €300,000 raise implies a
+pre-money of €900,000 to €1,700,000; at the blended value it would buy 21.4%.
 
 These are pinned in `tests/test_engine.py` and recomputed independently by
 `audit/recompute.py`.
@@ -212,6 +221,12 @@ Rules the refresh applies:
 - D&A (% of revenue) and the interest rate on debt aren't published
   directly, so they are derived from Damodaran's margin and debt ratios;
   implausible results fall back the same way.
+- EV/Sales is derived as EV/EBITDA (all firms) × EBITDA/Sales; outside
+  0.05×–40× it falls back the same way.
+- The SaaS EV/ARR multiple and the round benchmarks (dilution and round
+  size by stage) are not from Damodaran; they sit in `saas_arr_multiple`
+  and `round_benchmarks` in `reference_data.json` with their sources and
+  dates, and are updated by hand.
 - "Retail (Online)" is no longer published by Damodaran; it uses his "Retail (General)" figures.
 - Country risk data (`country_data`) has its own tool: download `ctryprem.xlsx` from Damodaran's
   [country risk page](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html), then run

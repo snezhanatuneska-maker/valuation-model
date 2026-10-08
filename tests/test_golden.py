@@ -110,6 +110,8 @@ def test_multiple_arithmetic_with_hand_inputs(monkeypatch):
     stage = dict(ve.get_stage_params("Startup stage"), private_company_discount=1 - PINNED_RISK_MULTIPLIER)
     monkeypatch.setattr(ve, "get_stage_params", lambda s: stage)
     bench = SimpleNamespace(get=lambda m: 18.0, used={"ev_ebitda_multiple": SimpleNamespace(source="region")})
+    # A low EV/Sales, so this checks the EBITDA arithmetic (the higher of the two values is used).
+    monkeypatch.setattr(ve, "get_industry_metric_with_source", lambda i, m, r: (1.0, "region"))
     op = ve.OperatingPerformance(current_revenue_last_12_months=750_000, current_ebitda=202_500)
     cm = ve.compute_comparables(ve.CompanyProfile(**WERKPULS["company_profile"]), op, 0, bench)
     assert cm.public_company_ev == pytest.approx(3_645_000.00)
@@ -158,8 +160,8 @@ def test_live_run_matches_independent_recompute_and_is_plausible():
         if mv.pre_money_value is not None:
             assert math.isfinite(mv.pre_money_value) and mv.pre_money_value >= 0
     assert 0 < r.blended_pre_money_valuation < 100_000_000
-    # Negative last-12-month EBITDA: the multiple method is left out, never negative.
-    assert r.method_values["comparables"].status == "not_meaningful"
+    # Negative last-12-month EBITDA: the multiple method values revenue instead (never negative).
+    assert r.method_values["comparables"].status == "ok" and r.comparables.basis_used == "revenue"
     codes = {w.code for w in r.warnings}
     # The inputs balance, so none of the input-check warnings appear.
     assert not codes & {"ownership_sum", "use_of_funds_sum", "revenue_jump", "high_growth"}
@@ -168,7 +170,10 @@ def test_live_run_matches_independent_recompute_and_is_plausible():
 def test_pinned_werkpuls_final_values(pinned_run):
     """The owner's accepted results for Werkpuls (QUESTIONS.md 1-6 decided 7 October 2026: keep the app's
     method). Worked by hand: DCF 2,315,207.71 x 50% survival - 100,000 debt + 310,000 cash; VC exit
-    417,898.29 x 18 - 100,000 debt, / 1.5^4, - 800,000; blend 6/13 VC + 7/13 DCF (Comparables left out).
+    417,898.29 x 18 - 100,000 debt, / 1.5^4, - 800,000; Comparables 420,000 revenue x 4.86 EV/Sales x (1 - 30%)
+    - 100,000 + 310,000 = 1,638,840; blend 30% VC + 35% Comparables + 35% DCF.
+    Changed 8 October 2026: loss-making companies are valued on revenue by Comparables (QUESTIONS.md 13), which was
+    left out before (blend 6/13 VC + 7/13 DCF).
     Changed 8 October 2026 (AUDIT_REPORT.md, m2): the terminal year is a business growing 2% forever
     (working capital grows 2%, capex at least D&A), so the DCF enterprise value moves from 2,340,541.08 and
     the blend from 1,050,656.82."""
@@ -177,8 +182,8 @@ def test_pinned_werkpuls_final_values(pinned_run):
     assert r.dcf.pre_money_valuation == pytest.approx(1_367_603.85, abs=0.01)
     assert r.venture_capital.exit_value == pytest.approx(7_522_169.14, abs=0.01)
     assert r.venture_capital.pre_money_valuation == pytest.approx(666_107.49, abs=0.01)
-    assert r.method_values["comparables"].status == "not_meaningful"
+    assert r.comparables.pre_money_valuation == pytest.approx(1_638_840.00, abs=0.01)
     assert r.method_values["scorecard"].status == "not_used"
-    assert r.method_values["venture_capital"].weight_used == pytest.approx(6 / 13)
-    assert r.blended_pre_money_valuation == pytest.approx(1_043_836.30, abs=0.01)
-    assert r.post_money_valuation == pytest.approx(1_843_836.30, abs=0.01)
+    assert r.method_values["venture_capital"].weight_used == pytest.approx(0.30)
+    assert r.blended_pre_money_valuation == pytest.approx(1_252_087.59, abs=0.01)
+    assert r.post_money_valuation == pytest.approx(2_052_087.59, abs=0.01)

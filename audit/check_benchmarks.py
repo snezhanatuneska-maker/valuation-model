@@ -42,7 +42,10 @@ DIRECT = {
     "acc_payable_pct_revenue": ("wcdata", "acc pay/ sales", 0),
     "ebitda_margin": ("margin", "ebitda/sales", 0),
     "rd_pct_revenue": ("margin", "r&d/sales", 0),
+    # = EV/EBITDA over all firms (the second EV/EBITDA column) x EBITDA/sales: sum of EV / sum of sales.
+    "ev_sales_multiple": ("vebitda", "ev/ebitda", 1),
 }
+EV_SALES_RANGE = (0.05, 40.0)  # outside this the app shows "NA"
 # App industries whose figures come from a differently named Damodaran industry.
 SOURCE_ALIASES = {"Retail (Online)": "Retail (General)",
                   # Damodaran spells it "Heathcare"; the app shows the corrected name.
@@ -98,6 +101,11 @@ def source_value(metric, industry, region, folder, cache):
             v = 1 - float(row[col(headers, "gross margin")])
         elif metric == "sga_pct_revenue":
             v = float(row[col(headers, "ebitdasg&a/sales")]) - float(row[col(headers, "ebitda/sales")])
+        elif metric == "ev_sales_multiple":
+            margin = source_value("ebitda_margin", industry, region, folder, cache)[0]
+            v = float(row[col(headers, header, occ)]) * float(margin)
+            if not EV_SALES_RANGE[0] <= v <= EV_SALES_RANGE[1]:
+                return "NA", n_firms
         else:
             v = float(row[col(headers, header, occ)])
     except (TypeError, ValueError):

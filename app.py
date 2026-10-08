@@ -28,6 +28,7 @@ from contextlib import asynccontextmanager, contextmanager
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -202,9 +203,11 @@ def _run(fn, *args):
         raise HTTPException(status_code=422, detail=str(e))
     except KeyError as e:
         # Unknown industry, country, stage, region or questionnaire answer.
-        raise HTTPException(status_code=400, detail=f"Unrecognised input: {e.args[0] if e.args else e}")
+        raise HTTPException(status_code=400, detail=ve._t("Unrecognised input: ", "Unbekannte Angabe: ")
+                            + str(e.args[0] if e.args else e))
     except (ValueError, ZeroDivisionError, OverflowError) as e:
-        raise HTTPException(status_code=422, detail=f"These inputs can't be valued: {e}")
+        raise HTTPException(status_code=422, detail=ve._t("These inputs can't be valued: ",
+                                                          "Mit diesen Angaben ist keine Bewertung möglich: ") + str(e))
 
 valuations_router = APIRouter(prefix="/valuations", tags=["valuations"])
 
@@ -360,7 +363,7 @@ def _pdf_response(payload: ve.ValuationInput, output_dict: dict, scenarios_dict:
         company_name = company_name.replace(umlaut, plain)
     safe_name = "".join(c for c in company_name if (c.isascii() and c.isalnum()) or c in (" ", "-", "_"))
     safe_name = "-".join(safe_name.split())[:80].strip("-") or "valuation"
-    filename = f"{safe_name}-Valuation-Report.pdf"
+    filename = f"{safe_name}-{ve._t('Valuation-Report', 'Bewertungsbericht')}.pdf"
 
     return Response(
         content=pdf_bytes,
@@ -422,7 +425,15 @@ def get_stages() -> list[str]:
 
 @reference_router.get("/stage-descriptions")
 def get_stage_descriptions() -> dict:
+    """One-line definition of each stage (German with ?lang=de)."""
     return ve.stage_descriptions()
+
+
+@reference_router.get("/labels")
+def get_labels() -> dict:
+    """Display names for stages, regions, countries and questionnaire answers (German with ?lang=de).
+    The wizard sends back the English values; only what it shows changes."""
+    return ve.ui_labels()
 
 
 @reference_router.get("/stages/{stage}")
@@ -516,20 +527,92 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class LanguageMiddleware:
+    """Runs each request in the language of its ?lang= parameter (en, the default, or de), so every message
+    the engine, the API and the PDF write comes out in that language."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        lang = "en"
+        if scope["type"] == "http":
+            lang = parse_qs(scope.get("query_string", b"").decode("latin-1")).get("lang", ["en"])[0]
+        with ve.language(lang):
+            await self.app(scope, receive, send)
+
+
+app.add_middleware(LanguageMiddleware)
+
+# German names of the input fields, for validation messages.
+_FIELD_NAMES_DE = {
+    "company_name": "Firmenname", "country": "Land", "num_founders": "Anzahl der Gründer",
+    "num_employees": "Anzahl der Mitarbeitenden", "year_of_incorporation": "Gründungsjahr", "company_stage": "Phase",
+    "committed_capital": "zugesagtes Kapital", "industry": "Branche", "business_territory_region": "Region",
+    "planned_time_to_exit_years": "geplante Jahre bis zum Exit", "valuation_date": "Bewertungsdatum",
+    "dcf_tax_rate_override": "Steuersatz", "trade_tax_hebesatz": "Hebesatz",
+    "benchmark_pre_money_override": "eigener Vergleichswert",
+    "current_revenue_last_12_months": "Umsatz der letzten 12 Monate", "current_ebitda": "EBITDA der letzten 12 Monate",
+    "cash_available": "liquide Mittel", "current_ppe_value": "Sachanlagen",
+    "annual_recurring_revenue": "jährlich wiederkehrender Umsatz (ARR)", "revenue_year1": "Umsatz in Jahr 1",
+    "revenue_growth_rates": "Wachstumsraten", "capex_by_year": "Investitionen",
+    "existing_debt_balance": "bestehende Schulden", "target_ebitda_margin_override": "Ziel-EBITDA-Marge",
+    "ownership_pct": "Beteiligung", "name": "Name", "capital_needed": "Kapitalbedarf",
+    "use_of_funds": "Mittelverwendung", "number_of_existing_shares": "Anzahl bestehender Anteile",
+}
+# German wording of the validation messages (pydantic's and the engine's own).
+_MESSAGES_DE = [
+    (r"^should be greater than or equal to (.+)$", r"muss mindestens \1 sein"),
+    (r"^should be greater than (.+)$", r"muss größer als \1 sein"),
+    (r"^should be less than or equal to (.+)$", r"darf höchstens \1 sein"),
+    (r"^should be less than (.+)$", r"muss kleiner als \1 sein"),
+    (r"^is required$", "fehlt"),
+    (r"^should be a valid number.*$", "muss eine Zahl sein"),
+    (r"^should be a finite number$", "muss eine endliche Zahl sein"),
+    (r"^should be a valid integer.*$", "muss eine ganze Zahl sein"),
+    (r"^should be a valid date.*$", "muss ein gültiges Datum sein"),
+    (r"^should be a valid string$", "muss ein Text sein"),
+    (r"^String should have at least 1 character$", "darf nicht leer sein"),
+    (r"^revenue_growth_rates must have exactly 4 values.*$", "es müssen genau 4 Werte sein (für J2 bis J5)"),
+    (r"^each growth rate must be above -100% and at most 1000%$",
+     "jede Wachstumsrate muss über -100 % und höchstens bei 1000 % liegen"),
+    (r"^capex_by_year must have exactly 5 values.*$", "es müssen genau 5 Werte sein (für J1 bis J5)"),
+    (r"^capex can't be negative$", "Investitionen können nicht negativ sein"),
+    (r"^capex can be at most (.+)$", r"Investitionen dürfen höchstens \1 betragen"),
+    (r"^use-of-funds amounts can't be negative$", "Beträge der Mittelverwendung können nicht negativ sein"),
+    (r"^use-of-funds amounts can be at most (.+)$", r"Beträge der Mittelverwendung dürfen höchstens \1 betragen"),
+    (r"^with no revenue, EBITDA can't be positive.*$",
+     "ohne Umsatz kann das EBITDA nicht positiv sein; geben Sie 0 oder Ihren operativen Verlust als negative Zahl ein"),
+    (r"^EBITDA can't be larger than revenue.*$",
+     "das EBITDA kann nicht größer als der Umsatz sein (es ist, was vom Umsatz nach den operativen Kosten bleibt)"),
+]
+
+
 def _readable_validation_errors(exc: RequestValidationError) -> str:
+    german = ve.current_language() == "de"
     parts = []
     for err in exc.errors():
         loc = [x for x in err.get("loc", []) if x != "body"]
         names = [x for x in loc if isinstance(x, str)]
-        field = names[-1].replace("_", " ") if names else "input"
+        key = names[-1] if names else None
+        field = (_FIELD_NAMES_DE.get(key, key.replace("_", " ")) if german else key.replace("_", " ")) if key \
+            else ve._t("input", "Eingabe")
         if loc and isinstance(loc[-1], int):  # an item in a list, e.g. the 2nd growth rate
-            field += f" (item {loc[-1] + 1})"
+            field += ve._t(f" (item {loc[-1] + 1})", f" (Eintrag {loc[-1] + 1})")
         msg = err.get("msg", "is invalid").removeprefix("Value error, ")
         msg = msg.replace("Input should be", "should be").replace("Field required", "is required")
-        msg = re.sub(r"\b\d{5,}\b", lambda m: f"{int(m.group()):,}", msg)  # 10000000 -> 10,000,000
+        if german:
+            for pattern, repl in _MESSAGES_DE:
+                if re.match(pattern, msg):
+                    msg = re.sub(pattern, repl, msg)
+                    break
+        msg = re.sub(r"\b\d{5,}\b", lambda m: ve._num(int(m.group())), msg)  # 10000000 -> 10,000,000 / 10.000.000
+        if german:  # amounts the engine already wrote with English separators
+            msg = re.sub(r"\d{1,3}(?:,\d{3})+", lambda m: m.group().replace(",", "."), msg)
         parts.append(f"{field}: {msg}")
     text = "; ".join(parts)
-    return "Please check these inputs: " + text + ("" if text.endswith(".") else ".")
+    return ve._t("Please check these inputs: ", "Bitte prüfen Sie diese Angaben: ") + text + (
+        "" if text.endswith(".") else ".")
 
 
 @app.exception_handler(RequestValidationError)

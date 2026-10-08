@@ -86,6 +86,9 @@ PINNED_BENCHMARKS = {
     "acc_receivable_pct_revenue": 0.12,
     "inventory_pct_revenue": 0.0,
     "acc_payable_pct_revenue": 0.06,
+    # Not in the owner's figures: the EV/Sales that the pinned multiple and margin imply (18 x 27%), the same
+    # identity the app uses to derive EV/Sales from Damodaran's data.
+    "ev_sales_multiple": 18.0 * (1 - 0.25 - 0.45 - 0.03),
 }
 PINNED_DISCOUNT_RATE = 0.14
 PINNED_GROWTH = 0.02

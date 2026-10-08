@@ -107,7 +107,8 @@ GERMAN_CASE["operating_performance"].update({"current_ppe_value": 60000})
 # ---------------------------------------------------------------------------
 # First-principles helpers (no engine imports)
 # ---------------------------------------------------------------------------
-MIN_VALID = {"beta": 0.01, "equity_pct_capital": 0.01, "ev_ebitda_multiple": 0.01, "ebitda_margin": None}
+MIN_VALID = {"beta": 0.01, "equity_pct_capital": 0.01, "ev_ebitda_multiple": 0.01, "ev_sales_multiple": 0.01,
+             "ebitda_margin": None}
 
 
 def num_ok(v, min_valid):
@@ -255,11 +256,16 @@ def recompute(case):
         out["vc_new_shares"] = case["vc_assumptions"]["number_of_existing_shares"] * F / (1 - F)
         out["vc_price"] = I / out["vc_new_shares"]
 
-    # --- Comparables: trailing EBITDA x multiple x (1 - private discount) - debt + cash ---
+    # --- Comparables: the higher of EBITDA x EV/EBITDA and revenue x EV/Sales (ARR x SaaS multiple when
+    # ARR is given), x (1 - private discount) - debt + cash ---
     ltm = op["current_ebitda"]
-    eq = ltm * mult * (1 - stage["private_company_discount"]) - debt + cash
+    arr = op.get("annual_recurring_revenue") or 0
+    revenue_value = (arr * REF["saas_arr_multiple"]["value"] if arr > 0
+                     else ltm_rev * bench(ind, "ev_sales_multiple", reg)[0])
+    public = max(max(ltm, 0) * mult, revenue_value)
+    eq = public * (1 - stage["private_company_discount"]) - debt + cash
     # equity can't be negative: floored at zero when debt exceeds the value
-    out["comparables"] = max(eq, 0.0) if ltm > 0 and ind not in FINANCIALS else None
+    out["comparables"] = max(eq, 0.0) if public > 0 and ind not in FINANCIALS else None
 
     # --- DCF at WACC, Gordon terminal value, x survival, - debt + cash ---
     pv = sum(f / (1 + wacc) ** (i + 1) for i, f in enumerate(fcf))
@@ -370,6 +376,8 @@ EDGE_CASES = {
     "Debt larger than value (5M)": variant(financial_assumptions__existing_debt_balance=5_000_000),
     "Debt larger than every method's value (10M)": variant(financial_assumptions__existing_debt_balance=10_000_000),
     "Plan never profitable (target margin -30%)": variant(financial_assumptions__target_ebitda_margin_override=-0.3),
+    "SaaS with ARR (450k), loss-making": variant(operating_performance__annual_recurring_revenue=450_000,
+                                                 operating_performance__current_ebitda=-90_000),
     "Huge capex in Y1 (2M)": variant(financial_assumptions__capex_by_year=[2_000_000, 30_000, 30_000, 30_000, 30_000]),
     "Raise larger than VC post-money (5M)": variant(funding__capital_needed=5_000_000),
     "Exit in 5 years": variant(company_profile__planned_time_to_exit_years=5),

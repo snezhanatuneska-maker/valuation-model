@@ -41,8 +41,9 @@ def test_methods_close_together_get_no_note():
 
 
 def test_one_method_has_no_range():
-    c = case(company_profile__company_stage="Maturity stage", operating_performance__current_ebitda=-10_000)
-    r = run(c)  # Maturity: Comparables + DCF; Comparables left out -> only DCF
+    c = case(company_profile__company_stage="Maturity stage", operating_performance__current_ebitda=-10_000,
+             operating_performance__current_revenue_last_12_months=0)
+    r = run(c)  # Maturity: Comparables + DCF; Comparables left out (no revenue) -> only DCF
     assert r.method_range is None
     assert "methods_disagree" not in {w.code for w in r.warnings}
 

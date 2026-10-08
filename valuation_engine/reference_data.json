@@ -135,6 +135,15 @@
         "China": 0.010462624638214922,
         "India": 0.003549702109263401,
         "Global": 0.011020356647648524
+      },
+      "ev_sales_multiple": {
+        "US": 2.1248944823347125,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.2679644876936247,
+        "Japan": 0.7382293169863758,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.9123303089810382,
+        "China": 2.1805978802869497,
+        "India": 2.90832573133584,
+        "Global": 1.522018704690608
       }
     },
     "Aerospace/Defense": {
@@ -272,6 +281,15 @@
         "China": 0.05144752048749739,
         "India": 0.03437285385574591,
         "Global": 0.04644711808482324
+      },
+      "ev_sales_multiple": {
+        "US": 3.570706581908985,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.9463275634426513,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.849293816858334,
+        "China": 5.236205321496114,
+        "India": 9.169147688874846,
+        "Global": 3.385246124413623
       }
     },
     "Air Transport": {
@@ -409,6 +427,15 @@
         "China": 0.0026617528630036155,
         "India": "NA",
         "Global": 0.0016851113757649595
+      },
+      "ev_sales_multiple": {
+        "US": 1.0259549224502678,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.231607592947047,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.0910565208009513,
+        "China": 2.3642663193719207,
+        "India": "NA",
+        "Global": 1.3978076793413101
       }
     },
     "Apparel": {
@@ -546,6 +573,15 @@
         "China": 0.01760638876861637,
         "India": 0.0009186736591888325,
         "Global": 0.004631457664357876
+      },
+      "ev_sales_multiple": {
+        "US": 1.594209821413011,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.4089224655426746,
+        "Japan": 0.8131006156984063,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.1975647372688307,
+        "China": 1.839370101319543,
+        "India": 0.9082677045408729,
+        "Global": 2.310920519812083
       }
     },
     "Auto & Truck": {
@@ -683,6 +719,15 @@
         "China": 0.04850336688066224,
         "India": 0.03329880527206417,
         "Global": 0.044454294294238444
+      },
+      "ev_sales_multiple": {
+        "US": 3.883020426885024,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.8866071681486283,
+        "Japan": 0.987128616270194,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.002170533582077,
+        "China": 0.6753349389117544,
+        "India": 2.6819278198630867,
+        "Global": 1.5038988593371823
       }
     },
     "Auto Parts": {
@@ -820,6 +865,15 @@
         "China": 0.046926617307094444,
         "India": 0.002954909675701772,
         "Global": 0.03887490939964058
+      },
+      "ev_sales_multiple": {
+        "US": 0.822835978588616,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.5468604301686457,
+        "Japan": 0.5720528354949902,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.5526050661167867,
+        "China": 2.2415529162359253,
+        "India": 2.375141879125787,
+        "Global": 0.9601357791579264
       }
     },
     "Bank (Money Center)": {
@@ -957,6 +1011,15 @@
         "China": 0.0,
         "India": 0.0,
         "Global": 3.135059857595634e-07
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": "NA",
+        "China": "NA",
+        "India": "NA",
+        "Global": "NA"
       }
     },
     "Banks (Regional)": {
@@ -1094,6 +1157,15 @@
         "China": 0.0,
         "India": "NA",
         "Global": 4.217585185766571e-06
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": "NA",
+        "China": "NA",
+        "India": "NA",
+        "Global": "NA"
       }
     },
     "Beverage (Alcoholic)": {
@@ -1231,6 +1303,15 @@
         "China": 0.005996762511089368,
         "India": 0.0006387300404522215,
         "Global": 0.002547717496837368
+      },
+      "ev_sales_multiple": {
+        "US": 2.4539198950027634,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.419899683727297,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 5.378220388548999,
+        "China": 5.65690829772053,
+        "India": 5.550728483151987,
+        "Global": 3.3175622496528168
       }
     },
     "Beverage (Soft)": {
@@ -1368,6 +1449,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.003637773927803669
+      },
+      "ev_sales_multiple": {
+        "US": 4.156113450493376,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.928914422563229,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.600689933749445,
+        "China": "NA",
+        "India": "NA",
+        "Global": 3.4794284639412982
       }
     },
     "Broadcasting": {
@@ -1505,6 +1595,15 @@
         "China": "NA",
         "India": 8.15943340894408e-05,
         "Global": 0.0009068214653088348
+      },
+      "ev_sales_multiple": {
+        "US": 1.395140428325257,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.8455714739890072,
+        "Japan": 1.3990350848397337,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.8622221841848583,
+        "China": "NA",
+        "India": 2.47778858236084,
+        "Global": 1.2839663479903902
       }
     },
     "Brokerage & Investment Banking": {
@@ -1642,6 +1741,15 @@
         "China": 0.004545046306757715,
         "India": 0.0012910494759486735,
         "Global": 0.0032493349784802326
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.3818085872099415,
+        "Japan": 11.575232975347896,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": "NA",
+        "China": "NA",
+        "India": "NA",
+        "Global": "NA"
       }
     },
     "Building Materials": {
@@ -1779,6 +1887,15 @@
         "China": 0.03671088875147561,
         "India": 0.0020008533498325886,
         "Global": 0.01652540302273285
+      },
+      "ev_sales_multiple": {
+        "US": 2.0460612293412557,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.331489359756182,
+        "Japan": 0.9139743957652946,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.798067041313309,
+        "China": 2.1448877344131594,
+        "India": 2.4325316305730955,
+        "Global": 1.8851036615872645
       }
     },
     "Business & Consumer Services": {
@@ -1916,6 +2033,15 @@
         "China": 0.021983102243447836,
         "India": 4.251632654910753e-06,
         "Global": 0.010162161534697341
+      },
+      "ev_sales_multiple": {
+        "US": 2.5297327118936694,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.5122485324465424,
+        "Japan": 1.616759007688843,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.6833376715298682,
+        "China": 1.2677692788432946,
+        "India": 2.6385997783659656,
+        "Global": 2.038494152735544
       }
     },
     "Cable TV": {
@@ -2053,6 +2179,15 @@
         "China": 0.03669117801542114,
         "India": "NA",
         "Global": 0.0019665959734491457
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.7964213850009094,
+        "China": 8.19342773704225,
+        "India": "NA",
+        "Global": 2.161055912071605
       }
     },
     "Chemical (Basic)": {
@@ -2190,6 +2325,15 @@
         "China": 0.021921740385528164,
         "India": 0.0017710681299397777,
         "Global": 0.01686032216262172
+      },
+      "ev_sales_multiple": {
+        "US": 0.8452190200844562,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.5027127411716459,
+        "Japan": 0.7539589670205398,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.636625559780727,
+        "China": 1.8338607364411723,
+        "India": 2.3683836575891783,
+        "Global": 1.4303560409443392
       }
     },
     "Chemical (Diversified)": {
@@ -2327,6 +2471,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.027351645590091934
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.8290994430189689,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.8325997539480072,
+        "China": "NA",
+        "India": "NA",
+        "Global": 1.0953319594007704
       }
     },
     "Chemical (Specialty)": {
@@ -2464,6 +2617,15 @@
         "China": 0.029654590691826573,
         "India": 0.0024161093868321974,
         "Global": 0.023456015426006248
+      },
+      "ev_sales_multiple": {
+        "US": 2.6476145494545156,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.3415912178795395,
+        "Japan": 1.5664602629731899,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.544583802265464,
+        "China": 2.8513501817431974,
+        "India": 2.759324317963166,
+        "Global": 2.369147221270728
       }
     },
     "Coal & Related Energy": {
@@ -2601,6 +2763,15 @@
         "China": 0.013825481486452304,
         "India": "NA",
         "Global": 0.008956835977651127
+      },
+      "ev_sales_multiple": {
+        "US": 2.5369156934745063,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.0086353074319176,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.9443086090576402,
+        "China": 1.7048425457999314,
+        "India": "NA",
+        "Global": 2.138494087796912
       }
     },
     "Computer Services": {
@@ -2738,6 +2909,15 @@
         "China": 0.03219430595327265,
         "India": 0.0033011831545330405,
         "Global": 0.013794743665773814
+      },
+      "ev_sales_multiple": {
+        "US": 1.477094248399097,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.2889637341078588,
+        "Japan": 1.3499266867427393,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.5790990543462635,
+        "China": 1.73783422914453,
+        "India": 3.2621821842269854,
+        "Global": 1.4626915316517466
       }
     },
     "Computers/Peripherals": {
@@ -2875,6 +3055,15 @@
         "China": 0.03601463472793292,
         "India": 8.979369001781506e-06,
         "Global": 0.05958710511255436
+      },
+      "ev_sales_multiple": {
+        "US": 6.629803188728593,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.3514174823600382,
+        "Japan": 0.8440367924789952,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.2658218849847285,
+        "China": 1.2614185030762004,
+        "India": 4.804783130279869,
+        "Global": 3.401964501723067
       }
     },
     "Construction Supplies": {
@@ -3012,6 +3201,15 @@
         "China": 0.03503482396806952,
         "India": 0.0024611850742017804,
         "Global": 0.024852437521993134
+      },
+      "ev_sales_multiple": {
+        "US": 3.231777696009379,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.5138545227305875,
+        "Japan": 1.093545104735565,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.6703951242058905,
+        "China": 1.3401397349907143,
+        "India": 3.5091699546989297,
+        "Global": 1.801143397732801
       }
     },
     "Diversified": {
@@ -3149,6 +3347,15 @@
         "China": "NA",
         "India": 0.0022075423527723307,
         "Global": 0.00940177070831972
+      },
+      "ev_sales_multiple": {
+        "US": 3.0801449685443747,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.2616047716225682,
+        "Japan": 1.9198829021064447,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.6311912934830168,
+        "China": "NA",
+        "India": 4.725396062682123,
+        "Global": 2.1426108602457274
       }
     },
     "Drugs (Biotechnology)": {
@@ -3286,6 +3493,15 @@
         "China": 0.24546677080498314,
         "India": "NA",
         "Global": 0.37452693192394465
+      },
+      "ev_sales_multiple": {
+        "US": 7.918045526205239,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 4.516756267065972,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": "NA",
+        "China": "NA",
+        "India": "NA",
+        "Global": 7.941242537185091
       }
     },
     "Drugs (Pharmaceutical)": {
@@ -3423,6 +3639,15 @@
         "China": 0.08088292554609405,
         "India": 0.04212442549264647,
         "Global": 0.16256426072574262
+      },
+      "ev_sales_multiple": {
+        "US": 6.239336284469536,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.9503482634840807,
+        "Japan": 2.7790162220770083,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.3661440258681745,
+        "China": 4.0699559208984954,
+        "India": 4.875218327695658,
+        "Global": 4.396216010054472
       }
     },
     "Education": {
@@ -3560,6 +3785,15 @@
         "China": 0.019434579305280808,
         "India": 0.003316709727813494,
         "Global": 0.029106217964378185
+      },
+      "ev_sales_multiple": {
+        "US": 1.990213812174477,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.6477011675107947,
+        "Japan": 0.8808437804073623,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.490335599217163,
+        "China": 2.4044429390088546,
+        "India": 6.787388427862146,
+        "Global": 2.0598126754360035
       }
     },
     "Electrical Equipment": {
@@ -3697,6 +3931,15 @@
         "China": 0.042543739728184225,
         "India": 0.004633588566817154,
         "Global": 0.0347180066843398
+      },
+      "ev_sales_multiple": {
+        "US": 4.420754883373023,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.8141922352549384,
+        "Japan": 1.4387901857198184,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.597716583142532,
+        "China": 2.5463937150734415,
+        "India": 4.536182191450059,
+        "Global": 2.7734521369698855
       }
     },
     "Electronics (Consumer & Office)": {
@@ -3834,6 +4077,15 @@
         "China": 0.04178215640473052,
         "India": "NA",
         "Global": 0.05170711795488385
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.99815275410146,
+        "Japan": 1.2107635448422478,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.6175898150660625,
+        "China": 1.4145031935387506,
+        "India": "NA",
+        "Global": 1.0392607057341356
       }
     },
     "Electronics (General)": {
@@ -3971,6 +4223,15 @@
         "China": 0.05025989916615491,
         "India": 0.0017576614328787417,
         "Global": 0.04250308100037906
+      },
+      "ev_sales_multiple": {
+        "US": 3.2061627768537924,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.245987729409738,
+        "Japan": 2.0455110995518795,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.005514707405833,
+        "China": 2.8693098275532445,
+        "India": 4.095879131765171,
+        "Global": 2.228538017319137
       }
     },
     "Engineering/Construction": {
@@ -4108,6 +4369,15 @@
         "China": 0.027251866133309346,
         "India": 0.007702633385527107,
         "Global": 0.014102535775445355
+      },
+      "ev_sales_multiple": {
+        "US": 1.7350431497835168,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.8513967947471853,
+        "Japan": 0.882480605432496,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.7012529181686857,
+        "China": 0.5909921726371973,
+        "India": 2.1003704955335682,
+        "Global": 0.8331417163904553
       }
     },
     "Entertainment": {
@@ -4245,6 +4515,15 @@
         "China": 0.10679110588723033,
         "India": 0.0003946291210138374,
         "Global": 0.04741026582266954
+      },
+      "ev_sales_multiple": {
+        "US": 4.333824657929714,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.586472430428536,
+        "Japan": 3.8256196988925097,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.8812395141005185,
+        "China": 4.95166816933268,
+        "India": 4.349162242072509,
+        "Global": 4.086008084246441
       }
     },
     "Environmental & Waste Services": {
@@ -4382,6 +4661,15 @@
         "China": 0.027204800025057034,
         "India": 0.001323206037967755,
         "Global": 0.01706718210091776
+      },
+      "ev_sales_multiple": {
+        "US": 3.7006750073018573,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.1676103654052121,
+        "Japan": 0.9275080689151364,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.327659577525234,
+        "China": 3.8967258775344233,
+        "India": 1.3975302714588875,
+        "Global": 2.939585935446154
       }
     },
     "Farming/Agriculture": {
@@ -4519,6 +4807,15 @@
         "China": 0.01043178030814837,
         "India": 0.005577000094438217,
         "Global": 0.012964490068664411
+      },
+      "ev_sales_multiple": {
+        "US": 1.3401504823361048,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.340344291594316,
+        "Japan": 1.2732815607242467,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.0743750629005318,
+        "China": 1.3539257064136818,
+        "India": 1.9526958632238391,
+        "Global": 1.22078861958216
       }
     },
     "Financial Services (Non-bank & Insurance)": {
@@ -4656,6 +4953,15 @@
         "China": 0.052833077981364523,
         "India": 0.000603593303931457,
         "Global": 0.013950037953058344
+      },
+      "ev_sales_multiple": {
+        "US": 18.905905176324396,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 7.258115754279162,
+        "Japan": 10.447709484720582,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 8.378802793935286,
+        "China": 11.805857904132742,
+        "India": 16.28715007667644,
+        "Global": 13.715456497959272
       }
     },
     "Food Processing": {
@@ -4793,6 +5099,15 @@
         "China": 0.007523121125206351,
         "India": 0.0005885167975111207,
         "Global": 0.005450585652674169
+      },
+      "ev_sales_multiple": {
+        "US": 1.4683157254855188,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.5637147004285352,
+        "Japan": 0.7529722717368753,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.3166352083391504,
+        "China": 1.5406146910339997,
+        "India": 2.4616227218297317,
+        "Global": 1.3434507919660956
       }
     },
     "Food Wholesalers": {
@@ -4930,6 +5245,15 @@
         "China": "NA",
         "India": 0.0,
         "Global": 0.00019427065857916985
+      },
+      "ev_sales_multiple": {
+        "US": 0.4568520485136439,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.23091893336631078,
+        "Japan": 0.2161938061956379,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.46771613466941814,
+        "China": "NA",
+        "India": 0.6501997970427228,
+        "Global": 0.40639245191852985
       }
     },
     "Furniture/Home Furnishings": {
@@ -5067,6 +5391,15 @@
         "China": 0.038338669428534485,
         "India": 0.005047489785893913,
         "Global": 0.028860000542609114
+      },
+      "ev_sales_multiple": {
+        "US": 1.3327990096564892,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.690569749276935,
+        "Japan": 0.6225441740158367,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.2402857773837728,
+        "China": 1.1911567302023671,
+        "India": 2.591334732388116,
+        "Global": 1.1591419602560977
       }
     },
     "Green & Renewable Energy": {
@@ -5204,6 +5537,15 @@
         "China": 0.005043281688034083,
         "India": 6.043077155907187e-06,
         "Global": 0.005230210142233923
+      },
+      "ev_sales_multiple": {
+        "US": 7.865692969599146,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.5543983435582223,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 10.111424703831553,
+        "China": 10.31491343662393,
+        "India": 15.274649204373922,
+        "Global": 7.384570471196588
       }
     },
     "Healthcare Products": {
@@ -5341,6 +5683,15 @@
         "China": 0.09616707261616936,
         "India": 0.015962196755469567,
         "Global": 0.07545477193417448
+      },
+      "ev_sales_multiple": {
+        "US": 4.762600760397512,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.454624859953759,
+        "Japan": 2.867101758418292,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 4.508845836437863,
+        "China": 5.0010688755318435,
+        "India": 9.462162344851787,
+        "Global": 4.1721894162098385
       }
     },
     "Healthcare Support Services": {
@@ -5478,6 +5829,15 @@
         "China": 0.00452323374621007,
         "India": 0.00094022814865351,
         "Global": 0.0013248744474030228
+      },
+      "ev_sales_multiple": {
+        "US": 0.4577833136261752,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.2689054547973253,
+        "Japan": 0.18089439431491927,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.575412052562986,
+        "China": 0.44515212470980825,
+        "India": 4.358363085725586,
+        "Global": 0.49023075724184895
       }
     },
     "Healthcare Information and Technology": {
@@ -5615,6 +5975,15 @@
         "China": 0.05994336227449469,
         "India": 0.008739347770587463,
         "Global": 0.05996811550108123
+      },
+      "ev_sales_multiple": {
+        "US": 5.3091884213580105,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.4964861034996813,
+        "Japan": 3.4033931372847053,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 8.30089946028327,
+        "China": 6.626178328868573,
+        "India": 8.97735301935462,
+        "Global": 5.322439521482191
       }
     },
     "Homebuilding": {
@@ -5752,6 +6121,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.00039985981222745014
+      },
+      "ev_sales_multiple": {
+        "US": 1.1916269386724603,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.123495665356565,
+        "Japan": 0.9886715808405738,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.5879565161894864,
+        "China": "NA",
+        "India": "NA",
+        "Global": 1.1420542969778962
       }
     },
     "Hospitals/Healthcare Facilities": {
@@ -5889,6 +6267,15 @@
         "China": 0.008360489443986558,
         "India": 0.0004636012111940098,
         "Global": 0.0006341666042153183
+      },
+      "ev_sales_multiple": {
+        "US": 1.6887450167827869,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.397149195400673,
+        "Japan": 1.0959038062437085,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.647618886943947,
+        "China": 3.1494124981508476,
+        "India": 6.799383669086376,
+        "Global": 2.1339760362843805
       }
     },
     "Hotel/Gaming": {
@@ -6026,6 +6413,15 @@
         "China": 0.027827385311694413,
         "India": 0.0015796510184089983,
         "Global": 0.023800675790992862
+      },
+      "ev_sales_multiple": {
+        "US": 4.327076142389566,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.130699140846528,
+        "Japan": 1.5163686261859486,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.090190245930774,
+        "China": 3.0300361202535617,
+        "India": 6.880649183501906,
+        "Global": 3.4487041203919846
       }
     },
     "Household Products": {
@@ -6163,6 +6559,15 @@
         "China": 0.02629163524168667,
         "India": 0.000934828238426571,
         "Global": 0.019783574787869646
+      },
+      "ev_sales_multiple": {
+        "US": 3.059468148726035,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.9366485868057097,
+        "Japan": 1.2706279162246592,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.252481722905432,
+        "China": 3.1994153454364818,
+        "India": 8.336945684835616,
+        "Global": 2.902357734200703
       }
     },
     "Information Services": {
@@ -6300,6 +6705,15 @@
         "China": "NA",
         "India": 0.001029738461416599,
         "Global": 0.011337877146636368
+      },
+      "ev_sales_multiple": {
+        "US": 2.2125353891144477,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.840243136226217,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.022037474082908,
+        "China": "NA",
+        "India": 2.9675894764598145,
+        "Global": 1.8827178508168099
       }
     },
     "Insurance (General)": {
@@ -6437,6 +6851,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.0001653133316798105
+      },
+      "ev_sales_multiple": {
+        "US": 4.324047602881805,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.359006494126043,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.3411499315701587,
+        "China": "NA",
+        "India": "NA",
+        "Global": 1.5635385296312034
       }
     },
     "Insurance (Life)": {
@@ -6574,6 +6997,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 8.201358744180385e-06
+      },
+      "ev_sales_multiple": {
+        "US": 1.2838249224747278,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.4986258974177908,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.7424593201385434,
+        "China": "NA",
+        "India": "NA",
+        "Global": 1.3194612032749615
       }
     },
     "Insurance (Property & Casualty)": {
@@ -6711,6 +7143,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 2.7486006620990833e-06
+      },
+      "ev_sales_multiple": {
+        "US": 1.4887819132240936,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.2991606898197836,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.9335100382274941,
+        "China": "NA",
+        "India": "NA",
+        "Global": 1.3174858318730795
       }
     },
     "Investments & Asset Management": {
@@ -6848,6 +7289,15 @@
         "China": 5.988872090624413e-05,
         "India": 0.002503283913885463,
         "Global": 0.0025274617177524486
+      },
+      "ev_sales_multiple": {
+        "US": 5.486045625728951,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 4.644570467419909,
+        "Japan": 3.1870600986337894,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 10.017524010485104,
+        "China": "NA",
+        "India": 12.976156026090216,
+        "Global": 5.44543410788268
       }
     },
     "Machinery": {
@@ -6985,6 +7435,15 @@
         "China": 0.05243251548238356,
         "India": 0.0030471671128017405,
         "Global": 0.02965287453091625
+      },
+      "ev_sales_multiple": {
+        "US": 3.426131130289686,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.2576214663534997,
+        "Japan": 1.5378707040106474,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.235023602371611,
+        "China": 3.6017398018693294,
+        "India": 4.0524922511241535,
+        "Global": 2.613749441799412
       }
     },
     "Metals & Mining": {
@@ -7122,6 +7581,15 @@
         "China": 0.009479242131385106,
         "India": 8.646709259702606e-05,
         "Global": 0.007251614328314431
+      },
+      "ev_sales_multiple": {
+        "US": 4.03448254805696,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.0969525113776262,
+        "Japan": 1.0156386709248986,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.8006896910243553,
+        "China": 1.441890599163553,
+        "India": 2.042409787836451,
+        "Global": 1.8438366320242467
       }
     },
     "Office Equipment & Services": {
@@ -7259,6 +7727,15 @@
         "China": 0.016406587817047676,
         "India": 0.0011563036777164385,
         "Global": 0.01446361006131177
+      },
+      "ev_sales_multiple": {
+        "US": 1.4336637429662138,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.9373851157894307,
+        "Japan": 0.6582769540130357,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.1405820687386279,
+        "China": 0.9405083216748192,
+        "India": 3.8733083750700863,
+        "Global": 1.0768467034939373
       }
     },
     "Oil/Gas (Integrated)": {
@@ -7396,6 +7873,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.0036867609126836863
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.6565387710095947,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.5121902317762388,
+        "China": "NA",
+        "India": "NA",
+        "Global": 1.326182060868225
       }
     },
     "Oil/Gas (Production and Exploration)": {
@@ -7533,6 +8019,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.0028079225952809435
+      },
+      "ev_sales_multiple": {
+        "US": 2.6825885994843817,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.7771363087903178,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.5313447039828407,
+        "China": "NA",
+        "India": "NA",
+        "Global": 2.588774210580685
       }
     },
     "Oil/Gas Distribution": {
@@ -7670,6 +8165,15 @@
         "China": 0.005971243756772238,
         "India": 0.0,
         "Global": 0.00099251074933639
+      },
+      "ev_sales_multiple": {
+        "US": 4.371783781882893,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.9384780122582606,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.3732187487664473,
+        "China": 2.1126316595949612,
+        "India": 1.777559510338443,
+        "Global": 3.0539573938566664
       }
     },
     "Oilfield Services/Equipment": {
@@ -7807,6 +8311,15 @@
         "China": 0.024814182416146715,
         "India": 0.00025529410749339904,
         "Global": 0.0027624141411696037
+      },
+      "ev_sales_multiple": {
+        "US": 0.7413518369384342,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.6472964733758243,
+        "Japan": 0.35918155747598157,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.9353035043009523,
+        "China": 1.0177672966669802,
+        "India": 1.1389174022829336,
+        "Global": 0.7598678616813682
       }
     },
     "Packaging & Container": {
@@ -7944,6 +8457,15 @@
         "China": 0.025937492407868273,
         "India": 0.0006294646212203993,
         "Global": 0.005730319820668847
+      },
+      "ev_sales_multiple": {
+        "US": 1.5482237405985284,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.2688793248589076,
+        "Japan": 0.6458457558767491,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.4918895069479357,
+        "China": 2.1218746079157356,
+        "India": 1.2212455564211022,
+        "Global": 1.3795754214035487
       }
     },
     "Paper/Forest Products": {
@@ -8081,6 +8603,15 @@
         "China": 0.017414753366731327,
         "India": 0.000692880795737324,
         "Global": 0.005827954582900375
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.4658577550089902,
+        "Japan": 0.7437102249162886,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.5437109050992117,
+        "China": 1.7678884752937225,
+        "India": 1.3821167681985158,
+        "Global": 1.3043312577076893
       }
     },
     "Power": {
@@ -8218,6 +8749,15 @@
         "China": 0.007187397449753369,
         "India": 0.00019089467598074723,
         "Global": 0.002375875256077122
+      },
+      "ev_sales_multiple": {
+        "US": 4.695806461850637,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.9168369822031919,
+        "Japan": 1.3313543051178764,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.201064731179875,
+        "China": 2.3079961376876064,
+        "India": 3.2025177929401667,
+        "Global": 2.5519559062360764
       }
     },
     "Precious Metals": {
@@ -8355,6 +8895,15 @@
         "China": 0.008330528545565595,
         "India": "NA",
         "Global": 0.0037469594120812405
+      },
+      "ev_sales_multiple": {
+        "US": 5.981737028870387,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.1666820070475223,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.1304503195294866,
+        "China": 2.397112513338933,
+        "India": "NA",
+        "Global": 4.753381526569258
       }
     },
     "Publishing & Newspapers": {
@@ -8492,6 +9041,15 @@
         "China": 0.012813578544960345,
         "India": 0.0009730374948425917,
         "Global": 0.012209117638642684
+      },
+      "ev_sales_multiple": {
+        "US": 1.6994070024135182,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.9582654081713938,
+        "Japan": 0.7698115561315113,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.0422492433659833,
+        "China": 2.2658898209798686,
+        "India": 1.5397452387686585,
+        "Global": 1.2980663886957393
       }
     },
     "Real Estate Investment Trusts (REITs)": {
@@ -8629,6 +9187,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 8.276412788150753e-05
+      },
+      "ev_sales_multiple": {
+        "US": 10.650570831822968,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 10.074830575250981,
+        "Japan": 16.17654253622772,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 11.269588218150442,
+        "China": "NA",
+        "India": "NA",
+        "Global": 10.834231956782414
       }
     },
     "Real Estate (Development)": {
@@ -8766,6 +9333,15 @@
         "China": 0.0010475411141005837,
         "India": 4.054433983466867e-05,
         "Global": 0.0006516162911006793
+      },
+      "ev_sales_multiple": {
+        "US": 3.0335118159319117,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.3550472610563282,
+        "Japan": 1.9224210086106965,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.089518815824784,
+        "China": "NA",
+        "India": 7.389196241913972,
+        "Global": 2.08249739415861
       }
     },
     "Real Estate (General/Diversified)": {
@@ -8903,6 +9479,15 @@
         "China": 0.0017236730889865644,
         "India": 3.0655017249195013e-06,
         "Global": 0.0048680817733299615
+      },
+      "ev_sales_multiple": {
+        "US": 6.826157864808295,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 8.149734111464422,
+        "Japan": 2.5379181755149225,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 5.3100475890798435,
+        "China": 8.679763422878837,
+        "India": 12.716962265882795,
+        "Global": 3.785734191005333
       }
     },
     "Real Estate (Operations & Services)": {
@@ -9040,6 +9625,15 @@
         "China": 0.0026182546198691443,
         "India": 0.0,
         "Global": 0.00619232406135643
+      },
+      "ev_sales_multiple": {
+        "US": 1.463930180972637,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 10.461319101353633,
+        "Japan": 2.5238250507285076,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 4.409239392161866,
+        "China": 0.9927465666161106,
+        "India": 10.28661231380959,
+        "Global": 4.149271620392574
       }
     },
     "Recreation": {
@@ -9177,6 +9771,15 @@
         "China": 0.043125223036008624,
         "India": 0.0005016180511472849,
         "Global": 0.02778813935861065
+      },
+      "ev_sales_multiple": {
+        "US": 1.9404277825243097,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.3388629740229843,
+        "Japan": 2.020135365829628,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.3384358887057184,
+        "China": 3.0862131548100202,
+        "India": 5.037744777870376,
+        "Global": 2.0375794169216057
       }
     },
     "Reinsurance": {
@@ -9314,6 +9917,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.0
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.9972511067959223,
+        "China": "NA",
+        "India": "NA",
+        "Global": 1.0504612103592936
       }
     },
     "Restaurant/Dining": {
@@ -9451,6 +10063,15 @@
         "China": 0.04367930596867933,
         "India": 0.0008789219220780391,
         "Global": 0.010966908207551102
+      },
+      "ev_sales_multiple": {
+        "US": 4.165514392232257,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.9004280789071801,
+        "Japan": 1.2522330658558074,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.8264566189320786,
+        "China": 1.7270111972039108,
+        "India": "NA",
+        "Global": 2.4732234030954965
       }
     },
     "Retail (Automotive)": {
@@ -9588,6 +10209,15 @@
         "China": 0.0003561430741825491,
         "India": 0.0,
         "Global": 9.117554765909075e-05
+      },
+      "ev_sales_multiple": {
+        "US": 1.2705674096880288,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.45492110601860825,
+        "Japan": 0.6324119903683082,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.5593840906723615,
+        "China": 0.3596342239627335,
+        "India": 1.4194320697841916,
+        "Global": 0.8779024077303554
       }
     },
     "Retail (Building Supply)": {
@@ -9725,6 +10355,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.0012156809899043972
+      },
+      "ev_sales_multiple": {
+        "US": 2.258992676124385,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.6934298732867247,
+        "Japan": 0.967486600696717,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.0840423714762553,
+        "China": "NA",
+        "India": "NA",
+        "Global": 1.909106375749557
       }
     },
     "Retail (Distributors)": {
@@ -9862,6 +10501,15 @@
         "China": 0.0019967743308405258,
         "India": 2.4998818849718287e-05,
         "Global": 0.0006837297780665406
+      },
+      "ev_sales_multiple": {
+        "US": 1.894802191775475,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.2976004726421797,
+        "Japan": 0.8755681179324647,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.5835589791998388,
+        "China": 0.4098379555411542,
+        "India": 3.2795867836902306,
+        "Global": 0.9714873432401605
       }
     },
     "Retail (General)": {
@@ -9999,6 +10647,15 @@
         "China": 0.0020888799812477936,
         "India": 6.27960641630353e-05,
         "Global": 0.039753502062429384
+      },
+      "ev_sales_multiple": {
+        "US": 2.109214581658399,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.4907262220759598,
+        "Japan": 0.9863099311544744,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.4214290189721699,
+        "China": 1.7101164091866858,
+        "India": 4.181364674816195,
+        "Global": 1.9322308961706127
       }
     },
     "Retail (Grocery and Food)": {
@@ -10136,6 +10793,15 @@
         "China": 0.002313741450158197,
         "India": 0.0,
         "Global": 0.0007368371444142219
+      },
+      "ev_sales_multiple": {
+        "US": 0.49009499125669137,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.5448438779866371,
+        "Japan": 0.5515904576011188,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 0.8414608902663991,
+        "China": 1.2274271067095777,
+        "India": 3.686830637967151,
+        "Global": 0.6677380811373366
       }
     },
     "Retail (Online)": {
@@ -10273,6 +10939,15 @@
         "China": 0.0020888799812477936,
         "India": 6.27960641630353e-05,
         "Global": 0.039753502062429384
+      },
+      "ev_sales_multiple": {
+        "US": 2.109214581658399,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.4907262220759598,
+        "Japan": 0.9863099311544744,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.4214290189721699,
+        "China": 1.7101164091866858,
+        "India": 4.181364674816195,
+        "Global": 1.9322308961706127
       }
     },
     "Retail (Special Lines)": {
@@ -10410,6 +11085,15 @@
         "China": 0.005688362488031979,
         "India": 0.0001865420965505365,
         "Global": 0.0013148088232457422
+      },
+      "ev_sales_multiple": {
+        "US": 1.6260838705735732,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.5182623840536555,
+        "Japan": 1.267572218127434,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.415627390972878,
+        "China": 1.721567520288421,
+        "India": 3.8126487120373875,
+        "Global": 1.4949799924145044
       }
     },
     "Rubber & Tires": {
@@ -10547,6 +11231,15 @@
         "China": 0.03391837405538479,
         "India": 0.007597272072806653,
         "Global": 0.03967079747345476
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.7291125463967167,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.1107821627754897,
+        "China": 1.4216339176746644,
+        "India": 1.8928032814944598,
+        "Global": 0.8990840662030828
       }
     },
     "Semiconductor": {
@@ -10684,6 +11377,15 @@
         "China": 0.07827360928807825,
         "India": 0.00011704989438529919,
         "Global": 0.12349409101970968
+      },
+      "ev_sales_multiple": {
+        "US": 15.700649382780618,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 3.432697462708842,
+        "Japan": 3.0379761886325394,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 6.35403228522302,
+        "China": 6.241689809546128,
+        "India": 4.134961641255355,
+        "Global": 10.621894238291468
       }
     },
     "Semiconductor Equipment": {
@@ -10821,6 +11523,15 @@
         "China": 0.0713724223334949,
         "India": "NA",
         "Global": 0.09202381703026515
+      },
+      "ev_sales_multiple": {
+        "US": 7.607009043397783,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 10.02100958970788,
+        "Japan": 5.84007330975005,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 5.147177646294968,
+        "China": 6.3790842890217,
+        "India": "NA",
+        "Global": 6.940079537513275
       }
     },
     "Shipbuilding & Marine": {
@@ -10958,6 +11669,15 @@
         "China": 0.005750023870906141,
         "India": 0.0,
         "Global": 0.0016905211765254936
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.026072773912886,
+        "Japan": 1.442300536620029,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.0680513444803004,
+        "China": 1.6979898756600635,
+        "India": 8.476839587455055,
+        "Global": 1.616065969453053
       }
     },
     "Shoe": {
@@ -11095,6 +11815,15 @@
         "China": 0.023403997025751522,
         "India": 0.0009534599175239044,
         "Global": 0.007503871902170105
+      },
+      "ev_sales_multiple": {
+        "US": 2.0409765218719707,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.023898609645596,
+        "China": 1.8122429778904081,
+        "India": 3.393055694022748,
+        "Global": 1.7476230502879
       }
     },
     "Software (Entertainment)": {
@@ -11232,6 +11961,15 @@
         "China": 0.10963312835016566,
         "India": "NA",
         "Global": 0.1638549555572791
+      },
+      "ev_sales_multiple": {
+        "US": 9.12764468187753,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 5.414164324407777,
+        "Japan": 1.720198532450219,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 5.895612760953953,
+        "China": 6.1713165364617115,
+        "India": "NA",
+        "Global": 8.328991136213512
       }
     },
     "Software (Internet)": {
@@ -11369,6 +12107,15 @@
         "China": 0.01589071377324465,
         "India": "NA",
         "Global": 0.1133367708464233
+      },
+      "ev_sales_multiple": {
+        "US": 9.561036618683037,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.377367018117404,
+        "Japan": 1.2695973420715,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.167211457307237,
+        "China": 2.0133811606162033,
+        "India": "NA",
+        "Global": 7.728498123638001
       }
     },
     "Software (System & Application)": {
@@ -11506,6 +12253,15 @@
         "China": 0.20277623606260514,
         "India": 0.019530230550232192,
         "Global": 0.1607115176730652
+      },
+      "ev_sales_multiple": {
+        "US": 11.408763673096578,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 5.306957292378375,
+        "Japan": 2.5650261545250124,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": "NA",
+        "China": "NA",
+        "India": 4.861959945692511,
+        "Global": 9.912802757717099
       }
     },
     "Steel": {
@@ -11643,6 +12399,15 @@
         "China": 0.019429476493437226,
         "India": 0.0016646104583470998,
         "Global": 0.009550365985905836
+      },
+      "ev_sales_multiple": {
+        "US": 1.1692375062240556,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 0.547374668152873,
+        "Japan": 0.7061839567733095,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.0331264189324236,
+        "China": 0.8284113764716331,
+        "India": 1.8215586231524865,
+        "Global": 0.9491330627667011
       }
     },
     "Telecom (Wireless)": {
@@ -11780,6 +12545,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.013471825072391481
+      },
+      "ev_sales_multiple": {
+        "US": 3.717039475911651,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.1706531379923706,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.1578543527210488,
+        "China": "NA",
+        "India": "NA",
+        "Global": 2.607189379129544
       }
     },
     "Telecom Equipment": {
@@ -11917,6 +12691,15 @@
         "China": 0.08531346954891653,
         "India": 0.013257713207986703,
         "Global": 0.12517174588544105
+      },
+      "ev_sales_multiple": {
+        "US": 6.5160940958665385,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.426326403184723,
+        "Japan": 0.40915886269339174,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.285816345662253,
+        "China": 3.954081876101969,
+        "India": 3.9393298395750604,
+        "Global": 4.106000735586163
       }
     },
     "Telecom Services": {
@@ -12054,6 +12837,15 @@
         "China": "NA",
         "India": 9.051979708808223e-05,
         "Global": 0.008254681421567213
+      },
+      "ev_sales_multiple": {
+        "US": 2.614800563000675,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 2.2703023806858167,
+        "Japan": 1.717425717015463,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.002969635378354,
+        "China": "NA",
+        "India": 4.300020949996707,
+        "Global": 2.2630077844458714
       }
     },
     "Tobacco": {
@@ -12191,6 +12983,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.012193307224581514
+      },
+      "ev_sales_multiple": {
+        "US": 6.395192946988778,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.4827934218516097,
+        "China": "NA",
+        "India": "NA",
+        "Global": 4.446776627478958
       }
     },
     "Transportation": {
@@ -12328,6 +13129,15 @@
         "China": 0.006306370640685481,
         "India": 0.00033037770520600137,
         "Global": 0.006174789368900739
+      },
+      "ev_sales_multiple": {
+        "US": 1.6396952282383208,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.2956722138594634,
+        "Japan": 0.6712392779818901,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.1902539057324315,
+        "China": 0.9544806046908099,
+        "India": 1.30269562511523,
+        "Global": 1.318488523602003
       }
     },
     "Transportation (Railroads)": {
@@ -12465,6 +13275,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.002187898575533001
+      },
+      "ev_sales_multiple": {
+        "US": "NA",
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 2.356185547688651,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 2.78017804714522,
+        "China": "NA",
+        "India": "NA",
+        "Global": 3.77796352334556
       }
     },
     "Trucking": {
@@ -12602,6 +13421,15 @@
         "China": "NA",
         "India": 0.0,
         "Global": 0.0009353599176520953
+      },
+      "ev_sales_multiple": {
+        "US": 1.7429114121474771,
+        "Europe (EU, UK, Switzerland & Scandinavia)": "NA",
+        "Japan": 0.8140679415535059,
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 1.4761675425707503,
+        "China": "NA",
+        "India": 1.1966254609338547,
+        "Global": 1.5056926980189795
       }
     },
     "Utility (General)": {
@@ -12739,6 +13567,15 @@
         "China": "NA",
         "India": "NA",
         "Global": 0.0012028603194360788
+      },
+      "ev_sales_multiple": {
+        "US": 5.251606084018362,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 1.3034400841111295,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 4.90279995369096,
+        "China": "NA",
+        "India": "NA",
+        "Global": 2.5437913210545906
       }
     },
     "Utility (Water)": {
@@ -12876,6 +13713,15 @@
         "China": 0.010749109313502992,
         "India": "NA",
         "Global": 0.003796254293779274
+      },
+      "ev_sales_multiple": {
+        "US": 7.156354779193479,
+        "Europe (EU, UK, Switzerland & Scandinavia)": 6.463984730208359,
+        "Japan": "NA",
+        "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": 3.7727284518966613,
+        "China": 4.041769434996984,
+        "India": "NA",
+        "Global": 4.762558110589226
       }
     }
   },
@@ -14925,7 +15771,10 @@
     "scorecard": "Scorecard method (Bill Payne / Ohio TechAngels), which compares a pre-revenue company with the typical pre-revenue company in its region: criterion weights 30/25/15/10/10/10 (Payne's 'need for additional investment' and 'other' 5% each are combined into 'funding required'). Used only for the Idea and Development stages; companies with revenue are valued on their numbers.",
     "country_data_as_of": "2026-07-01",
     "scorecard_benchmark": "Equidam, Startup Valuation Delta H1 2026: median pre-seed valuations from 3,000+ valuations of pre-seed companies preparing their first institutional round (results of Equidam's five-method valuations, not prices paid in closed rounds). United States $5.16M, Europe $3.30M; Emerging Markets uses the average of the Africa ($2.99M) and Latin America ($2.40M) medians; Japan, China, India and Global use the all-region median ($5.20M). Converted to euros at the ECB reference rate of 1 July 2026 (1.1383 US$ per euro). Used only for pre-revenue stages (Idea, Development).",
-    "method_weights": "App assumption: stage weights carried over from the original workbook, except that once a company has revenue (Startup and Expansion stages) the Scorecard's weight is spread over the other three methods (roughly in proportion, rounded: Startup 30/35/35%, Expansion 15/42.5/42.5%)."
+    "method_weights": "App assumption: stage weights carried over from the original workbook, except that once a company has revenue (Startup and Expansion stages) the Scorecard's weight is spread over the other three methods (roughly in proportion, rounded: Startup 30/35/35%, Expansion 15/42.5/42.5%).",
+    "ev_sales_multiple": "Derived from the same Damodaran January 2026 regional files, as EV/EBITDA (all firms) × EBITDA/Sales (all firms); both are aggregate ratios over the same companies, so the product is their total enterprise value ÷ total sales. Used by the Comparables method when revenue gives more than EBITDA (always for companies without positive EBITDA).",
+    "saas_arr_multiple": "ARR multiple for subscription (SaaS) companies: SaaS Capital Index, median enterprise value ÷ annualised run-rate revenue of about 100 listed SaaS companies, 4.2× on 30 September 2026 (down from 5.6× in December 2025). Figure as reported by secondary sources; check the monthly index file at saas-capital.com when updating. Reduced by the stage's private-company discount, as for the other multiples.",
+    "round_benchmarks": "Median share sold per round in US software companies on Carta, 2025 (seed 19.5%, Series A 18.0%, Series B 14.0%, Series C 10.0%; pre-seed SAFE rounds of $1–1.9M 15.6%, under $250k 5–6%, so 10% at the Idea stage). No German figures by stage are published. The low–high band is an app assumption. Round sizes: Dealroom round bands (pre-seed $0.1–1M, seed $1–4M, Series A $4–15M) and DealRoom Q2 2026 typical raises for Series B ($20–60M) and C ($30–100M, US), at the ECB rate of 1 July 2026. Median German VC round 2025: €4M (KfW VC Dashboard Q4 2025, Dealroom data)."
   },
   "stage_descriptions": {
     "Idea stage": "An idea or concept; no product and no revenue yet.",
@@ -14942,43 +15791,50 @@
         "eur": 4533000.0,
         "usd": 5160000.0,
         "basis": "Equidam H1 2026 median, United States",
-        "regional_figure": true
+        "regional_figure": true,
+        "basis_de": "Median laut Equidam H1 2026, USA"
       },
       "Europe (EU, UK, Switzerland & Scandinavia)": {
         "eur": 2899000.0,
         "usd": 3300000.0,
         "basis": "Equidam H1 2026 median, Europe",
-        "regional_figure": true
+        "regional_figure": true,
+        "basis_de": "Median laut Equidam H1 2026, Europa"
       },
       "Emerging Markets (Asia, Latin America, Eastern Europe, Mid East and Africa)": {
         "eur": 2368000.0,
         "usd": 2695000.0,
         "basis": "Average of the Equidam H1 2026 medians for Africa, $2.99M, and Latin America, $2.40M",
-        "regional_figure": true
+        "regional_figure": true,
+        "basis_de": "Durchschnitt der Equidam-Mediane H1 2026 für Afrika (2,99 Mio. US$) und Lateinamerika (2,40 Mio. US$)"
       },
       "Japan": {
         "eur": 4568000.0,
         "usd": 5200000.0,
         "basis": "Equidam H1 2026 all-region median, no separate figure for Japan",
-        "regional_figure": false
+        "regional_figure": false,
+        "basis_de": "Median aller Regionen laut Equidam H1 2026, kein eigener Wert für Japan"
       },
       "China": {
         "eur": 4568000.0,
         "usd": 5200000.0,
         "basis": "Equidam H1 2026 all-region median, no separate figure for China",
-        "regional_figure": false
+        "regional_figure": false,
+        "basis_de": "Median aller Regionen laut Equidam H1 2026, kein eigener Wert für China"
       },
       "India": {
         "eur": 4568000.0,
         "usd": 5200000.0,
         "basis": "Equidam H1 2026 all-region median, no separate figure for India",
-        "regional_figure": false
+        "regional_figure": false,
+        "basis_de": "Median aller Regionen laut Equidam H1 2026, kein eigener Wert für Indien"
       },
       "Global": {
         "eur": 4568000.0,
         "usd": 5200000.0,
         "basis": "Equidam H1 2026 all-region median",
-        "regional_figure": false
+        "regional_figure": false,
+        "basis_de": "Median aller Regionen laut Equidam H1 2026"
       }
     }
   },
@@ -14989,7 +15845,8 @@
         "value": 0.035,
         "as_of": "2026-10-05",
         "source": "Yield on 10-year German Federal bonds (Bund) on 5 October 2026, as reported by market data providers (cbonds, ariva.de / dpa-AFX); the official series is published by the Deutsche Bundesbank.",
-        "update_note": "When updating, take the value from the Deutsche Bundesbank's 'Tägliche Renditen der jeweils jüngsten Bundeswertpapiere' (10-year)."
+        "update_note": "When updating, take the value from the Deutsche Bundesbank's 'Tägliche Renditen der jeweils jüngsten Bundeswertpapiere' (10-year).",
+        "source_de": "Rendite zehnjähriger Bundesanleihen am 5. Oktober 2026 laut Marktdatenanbietern (cbonds, ariva.de / dpa-AFX); die amtliche Reihe veröffentlicht die Deutsche Bundesbank."
       },
       "tax": {
         "corporate_tax_by_year": {
@@ -15009,7 +15866,12 @@
         "average_hebesatz": 4.09,
         "average_hebesatz_as_of": "2024",
         "average_hebesatz_source": "Statistisches Bundesamt (Destatis), press release of 21 August 2025: average trade-tax Hebesatz of all German municipalities in 2024 was 409%. Users can enter their own municipality's Hebesatz.",
-        "simplification": "Trade-tax add-backs and deductions (Hinzurechnungen / Kürzungen) and the trade-tax loss rules are not modelled; trade tax is applied to the same profit as corporate tax."
+        "simplification": "Trade-tax add-backs and deductions (Hinzurechnungen / Kürzungen) and the trade-tax loss rules are not modelled; trade tax is applied to the same profit as corporate tax.",
+        "corporate_tax_source_de": "Körperschaftsteuer: § 23 Abs. 1 KStG in der Fassung des Gesetzes für ein steuerliches Investitionssofortprogramm zur Stärkung des Wirtschaftsstandorts Deutschland vom 14. Juli 2025 (BGBl. I 2025 Nr. 161, verkündet am 18. Juli 2025): 15 % bis 2027, 14 % 2028, 13 % 2029, 12 % 2030, 11 % 2031, 10 % ab 2032.",
+        "solidarity_surcharge_source_de": "Solidaritätszuschlag: 5,5 % der Körperschaftsteuer (§ 4 SolzG 1995), unverändert.",
+        "trade_tax_base_rate_source_de": "Gewerbesteuer: Steuermesszahl 3,5 % (§ 11 Abs. 2 GewStG), multipliziert mit dem Hebesatz der Gemeinde.",
+        "average_hebesatz_source_de": "Statistisches Bundesamt (Destatis), Pressemitteilung vom 21. August 2025: Der durchschnittliche Gewerbesteuer-Hebesatz aller deutschen Gemeinden lag 2024 bei 409 %. Sie können den Hebesatz Ihrer Gemeinde eingeben.",
+        "simplification_de": "Hinzurechnungen und Kürzungen der Gewerbesteuer sowie die gewerbesteuerlichen Verlustregeln werden nicht abgebildet; die Gewerbesteuer wird auf denselben Gewinn wie die Körperschaftsteuer angewendet."
       },
       "stage_benchmarks": {
         "_note": "Typical pre-money valuation for German startups, used by the Scorecard method (Idea and Development stages only) when the country is Germany. Equidam publishes one figure per country, not per stage, so both stages use the same figure. Update it with each Equidam parameters update (twice a year).",
@@ -15020,14 +15882,17 @@
           "Idea stage": {
             "eur": 6550000.0,
             "basis": "Equidam's July 2026 average for German angel, pre-seed and seed rounds",
-            "to_be_sourced": false
+            "to_be_sourced": false,
+            "basis_de": "Equidams Durchschnitt für deutsche Angel-, Pre-Seed- und Seed-Runden, Juli 2026"
           },
           "Development stage": {
             "eur": 6550000.0,
             "basis": "Equidam's July 2026 average for German angel, pre-seed and seed rounds",
-            "to_be_sourced": false
+            "to_be_sourced": false,
+            "basis_de": "Equidams Durchschnitt für deutsche Angel-, Pre-Seed- und Seed-Runden, Juli 2026"
           }
-        }
+        },
+        "source_de": "Equidam, Parameters Update P6.3 (30. Juli 2026), Durchschnitts- und Höchstbewertungen: Scorecard-Durchschnitt für Deutschland 6.550.000 € (vorheriges Update 5.220.000 €, +25,48 %). Das ist die durchschnittliche Pre-Money-Bewertung von Angel-, Pre-Seed- und Seed-Runden in Deutschland in den letzten 30 Monaten (Runden seit 1. Januar 2024, Datenstand 1. Juli 2026; Crunchbase-Rundendaten, Ausreißer entfernt). Grundlage waren weltweit 4.606 Finanzierungsrunden mit veröffentlichter Pre-Money-Bewertung."
       }
     }
   },
@@ -15056,5 +15921,163 @@
     "Jersey (States of)": "Jersey",
     "Congo (Democratic Republic of)": "Congo (Democratic Republic)",
     "Congo (Republic of)": "Congo (Republic)"
+  },
+  "saas_arr_multiple": {
+    "value": 4.2,
+    "as_of": "2026-09-30",
+    "basis": "SaaS Capital Index median EV / annualised run-rate revenue (ARR) of about 100 listed SaaS companies, equal-weighted"
+  },
+  "round_benchmarks": {
+    "_note": "Typical financing round for each stage: the share of the company new investors usually buy (dilution) and the usual round size. Used for the 'round logic' cross-check, not in the blended value. Update twice a year.",
+    "as_of": "2026-07-31",
+    "usd_per_eur": 1.1383,
+    "stages": {
+      "Idea stage": {
+        "round": "Pre-seed (angels)",
+        "dilution_low": 0.05,
+        "dilution_median": 0.1,
+        "dilution_high": 0.15,
+        "round_eur_low": 88000.0,
+        "round_eur_high": 879000.0
+      },
+      "Development stage": {
+        "round": "Pre-seed",
+        "dilution_low": 0.1,
+        "dilution_median": 0.156,
+        "dilution_high": 0.2,
+        "round_eur_low": 88000.0,
+        "round_eur_high": 879000.0
+      },
+      "Startup stage": {
+        "round": "Seed",
+        "dilution_low": 0.15,
+        "dilution_median": 0.195,
+        "dilution_high": 0.25,
+        "round_eur_low": 879000.0,
+        "round_eur_high": 3514000.0
+      },
+      "Expansion stage": {
+        "round": "Series A",
+        "dilution_low": 0.15,
+        "dilution_median": 0.18,
+        "dilution_high": 0.22,
+        "round_eur_low": 3514000.0,
+        "round_eur_high": 13178000.0
+      },
+      "Growth stage": {
+        "round": "Series B",
+        "dilution_low": 0.1,
+        "dilution_median": 0.14,
+        "dilution_high": 0.18,
+        "round_eur_low": 17570000.0,
+        "round_eur_high": 52710000.0
+      },
+      "Maturity stage": {
+        "round": "Series C and later",
+        "dilution_low": 0.075,
+        "dilution_median": 0.1,
+        "dilution_high": 0.15,
+        "round_eur_low": 26355000.0,
+        "round_eur_high": 87850000.0
+      }
+    }
+  },
+  "stage_descriptions_de": {
+    "Idea stage": "Eine Idee oder ein Konzept; noch kein Produkt und kein Umsatz.",
+    "Development stage": "Produkt oder Prototyp in Entwicklung; noch kein nennenswerter Umsatz.",
+    "Startup stage": "Produkt am Markt, erste Kunden und erste Umsätze.",
+    "Expansion stage": "Bewährtes Produkt mit schnell wachsendem Umsatz; Vertrieb und Betrieb werden ausgebaut.",
+    "Growth stage": "Etabliertes Geschäft mit deutlichem Umsatz, meist profitabel, weiter im Wachstum.",
+    "Maturity stage": "Stabiles, profitables Geschäft mit moderatem Wachstum."
+  },
+  "sources_de": {
+    "industry_benchmarks": "Aswath Damodaran, NYU Stern (Damodaran Online), regionale Branchendatensätze vebitda, wacc, margin, wcdata und dbtfund, Stand 5. Januar 2026. Regionale Werte aus weniger als 10 Unternehmen werden durch den weltweiten Wert der Branche ersetzt. Abschreibungen in % und der Buchzinssatz werden aus Damodarans Margen- und Verschuldungskennzahlen abgeleitet. 'Retail (Online)' wird nicht mehr gesondert veröffentlicht; es werden Damodarans Werte für 'Retail (General)' verwendet.",
+    "country_data": "Aswath Damodaran, NYU Stern (Damodaran Online), Arbeitsmappe zu Länderrisikoprämien (ctryprem.xlsx), Stand 1. Juli 2026 (Ausfallspreads korrigiert am 9. Juli 2026): Prämie reifer Märkte 4,20 % zuzüglich einer Länderprämie von 1,55 × dem ratingbasierten Ausfallspread; Steuersätze und Regionen aus derselben Arbeitsmappe. Russland (ohne Rating) verwendet Damodarans Frontier-Market-Prämie auf Basis des PRS-Risikowerts und seinen gesetzlichen Steuersatz von 25 % (seit 1. Januar 2025). BIP-Werte für 2024.",
+    "risk_free_rate": "Rendite langfristiger US-Staatsanleihen aus Damodarans Kapitalkosten-Tabellen vom Januar 2026 (3,95 %).",
+    "perpetual_growth_rate": "Annahme des Tools: 2 % nominales langfristiges Wachstum, unter dem risikofreien Zins.",
+    "vc_target_return": "Annahme des Tools je Phase, in der Mitte der Zielrenditen von Venture-Capital-Investoren für die entsprechende Finanzierungsphase (Sahlman / Scherlis, tabelliert in Damodaran, 'Valuing Young, Start-up and Growth Companies', 2009): Start-up 50-70 % (Ideenphase 65 %, Entwicklungsphase 55 %), First Stage 40-60 % (Startphase 50 %), Second Stage 35-50 % (Expansionsphase 40 %), Bridge / Pre-IPO 25-35 % (Wachstumsphase 30 %). Die Reifephase verwendet 20 %, ein typisches Private-Equity-Ziel. Nur in der Venture-Capital-Methode verwendet.",
+    "private_company_discount": "Annahme des Tools je Phase, nur in der Vergleichsmethode: Multiplikatoren börsennotierter Unternehmen werden für geringere Handelbarkeit und Größe gekürzt. Studien zu Restricted Stock finden meist etwa 20-35 %, Pre-IPO-Studien etwa 40-50 %; der Abschlag reicht von 40 % (Ideenphase) bis 20 % (Wachstums- und Reifephase).",
+    "survival_probability": "Annahme des Tools je Phase, nur in der DCF-Methode, verankert in den Business-Employment-Dynamics-Daten der US-Statistikbehörde BLS (etwa 78 % neuer Unternehmen überleben ein Jahr, etwa 49 % fünf Jahre und etwa 35 % zehn Jahre): Startphase 50 % (Fünfjahres-Überleben), vor Umsatzbeginn niedriger (Ideenphase 30 %, Entwicklungsphase 40 %), bei etablierten Unternehmen höher (Expansionsphase 65 %, Wachstumsphase 80 %, Reifephase 95 %).",
+    "scorecard": "Scorecard-Methode (Bill Payne / Ohio TechAngels), die ein Unternehmen vor Umsatzbeginn mit dem typischen Unternehmen vor Umsatzbeginn in seiner Region vergleicht: Gewichte der Kriterien 30/25/15/10/10/10 (Paynes 'Bedarf an weiterer Finanzierung' und 'Sonstiges' mit je 5 % sind zu 'Kapitalbedarf' zusammengefasst). Nur in der Ideen- und Entwicklungsphase verwendet; Unternehmen mit Umsatz werden anhand ihrer Zahlen bewertet.",
+    "scorecard_benchmark": "Equidam, Startup Valuation Delta H1 2026: Median-Bewertungen in der Pre-Seed-Phase aus über 3.000 Bewertungen von Unternehmen vor ihrer ersten institutionellen Runde (Ergebnisse von Equidams Bewertung mit fünf Methoden, keine in abgeschlossenen Runden gezahlten Preise). USA 5,16 Mio. US$, Europa 3,30 Mio. US$; Schwellenländer verwenden den Durchschnitt der Mediane für Afrika (2,99 Mio. US$) und Lateinamerika (2,40 Mio. US$); Japan, China, Indien und weltweit verwenden den Median aller Regionen (5,20 Mio. US$). Umgerechnet zum EZB-Referenzkurs vom 1. Juli 2026 (1,1383 US$ je Euro). Nur vor Umsatzbeginn verwendet (Ideen- und Entwicklungsphase).",
+    "method_weights": "Annahme des Tools: Gewichte je Phase aus der ursprünglichen Arbeitsmappe übernommen; sobald ein Unternehmen Umsatz hat (Start- und Expansionsphase), wird das Gewicht der Scorecard auf die anderen drei Methoden verteilt (etwa anteilig, gerundet: Startphase 30/35/35 %, Expansionsphase 15/42,5/42,5 %).",
+    "ev_sales_multiple": "Abgeleitet aus denselben regionalen Damodaran-Dateien vom Januar 2026 als EV/EBITDA (alle Unternehmen) × EBITDA/Umsatz (alle Unternehmen); beide sind aggregierte Kennzahlen über dieselben Unternehmen, das Produkt ist also deren gesamter Unternehmenswert ÷ gesamter Umsatz. Von der Vergleichsmethode verwendet, wenn der Umsatz mehr ergibt als das EBITDA (immer bei Unternehmen ohne positives EBITDA).",
+    "saas_arr_multiple": "ARR-Multiplikator für Abo-Unternehmen (SaaS): SaaS Capital Index, Median aus Unternehmenswert ÷ annualisiertem wiederkehrendem Umsatz von etwa 100 börsennotierten SaaS-Unternehmen, 4,2× am 30. September 2026 (5,6× im Dezember 2025). Wert laut Sekundärquellen; bei einer Aktualisierung die monatliche Indexdatei auf saas-capital.com prüfen. Wie die anderen Multiplikatoren um den Abschlag für nicht börsennotierte Unternehmen der jeweiligen Phase gekürzt.",
+    "round_benchmarks": "Median des je Runde verkauften Anteils bei US-Softwareunternehmen auf Carta, 2025 (Seed 19,5 %, Series A 18,0 %, Series B 14,0 %, Series C 10,0 %; Pre-Seed-SAFE-Runden von 1-1,9 Mio. US$ 15,6 %, unter 250.000 US$ 5-6 %, deshalb 10 % in der Ideenphase). Deutsche Werte je Phase werden nicht veröffentlicht. Die Spanne ist eine Annahme des Tools. Rundengrößen: Dealroom-Rundenklassen (Pre-Seed 0,1-1 Mio. US$, Seed 1-4 Mio. US$, Series A 4-15 Mio. US$) und typische Runden laut DealRoom Q2 2026 für Series B (20-60 Mio. US$) und C (30-100 Mio. US$, USA), zum EZB-Kurs vom 1. Juli 2026. Mittlere deutsche VC-Runde 2025: 4 Mio. € (KfW VC-Dashboard Q4 2025, Dealroom-Daten)."
+  },
+  "scorecard_option_labels_de": {
+    "strength_of_competitors_in_market": {
+      "Dominated by a single large player": "Von einem großen Anbieter beherrscht",
+      "Dominated by several players": "Von mehreren Anbietern beherrscht",
+      "Fractured many small players": "Zersplittert, viele kleine Anbieter",
+      "Developing market": "Entstehender Markt"
+    },
+    "strength_of_competitive_products": {
+      "Competitive products are excellent and superior": "Konkurrenzprodukte sind ausgezeichnet und überlegen",
+      "Competitive products are similar to ours": "Konkurrenzprodukte sind ähnlich wie unseres",
+      "Competitive products are weak": "Konkurrenzprodukte sind schwach"
+    },
+    "management_team_experience": {
+      "Demonstrated experience as a CEO": "Nachgewiesene Erfahrung als CEO",
+      "Demonstrated experience as a COO, CFO or CTO": "Nachgewiesene Erfahrung als COO, CFO oder CTO",
+      "Demonstrated experience as a product manager": "Nachgewiesene Erfahrung als Produktmanager/in",
+      "Experience in the business sector": "Erfahrung in der Branche",
+      "No experience": "Keine Erfahrung"
+    },
+    "product_compelling_to_customers": {
+      "This product is not a necessity / alternatives exist": "Das Produkt ist nicht notwendig / es gibt Alternativen",
+      "This product is novel and sought after": "Das Produkt ist neu und gefragt",
+      "This product will be a necessity": "Das Produkt wird unverzichtbar sein"
+    },
+    "product_can_be_duplicated": {
+      "Easily copied, no intellectual property": "Leicht kopierbar, kein geistiges Eigentum",
+      "It's difficult to be copied (time and financial resources needed)": "Schwer zu kopieren (braucht Zeit und Geld)",
+      "Product is unique and protected by trade secrets": "Einzigartig und durch Geschäftsgeheimnisse geschützt",
+      "Solid patent protections": "Solider Patentschutz"
+    },
+    "willingness_to_step_aside_for_ceo": {
+      "Unwilling (deal breaker)": "Nicht bereit (Ausschlusskriterium)",
+      "Neutral": "Neutral",
+      "Willing": "Bereit"
+    },
+    "sales_channels_partners": {
+      "Haven't even discussed sales channels": "Vertriebswege noch nicht besprochen",
+      "Key beta testers identified and contacted": "Wichtige Beta-Tester gefunden und kontaktiert",
+      "Channels secure, customers placed trial orders": "Vertriebswege gesichert, Kunden haben Testbestellungen aufgegeben",
+      "Key sales partners in place, channels secured, order traction": "Wichtige Vertriebspartner an Bord, Vertriebswege gesichert, Aufträge laufen"
+    },
+    "management_team_completeness": {
+      "Entrepreneur only": "Nur Gründer/in",
+      "One competent player in place": "Eine kompetente Person an Bord",
+      "Team identified and on the sideline": "Team gefunden, noch nicht an Bord",
+      "Competent team in place": "Kompetentes Team an Bord"
+    },
+    "marketing_partners": {
+      "No partners identified": "Keine Partner gefunden",
+      "Key partners in place": "Wichtige Partner an Bord"
+    },
+    "target_market_size": {
+      "< $50 million": "< 50 Mio. US$",
+      "$50 to $100 million": "50 bis 100 Mio. US$",
+      "About $100 million": "Etwa 100 Mio. US$",
+      "> $100 million": "> 100 Mio. US$"
+    },
+    "product_development_stage": {
+      "Not well defined": "Noch nicht klar definiert",
+      "Well defined, working prototype": "Klar definiert, funktionierender Prototyp",
+      "Good feedback from potential customers": "Gutes Feedback von potenziellen Kunden",
+      "Orders or early sales from customers": "Aufträge oder erste Verkäufe an Kunden"
+    },
+    "revenue_potential_in_5_years": {
+      "< $20 Million": "< 20 Mio. US$",
+      "$20 to $50 Million": "20 bis 50 Mio. US$",
+      "$50 to $100 Million": "50 bis 100 Mio. US$",
+      "> $100 Million (may require significant additional funding)": "> 100 Mio. US$ (kann erhebliche weitere Finanzierung erfordern)"
+    },
+    "need_for_additional_funding_rounds": {
+      "None": "Keine",
+      "Another angel round": "Eine weitere Angel-Runde",
+      "Need venture capital": "Venture Capital nötig"
+    }
   }
 }

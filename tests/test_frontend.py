@@ -6,6 +6,7 @@ so the GitHub Actions run (which doesn't install a browser) is unaffected.
 import io
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -382,3 +383,31 @@ def test_result_shows_method_range_and_revenue_scenarios(wizard):
                         f" to {money(scen['120%']['blended_pre_money_valuation'])}")
     assert "The methods disagree" in w.page.text_content(".checks-list")
     assert w.errors == []
+
+
+def test_german_version_and_language_switch(browser, servers):
+    """The DE button turns every visible text German, the API answers in German, and EN switches back
+    with the same figures. The choice lives only in the address (?lang=de), nothing is stored."""
+    w = Page(browser, servers, VIEWPORTS["phone"])
+    try:
+        w.page.click(".lang-switch [data-lang=de]")
+        w.page.wait_for_function("document.documentElement.lang === 'de'")
+        assert "lang=de" in w.page.url
+        assert w.page.text_content("#btn-next").strip() == "Weiter"
+        fill_werkpuls(w)
+        with w.page.expect_response(lambda r: "/valuations/preview?lang=de" in r.url) as resp:
+            w.page.click("#btn-calculate")
+        result = resp.value.json()
+        w.page.wait_for_selector(".headline-value")
+        value = round(result["blended_pre_money_valuation"])
+        assert w.page.inner_text(".headline-value") == f"{value:,}".replace(",", ".") + " €"
+        body = w.page.inner_text("body")
+        assert "Rundenlogik" in body and "Vergleichsmethode" in body
+        assert not re.search(r"\b(the|your|Range|Download|Calculate|revenue)\b", body)
+        assert w.page.evaluate("localStorage.length + document.cookie.length") == 0
+        w.page.click(".lang-switch [data-lang=en]")
+        w.page.wait_for_function("document.documentElement.lang === 'en'")
+        w.page.wait_for_function(f"document.querySelector('.headline-value').innerText === {json.dumps(money(value))}")
+        assert w.errors == []
+    finally:
+        w.close()

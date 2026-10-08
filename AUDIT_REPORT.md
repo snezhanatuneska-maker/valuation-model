@@ -30,7 +30,7 @@ You asked me to fix everything I found necessary, with German startups as the us
 | m6 | €0 valuation reports | **Fixed** | A clear message instead ("None of the methods … finds any value for the business"), naming the debt when that is the cause. |
 | m7 | Browser tests never ran on GitHub | **Fixed** | The workflow installs Playwright and Chromium. All 26 browser tests pass here. |
 | m8 | Comparables ignores the growth plan | **Explained** | The Comparables page says so. |
-| New | Comparables just above break-even | **Open: QUESTIONS.md 13** | Still a jump at EBITDA = 0, because of decision 5. Options and a recommendation are in QUESTIONS.md. |
+| New | Comparables just above break-even | **Settled (QUESTIONS.md 13)** | Comparables now also uses a revenue (or ARR) multiple; see "German version, revenue multiple and round logic" below. |
 | — | Excel column | **Still open** | Needs `audit_inputs/main file.xlsx`. |
 
 **Tests:** 251 pass, browser tests included (225 before). The 22 new tests in `tests/test_reliability.py` cover the direction checks on the Tanzania case and on Werkpuls, €0 methods, refused inputs, pre-revenue projections, the terminal year, the plausibility warning on the cover, the working-capital note, the weights text and saved valuations. 20 of them fail on the previous code. The independent recalculation (`audit/recompute.py`) was updated to the same rules and still matches the engine on every figure.
@@ -52,6 +52,67 @@ You asked me to fix everything I found necessary, with German startups as the us
 **Changes numbers customers have seen:** yes, every one of the "Before → After" rows above. Most valuations move by a few percent. Fast-growing companies (high Year-5 growth) rise. Pre-revenue companies with real losses, and cases where VC or DCF found no value, fall. Contradictory inputs are now refused.
 
 Not changed, for German users to know: existing tax-loss carryforwards (Verlustvortrag) can't be entered, and the German minimum taxation (Mindestbesteuerung: past losses offset profit in full only up to €1M a year, above that only 70%, 60% from 2028) and trade-tax add-backs aren't modelled. Both mostly matter for companies with large accumulated losses. Ask if you want them added.
+
+### German version, revenue multiple and round logic (8 October 2026, later)
+
+You asked for three additions. All three are in, tested and documented.
+
+1. **German version.** A DE / EN switch at the top right of the wizard translates every text: the form, hints,
+   error messages, results, the glossary, the stage, region and country names (all 158 countries) and the
+   questionnaire answers. The PDF report is fully German too, with German number formats ("1.234.567 €", "16,7 %",
+   "1,46 Mio. €"), German dates and a note that the result is not an IDW S1 valuation or a tax value under the BewG.
+   The page opens in German when the browser is set to German. The choice is kept only in the address (`?lang=de`):
+   nothing is stored in the browser, so the privacy promise still holds. Figures are identical in both languages
+   (tested).
+2. **Revenue multiple in Comparables.** Comparables now takes the higher of last-12-month EBITDA × EV/EBITDA and
+   last-12-month revenue × EV/Sales. For a subscription business that enters its ARR (optional field in Step 3), ARR ×
+   the public SaaS EV/ARR multiple (SaaS Capital Index, 4.2×) replaces revenue. EV/Sales comes from the same Damodaran
+   files as EV/EBITDA (EV/EBITDA for all firms × EBITDA/Sales, i.e. sum of EV ÷ sum of sales), for every industry and
+   region. `audit/check_benchmarks.py` recomputes it from the spreadsheets independently: 882 values, 0 mismatches.
+   This settles QUESTIONS.md 13: the method no longer drops out at break-even. On 3,948 German runs and the EBITDA
+   sweep from +€150k to −€150k, a lower input never gave a higher value.
+3. **Round logic.** A new block on the result page and the PDF valuation page shows the typical round for the stage
+   (e.g. Seed at the Startup stage: €0.9–3.5M, selling 15–25% of the company, median 19.5%). It also shows the
+   pre-money that this dilution implies for your raise (raise × (1 − share) ÷ share) and the share your raise would buy
+   at the blended value. It is a cross-check and is not part of the blend.
+
+**How values move** (before → after):
+
+| Case | Before | After | Why |
+|---|---|---|---|
+| Tanzania test case | €907,043 | €1,103,096 | Revenue × EV/Sales (€1,258,079) is higher than EBITDA × EV/EBITDA (€697,925) |
+| German example (Beispiel Software GmbH) | €1,018,497 | €1,153,087 | Same (Comparables €749,919 → €1,134,461) |
+| Werkpuls GmbH (loss-making SaaS) | €1,218,619 | €1,411,688 | Comparables was left out (negative EBITDA); now counted on revenue (€1,770,245) |
+| Werkpuls, pinned golden figures | €1,043,836.30 | €1,252,087.59 | Same |
+| Tanzania case, EBITDA €10,000 | €572,855 | €958,727 | The dip just above break-even is gone |
+| Tanzania case, EBITDA €0 | €742,012 | €922,635 | Now lower than at €10,000, as it should be |
+| Werkpuls at Development stage, no revenue | €2,670,903 | €2,670,903 | No revenue, no ARR, no profit: Comparables still left out |
+
+**Changes numbers customers have seen:** yes. Every company with revenue whose EBITDA margin is below the industry's
+now gets a higher Comparables value, profitable thin-margin companies included, not only loss-making ones. That is
+the point of a revenue multiple, but it raises most early-stage values by roughly 10–25%. Companies without revenue
+are unchanged.
+
+**What to know about the new data.** Damodaran's EV/Sales is as solid as the EV/EBITDA figures already used. The
+other two sources are weaker:
+
+- **SaaS multiple:** the SaaS Capital Index figure was taken from secondary reports. Check it against saas-capital.com
+  when you update.
+- **Round benchmarks:** dilution comes from Carta's US data (no German figures by stage are published). The low–high
+  band is the app's own assumption. Round sizes come from Dealroom's round bands.
+
+All three are in `reference_data.json` with source and date, in English and German, and are listed in the PDF only
+when they were used.
+
+**Still needed before German founders use the live site:** an Impressum and a Datenschutzerklärung (legal notice and
+privacy policy, required for a public German-facing site). Only you can supply the operator's details. The
+"Datenschutz" link currently points to the short privacy note on the page.
+
+**Tests:** 268 pass, browser tests included (251 before). The 17 new tests cover German API answers and validation messages, the German PDF
+(no English left, German formats), the language switch in a browser (no storage used), the labels endpoint, the
+revenue and ARR routes, EBITDA across zero, round-logic arithmetic, and a check that round logic doesn't move the
+blend. `audit/recompute.py` uses the same revenue rule and still matches the engine on every figure (32/32 on both
+cases).
 
 ---
 

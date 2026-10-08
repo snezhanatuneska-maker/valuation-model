@@ -1,10 +1,11 @@
 # Questions for the owner
 
-**Status, 8 October 2026:** questions 1–11 are decided and 12 is done; **13 is new and open**. The owner kept the app's
+**Status, 8 October 2026:** questions 1–11 are decided, 12 is done and 13 is settled (revenue multiple). The owner kept the app's
 method on every point (option a) and the PDF was shortened (7). The reliability fixes of 8 October (AUDIT_REPORT.md,
 "Fix status") keep every one of those decisions. They change the terminal value (the years after Year 5 are now a business
 growing 2% forever: working capital grows 2%, capex at least D&A, profit fully taxed), so the golden test now expects
-pinned blended pre-money €1,043,836.30, post-money €1,843,836.30 (was €1,050,656.82 / €1,850,656.82).
+pinned blended pre-money €1,043,836.30, post-money €1,843,836.30 (was €1,050,656.82 / €1,850,656.82). With the
+revenue multiple in Comparables (13) it expects €1,252,087.59 / €2,052,087.59.
 
 Things the check-and-fix loop found that are method, data or design choices, so I didn't change them. Each has
 a plain-language explanation, the options and my recommendation. Nothing here is a crash or a wrong sum.
@@ -137,7 +138,7 @@ snezhanatuneska-maker.github.io), so I couldn't check the live site or confirm a
   reach both hosts. **Recommended**.
 - b) Leave the live site as it is for now.
 
-## 13. Comparables just above break-even (open, 8 October 2026)
+## 13. Comparables just above break-even (settled, 8 October 2026: revenue multiple)
 
 Since the 8 October fixes, a weaker plan never gives a higher value, with one exception that comes from decision 5
 (Comparables is left out when last-12-month EBITDA is zero or negative). A company with a small positive EBITDA gets
@@ -153,4 +154,12 @@ by reporting a little less profit.
   "a weaker plan never shows a higher value" hold everywhere.
 - c) Phase Comparables in: its weight rises from 0 at a 0% EBITDA margin to full weight at a 10% margin. Removes the
   jump but not the dip just above zero, and is a rule of the app's own with no published source.
+
+**Settled by the owner's request to add a revenue multiple (a variant of b).** Comparables now takes the higher of
+EBITDA × EV/EBITDA and revenue × EV/Sales (Damodaran, same industry and region), or ARR × the public SaaS EV/ARR
+multiple when ARR is entered. It is left out only for a company with no revenue, no ARR and no positive EBITDA. The
+value no longer jumps at break-even and never rises as EBITDA falls; `tests/test_reliability.py` steps EBITDA from
++€150,000 to −€150,000 for both test companies to check this. Tanzania test case: EBITDA €10,000 gives €958,727,
+€0 €922,635, −€10,000 €886,543. Unlike option b, loss-making companies with revenue are valued higher than before, not
+lower (Werkpuls €1,411,688), because their revenue now counts.
 

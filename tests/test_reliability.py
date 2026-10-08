@@ -30,8 +30,8 @@ def changed(case, path, v):
     return c
 
 
-# Each input stepped from better to worse. (Last-12-month EBITDA is not here: crossing zero leaves the
-# Comparables method out, an owner decision; see QUESTIONS.md 13.)
+# Each input stepped from better to worse, last-12-month EBITDA across zero included (QUESTIONS.md 13: the
+# revenue multiple takes over from the EBITDA multiple instead of the Comparables method dropping out).
 WORSENING = {
     "Year-1 revenue": ("financial_assumptions__revenue_year1", [1_200_000 - 50_000 * i for i in range(24)]),
     "Year-1 capex": ("financial_assumptions__capex_by_year",
@@ -39,6 +39,7 @@ WORSENING = {
     "growth": ("financial_assumptions__revenue_growth_rates", [[g / 100] * 4 for g in range(40, -60, -5)]),
     "target margin": ("financial_assumptions__target_ebitda_margin_override", [m / 100 for m in range(30, -60, -3)]),
     "debt": ("financial_assumptions__existing_debt_balance", [250_000 * i for i in range(30)]),
+    "last-12-month EBITDA": ("operating_performance__current_ebitda", [150_000 - 20_000 * i for i in range(16)]),
     "amount raised": ("funding__capital_needed", [200_000 * i for i in range(1, 30)]),
 }
 
@@ -69,6 +70,7 @@ def test_a_method_that_applies_but_finds_no_value_counts_as_zero():
 def test_no_value_for_the_business_is_a_message_not_a_valuation():
     with pytest.raises(ve.ValuationError, match="finds any value for the business"):
         run(variant(financial_assumptions__target_ebitda_margin_override=-0.6,
+                    operating_performance__current_revenue_last_12_months=0,
                     operating_performance__current_ebitda=-50_000))
 
 

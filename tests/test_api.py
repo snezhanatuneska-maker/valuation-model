@@ -74,7 +74,7 @@ def test_default_region(client):
 def test_preview_and_scenarios(client):
     r = client.post("/valuations/preview", json=REFERENCE_CASE)
     assert r.status_code == 200
-    assert round(r.json()["blended_pre_money_valuation"]) == 907_043
+    assert round(r.json()["blended_pre_money_valuation"]) == 1_103_096
     assert len(client.post("/valuations/preview/scenarios", json=REFERENCE_CASE).json()) == 6
 
 
@@ -308,5 +308,5 @@ def test_scenario_page_explains_a_value_that_falls_with_revenue():
     falling = {f"{p}%": scenario(1_000_000 - p * 1000) for p in (80, 90, 100, 110, 120, 130)}
     rising = {f"{p}%": scenario(1_000_000 + p * 1000) for p in (80, 90, 100, 110, 120, 130)}
     text = lambda s: " ".join(getattr(f, "text", "") for f in report._scenario_sensitivity_page(s))  # noqa: E731
-    assert report.SCENARIO_FALLS_NOTE in text(falling)
-    assert report.SCENARIO_FALLS_NOTE not in text(rising)
+    assert report.scenario_falls_note() in text(falling)
+    assert report.scenario_falls_note() not in text(rising)

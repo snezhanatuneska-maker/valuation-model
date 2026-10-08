@@ -37,9 +37,9 @@ def test_reference_case_regression_values():
     """Pinned values (README "Verified numbers"); update deliberately if the method changes."""
     r = run(REFERENCE_CASE)
     got = {k: round(v.pre_money_value) for k, v in r.method_values.items()}
-    assert got == {"scorecard": 2_202_240, "venture_capital": 1_242_335, "comparables": 697_925, "dcf": 828_766}
-    assert round(r.blended_pre_money_valuation) == 907_043
-    assert round(r.post_money_valuation) == 1_207_043
+    assert got == {"scorecard": 2_202_240, "venture_capital": 1_242_335, "comparables": 1_258_079, "dcf": 828_766}
+    assert round(r.blended_pre_money_valuation) == 1_103_096
+    assert round(r.post_money_valuation) == 1_403_096
 
 
 def test_scorecard_rows_add_up_to_total():
@@ -94,11 +94,18 @@ def test_debt_above_every_value_is_a_clear_message_not_a_zero_valuation():
         run(variant(financial_assumptions__existing_debt_balance=50_000_000))
 
 
-def test_loss_making_company_drops_comparables_and_reweights():
+def test_loss_making_company_is_compared_on_revenue():
     r = run(variant(operating_performance__current_ebitda=-80_000))
+    cm = r.comparables
+    assert r.method_values["comparables"].status == "ok" and cm.basis_used == "revenue"
+    assert cm.public_company_ev == pytest.approx(300_000 * cm.revenue_multiple)
+    assert cm.ebitda_based_ev == 0
+
+
+def test_company_without_revenue_leaves_comparables_out_and_reweights():
+    r = run(variant(operating_performance__current_revenue_last_12_months=0, operating_performance__current_ebitda=-80_000))
     assert r.method_values["comparables"].status == "not_meaningful"
     assert r.method_values["comparables"].weight_used == 0
-    assert any(w.code == "nm_comparables" for w in r.warnings)
 
 
 def test_projection_starts_from_company_margin_and_reaches_target():
@@ -189,7 +196,8 @@ def test_scorecard_uses_regional_equidam_benchmark():
 
 
 def test_no_applicable_method_gives_clear_error():
-    case = variant(operating_performance__current_ebitda=-500_000,            # Comparables: no positive EBITDA
+    case = variant(operating_performance__current_ebitda=-500_000,            # Comparables: no revenue
+                   operating_performance__current_revenue_last_12_months=0,
                    funding__capital_needed=50_000_000,                        # VC: raise exceeds what the exit supports
                    financial_assumptions__target_ebitda_margin_override=-0.5)  # DCF: negative cash flows
     with pytest.raises(ve.ValuationError, match="None of the methods for this stage"):
@@ -230,9 +238,9 @@ def test_german_example_regression_values():
     """Pinned values for the German example (README); update deliberately if data or method change."""
     r = run(GERMAN_CASE)
     got = {k: round(v.pre_money_value) for k, v in r.method_values.items()}
-    assert got == {"scorecard": 2_696_070, "venture_capital": 971_446, "comparables": 749_919, "dcf": 1_327_405}
-    assert round(r.blended_pre_money_valuation) == 1_018_497
-    assert round(r.post_money_valuation) == 1_318_497
+    assert got == {"scorecard": 2_696_070, "venture_capital": 971_446, "comparables": 1_134_461, "dcf": 1_327_405}
+    assert round(r.blended_pre_money_valuation) == 1_153_087
+    assert round(r.post_money_valuation) == 1_453_087
 
 
 def test_germany_has_no_country_risk_premium():
