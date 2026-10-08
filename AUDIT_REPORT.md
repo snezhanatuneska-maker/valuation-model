@@ -1,222 +1,237 @@
-# Valuativa: accuracy audit and improvement review
+# Reliability audit: can a founder trust the number?
 
-**Audit date:** 6 October 2026
-**Code audited:** branch `claude/relaxed-maxwell-qytry6` at commit `3b2642b` (it includes the January 2026 Damodaran data refresh). No app code was changed.
-**Live site:** this audit environment's network policy blocked both https://snezhanatuneska-maker.github.io/valuation-model/ and the Render API, so I reviewed the code that is deployed and a PDF generated from it (`audit/reference_case_report.pdf`). See finding N3: the live site may still be running older code.
+**Audit date:** 8 October 2026
+**Code audited:** branch `claude/serene-maxwell-0d1cwh` at commit `71002f7` (same as `main`). No app code was changed.
+**Earlier audit:** the 6 October 2026 accuracy audit, and the record of what was fixed after it, is kept in [`audit/AUDIT_REPORT_2026-10-06.md`](audit/AUDIT_REPORT_2026-10-06.md).
 
-## Fix status (follow-up change, 6 October 2026)
-
-Everything below the line is the original audit, kept as written. This table records what the follow-up change did about each finding.
-
-| # | Finding | Status | What changed |
-|---|---|---|---|
-| 1 | Scorecard table didn't add up | **Fixed** | No hidden multiplier any more, so the rows add up to the total. A test checks this. |
-| 2 | 0.55 used four ways; hurdle rose with maturity | **Fixed** | Three separate stage assumptions, each used by one method only: VC target return 65% (Idea) → 20% (Maturity), private-company discount 40% → 20% (Comparables), survival probability 30% → 95% (DCF). Scorecard has no haircut (Payne). |
-| 3 | DCF double-counted risk (WACC + 55%) | **Fixed** | Discounts at WACC only, then weights the result by the stage's survival probability (anchored on BLS data: ~78% of new businesses survive one year, ~49% survive five). |
-| 4 | DCF PVs / terminal value disclosure | **Fixed** | The PDF shows PV of cash flows, PV of terminal value, terminal value % of EV, and every input to the discount rate. |
-| 5 | No valuation date | **Fixed** | New valuation-date field (default today, pinned when saved). Years are labelled "Y1 (Oct 2027)" etc. |
-| 6 | Enterprise value reported as equity | **Fixed** | Comparables and DCF subtract debt and add cash. The VC method subtracts debt from the exit value. Equity is floored at zero, never negative. |
-| 7 | Comparables on forward EBITDA; inconsistent names | **Fixed** | Uses last-12-month EBITDA with Damodaran's trailing multiple. Called "Comparables (EV/EBITDA multiple)" everywhere. "Exit value" label replaced. |
-| 8 | Two totals | **Fixed** | `simple_average_valuation` removed. |
-| 9 | Price per share "€1" | **Fixed** | Shown to the cent (€1.60). |
-| 10 | Rounding, hidden assumptions, fallbacks | **Fixed** | Rates shown with 2 decimals. The hidden "other opex 1.5%" line is gone. Every fallback is footnoted in the PDF and listed as a note. |
-| 11 | Capex mismatch; Y1 capex missing from PDF | **Fixed** | Y1 is shown. Use-of-funds capex ≠ Y1 capex raises a warning. |
-| N1 | Margins left out R&D | **Fixed** | Target margin = Damodaran EBITDA/Sales (new `ebitda_margin` column; `rd_pct_revenue` also stored). |
-| N2 | Company's own numbers ignored | **Fixed** | Margin starts from the last-12-month margin and reaches the industry margin (or the user's target) by Year 5. Last-12-month EBITDA drives Comparables. Cash and debt feed the equity bridge. Year-1 working-capital change starts from last-12-month revenue. |
-| N3 | Live site on older code | **Open (needs you)** | All changes are on branch `claude/relaxed-maxwell-qytry6`. The site updates only after it is merged to `main` and Render redeploys. |
-| N4 | Inputs that crashed the server | **Fixed** | Validated with a plain-language 422, e.g. "revenue year1: Input should be greater than 0". |
-| N5 | Negative or impossible values blended | **Fixed** | Methods that aren't meaningful are left out and the weights rescaled. If nothing applies, a clear error is shown. |
-| N6 | Two tax rates; negative tax | **Fixed** | One rate (user's, else the country's statutory rate). Losses carried forward. |
-| N7 | Derived cost of debt | **Fixed** | Uses Damodaran's published cost of debt. |
-| N8 | Y1 working-capital change always 0 | **Fixed** | See N2. |
-| N9 | Terminal-value floor silent; banks valued on EBITDA | **Fixed** | Warning when the floor applies. Banks and insurers use Scorecard only, with an explanation. |
-| N10 | DCF page described the wrong method | **Fixed** | Rewritten. Every method page starts with "How this number was reached". |
-| N11 | Option typos and gaps | **Fixed** | Spelling fixed with aliases (old saved answers still work). Added "$50 to $100 million" (market) and "$50 to $100 Million" (revenue potential). |
-| N12 | Two report builders | **Fixed** | The unused browser report (~350 lines) removed; the server PDF is the only one. |
-| N13 | Missing `docs/` references | **Fixed** | References removed. |
-| Data | Stage pre-money benchmark has no source | **Fixed** | Replaced by Equidam's Startup Valuation Delta H1 2026 median pre-seed valuations by region (US $5.16M, Europe $3.30M, Emerging Markets = average of Africa $2.99M and Latin America $2.40M, elsewhere the all-region median $5.20M), converted at the ECB rate of 1 July 2026. Following Payne, the Scorecard now applies only to pre-revenue companies (Idea and Development); its weight moves to the other methods once a company has revenue. |
-| Data | Country risk data not verified | **Fixed** | Loaded Damodaran's 1 July 2026 workbook (`source_data/damodaran/ctrypremJuly26.xlsx`) with `refresh_country_data.py`. A test checks every country against the file on each push. Russia's tax rate corrected from 8.14% to 25%. |
-| Data | Retail (Online) had stale values (zeros for India) | **Fixed** | Uses Damodaran's current Retail (General) figures. |
-| Validation | Section 4 rules | **Fixed** | Engine warnings for every rule. The wizard blocks ownership ≠ 100% and use of funds ≠ raise. Region is preset from the country. Tax defaults to the country's rate. |
-| Tests | No tests | **Fixed** | `tests/` has 83 tests; GitHub Actions runs them on every push, including checks of the benchmark and country data against Damodaran's files in `source_data/damodaran`. |
-| Business | Demo login/payment; SQLite on Render | **Login and payment removed** | The fake sign-in and €9 checkout are gone. The "Past valuations" page and Save button are also removed for now, to keep the site simple. Real accounts, payment and a persistent database come later. |
-
-New stage assumptions (VC returns, private-company discounts, survival probabilities) are the app's own assumptions, set at the midpoints of published ranges for the matching stage (re-checked: VC returns were raised one step, e.g. Startup 40% → 50%, after matching the app's stage definitions to the literature's financing stages). Their sources are listed in `reference_data.json` → `sources` and on the PDF's last page.
+> **Missing inputs.** The two reference files (`audit_inputs/main file.xlsx` and `audit_inputs/end result.pdf`) were not in the repository or anywhere in this environment, so **the Excel column below could not be recalculated with LibreOffice** (LibreOffice is installed and ready). I used the PDF figures quoted in your brief. Every one of them can be reproduced to the euro from the first Python copy of the workbook (commit `1d2bcf3`, September 2026) plus the two workbook errors documented there. So the Excel file very likely gives the same numbers as the PDF. Once you add the files, I'll fill in the Excel column and confirm.
 
 ---
 
-### What I added (audit only, not wired into the app, nothing committed)
+## 1. Verdict
 
-| File | What it does |
+**Reliability today: Medium.** The arithmetic is now dependable:
+- An independent recalculation matches the engine on 64 of 64 figures.
+- The same input always gives the same answer.
+- The preview, the saved valuation, the scenario slider and the PDF all show identical numbers.
+- 819 benchmark values match Damodaran's files with no mismatches.
+- 225 automated tests pass.
+- None of 3,948 industry × region × stage runs produced a crash, a blank or a negative number.
+
+What keeps it from "High" is judgement, not arithmetic:
+- **The answer depends a lot on which method you ask.** For your test case the three methods range from €698k to €1.24M.
+- **The same company is now valued 39% lower than in the PDF you have** (€911,380 today vs €1,497,178). The PDF was built on a workbook that had real errors, so the old number was too high, not the new one.
+- **A few inputs can move the value the wrong way.** When a method fails, the tool drops it and gives its weight to the others. So a worse plan can produce a higher value. For example, cutting Year-1 revenue from €200k to €80k raises the value from €287k to €698k.
+- **Some contradictory inputs are accepted.** Leaving last-year revenue at €0 while keeping €50k EBITDA raises the value by 11%.
+
+A founder can trust today's number as a **well-documented, indicative range**. They should not quote it as a single precise price, and they should not rely on any report produced before September 2026.
+
+---
+
+## 2. Every issue found
+
+"Effect" is the change to the blended pre-money valuation of your test case (Software (Entertainment), Tanzania, Startup stage) unless another example is named. Severity: **Critical** = the number is wrong in a way an investor would catch; **Major** = the number can be badly off for some realistic inputs; **Minor** = small or cosmetic.
+
+| # | Severity | What is wrong | Example with numbers | Effect on final valuation | Suggested fix |
+|---|---|---|---|---|---|
+| C1 | **Critical** (old reports only) | The PDF you have (and any report made with the workbook-era tool) overstates the value. It carries three workbook errors: (a) every Scorecard criterion used the 30% team weight, so the weights add up to 180% instead of 100%; (b) the DCF terminal value was never discounted back to today; (c) the market risk premium in the discount rate was only the country premium, leaving out the base premium. | Scorecard €1,699,500 should be €984,500 under that tool's own formula. DCF €1,194,218 should be €270,530. Blend €1,497,178 should be €1,112,821. | **+€384,357 too high** against the same tool with the errors fixed. **+€585,798** against today's tool. | No code fix: today's engine no longer has these errors. Decide whether founders who received old reports should be told, and offer them a re-run. |
+| M1 | **Major** | When a method gives no positive value, it is dropped and its weight is handed to the others. That turns bad news into a higher value. | Y1 revenue €200k gives €286,967. Y1 revenue €80k gives €697,925. Raising €1.5M gives €551,380 pre-money; raising €1.6M gives €769,542. A €1.95M Y1 capex gives €949,191, but €1.9M gives €629,600. Across all industries, regions and stages, this happens in 277 of 3,570 runs (7.8%). In those runs the value is a median 67% (€415k) higher than if the failed method counted as zero. | Test case: none. Affected cases: typically +50% to +100%. | Separate "this method does not apply" (e.g. Comparables with negative trailing EBITDA: dropping it is fine) from "this method applies and says the company is worth little" (DCF or VC ≤ 0: count it as €0, as the scenario table already does). Always show a warning when a method is dropped. |
+| M2 | **Major** | Revenue €0 with EBITDA above €0 is accepted. Comparables is then still applied, while the report note says it "can't be applied". The projection jumps straight to the industry margin. | Same company with last-12-month revenue set to €0 (EBITDA still €50k): €1,015,231 instead of €911,380. | **+€103,852 (+11.4%)** for leaving a field at 0 | Reject EBITDA ≠ 0 when revenue is 0 (or ask the user to confirm). Make the Comparables status match the note. |
+| M3 | **Major** | EBITDA larger than revenue is accepted. The starting margin is silently capped at 90%, and Comparables uses the full EBITDA. | EBITDA €400k on revenue €300k gives €3,366,325. The only message is a margin-gap warning. | **+€2.45M (+269%)** | Reject EBITDA > revenue with a plain message. |
+| M4 | **Major** | Allowed but extreme inputs give absurd values, with warnings only. | Growth 1000%/yr (allowed up to 1000%) values a €300k-revenue company at **€2.66 billion**. Growth 100%/yr gives €4.55M. | Unbounded | Add a plausibility check on the result (e.g. above 50× last-year revenue → strong warning on the cover page). Ask for confirmation of growth above 100%/yr; it currently warns only when last-year revenue is above 0. |
+| M5 | **Major** (only if saving is switched on) | A saved valuation is recalculated with current data and code whenever it is reopened or its PDF is downloaded. After a data refresh, a founder's saved number changes without notice. | `GET /valuations/{id}/report` and `/rerun` re-run the stored inputs. | Unknown; any data refresh | Store the output and draw the saved PDF from it. Offer "recalculate with today's data" as a separate, labelled action. (Saving is off in today's demo mode.) |
+| m1 | Minor | Cash is handled inconsistently. Comparables and DCF add cash; the VC method doesn't (it does subtract debt). So only 70% of the company's cash reaches the blended value. | €20,000 of cash adds €14,000. With €50M of cash the value is €35.9M, not about €51M. | **−€6,000** (test case); large for cash-rich companies | Add cash in the VC method too, or treat cash the same way in every method. |
+| m2 | Minor | The terminal value (years after Year 5) is built from Year 5's cash flow, including a working-capital release sized for 10% growth, but it then assumes 2% growth forever. | Y5 working-capital release €11,403; at 2% growth it would be €2,509. | **+€4,337** too high | Recalculate the working-capital change for the terminal year at the long-run growth rate. |
+| m3 | Minor | Year 1 gets a €59,969 cash inflow from working capital. Suppliers are assumed to fund 15.7% of revenue at once while revenue triples, so Year-1 free cash flow (€227,527) exceeds EBITDA (€185,145). The sign is right (see lead 8), but the size is optimistic for a tripling business. | Payables (15.7%) are larger than receivables plus inventory (7.2%), so growth releases cash. | **+€8,894** (vs ignoring the opening position) | Show this line plainly in the report and warn when the working-capital inflow is above ~20% of EBITDA. |
+| m4 | Minor | The methodology page says the stage weights are "carried over from the workbook, with the Scorecard's weight moved to the other methods in proportion". Exact proportions would be 29.4/35.3/35.3; the app uses 30/35/35. The weights themselves have no published source. | — | **−€2,781** if exact proportions were used | Either use exact proportions or reword ("rounded"). Label the weights as an app assumption. |
+| m5 | Minor | The cost of equity and WACC are rounded to the nearest 0.25%, a habit inherited from the workbook. | WACC 17.96% shown and used as 18.00%. | **−€701** | Use unrounded rates (display can stay rounded). |
+| m6 | Minor | A debt larger than the company's value gives a "€0 pre-money valuation" report instead of a clear "can't be valued" message. | Debt €10M: blended €0, post-money €300,000. The PDF does explain the zero. | — | Show a clear message rather than a €0 headline figure. |
+| m7 | Minor | The 26 browser tests (wizard, scenario slider vs API, phone layout) never run on GitHub: the CI machine doesn't install Playwright. | They all pass when run here. | — | Install Playwright + Chromium in `.github/workflows/tests.yml`. |
+| m8 | Minor (method choice) | Comparables uses only the last 12 months' EBITDA. For a company planning to triple revenue, this ignores the plan entirely. That is the textbook pairing with a trailing multiple, so it is not an error, but founders should know. | Comparables €697,925 vs VC €1,242,335 (1.8× apart). | Explains most of the gap between methods | Say so in the Comparables "How this number was reached" text. Optionally add a forward-multiple variant, discounted one year. |
+| — | Info | The Excel workbook and the original PDF are not in the repository, so the Excel column is unverified. | — | — | Add the two files to `audit_inputs/`. |
+
+Not issues (checked and fine today): no crash on any of 49 edge inputs (each gives a result or a plain-language message); no hard-coded transaction dates; fallback data is footnoted in the PDF; the VC page labels shares as a count, not €; only one total is shown; preview = saved = PDF; scenario slider = engine.
+
+---
+
+## 3. Reconciliation (Step 1)
+
+Test case: Software (Entertainment), Emerging Markets, Startup stage, Tanzania, tax 10%, last-12-month revenue €300k, EBITDA €50k, cash €20k, PP&E €1.24M, committed capital €45k, Year-1 revenue €1,000,000 growing 10%/yr, capex 0/30k/30k/30k/30k, raising €300k, exit in 3 years. Valuation date 6 Oct 2026 (it changes only the year labels here).
+
+- **Excel**: not recalculated, because the file wasn't supplied (see the note at the top).
+- **PDF**: figures from your brief. Values marked † are worked back from those figures with the original Python copy of the workbook (`1d2bcf3`), which reproduces every PDF figure you quoted to the euro.
+- **Current engine**: today's code, run directly and through the preview endpoint (identical).
+
+| Item | Excel | Current engine | PDF | Difference |
+|---|---|---|---|---|
+| Benchmark data | — | Damodaran Jan 2026 | older Damodaran set | data refresh |
+| EBITDA margin used | — | Y1 18.5% → Y5 25.9% (starts at the company's own 16.7%) | 19.8% → 19.8%† (1 − COGS 47.8% − SG&A 30.9% − hidden 1.5% "other costs") | see note 1 |
+| EBITDA Y1 | — | 185,145 | 198,142† | −6.6% |
+| EBITDA Y2 | — | 223,986 | 217,956† | +2.8% |
+| EBITDA Y3 | — | 268,744 | 239,752† | +12.1% |
+| EBITDA Y4 | — | 320,213 | 263,727† | +21.4% |
+| EBITDA Y5 | — | 379,289 | 290,100† | +30.7% |
+| Working-capital change Y1 | — | −59,969 (cash inflow) | 0† | note 2 |
+| Free cash flow Y1 | — | 227,527 | 180,398† | +26.1% |
+| Free cash flow Y2 | — | 181,174 | 176,617† | +2.6% |
+| Free cash flow Y3 | — | 222,414 | 197,279† | +12.7% |
+| Free cash flow Y4 | — | 269,791 | 220,007† | +22.6% |
+| Free cash flow Y5 | — | 324,120 | 245,007† | +32.3% |
+| Cost of equity | — | 19.00% | 18.50%† | note 3 |
+| Discount rate (WACC) | — | 18.00% | 16.50%† (printed "17%") | note 3 |
+| PV of 5 years' FCF | — | 739,135 (at 18%) | 643,351† at 16.5%; **246,293** at 71.5% | note 4 |
+| Terminal value | — | 2,066,262 at Y5; **PV 903,182** | **1,723,499**, never discounted | note 4 |
+| Terminal value in the DCF | — | 903,182 (55% of EV) | **947,924** = 1,723,499 × 0.55 | note 4 |
+| DCF before risk | — | 1,642,317 | 1,446,473† | — |
+| Risk step | — | × 50% survival probability, + cash 20,000 | 71.5% rate on cash flows, × 0.55 on terminal value | note 4 |
+| **DCF result** | — | **841,159** | **1,194,218** | **−29.6%** |
+| VC: exit-year (Y3) EBITDA | — | 268,744 | 239,752† | +12.1% |
+| VC: EV/EBITDA multiple | — | 19.37× | 19.66×† | −1.5% (data) |
+| VC: exit value | — | 5,205,380 | 4,712,515† | +10.5% |
+| VC: required return | — | 50% | 55% | note 5 |
+| VC: post-money | — | 1,542,335 | 1,265,487† | +21.9% |
+| **VC result** | — | **1,242,335** | **965,487** | **+28.7%** |
+| Comparables: EBITDA used | — | 50,000 (last 12 months) | 198,142† (Year 1, forecast) | note 6 |
+| Comparables: × multiple | — | 968,465 | 3,894,641 | −75.1% |
+| Comparables: discount | — | −30% private-company discount, + cash | × 0.55 | note 6 |
+| **Comparables result** | — | **697,925** | **2,142,052** | **−67.4%** |
+| **Scorecard result** | — | not used (company has revenue); would be 2,119,360 | **1,699,500** | note 7 |
+| Weights (SC/VC/Comp/DCF) | — | 0 / 30 / 35 / 35% | 15 / 25 / 30 / 30% | note 8 |
+| Simple average | — | not shown | 1,500,314 | lead 4 |
+| **Weighted pre-money** | — | **911,380** | **1,497,178** | **−39.1% (−€585,798)** |
+| **Post-money** | — | **1,211,380** | **1,797,178** | −32.6% |
+
+Where the −€585,798 comes from, by method (weight × value): Scorecard −€254,925, VC +€131,328, Comparables −€398,342, DCF −€63,860.
+
+**Every difference above 0.5%, and which side is right:**
+
+1. **EBITDA (−6.6% to +30.7%).** The PDF ignores the company's own figures: it applies the industry cost ratios from Year 1, plus a hidden 1.5% "other costs" line, and leaves out R&D. Today's engine starts from the company's actual 16.7% margin and moves to Damodaran's EBITDA/Sales margin (25.9%, which includes R&D) by Year 5. **The current engine is right in method.** It still assumes the margin reaches the industry average in five years; that is an assumption, and the user can override it.
+2. **Working-capital change Y1 and FCF Y1 (+26%).** The PDF sets the Year-1 change to 0, ignoring the jump from €300k to €1M revenue. **The current engine is right in principle.** The size of the inflow is optimistic (issue m3).
+3. **Discount rate (16.5% vs 18.0%).** The workbook used only Tanzania's *extra* country premium (8.04%) as the whole market premium, leaving out the base premium. It also used a back-calculated interest rate. Today's engine uses the full premium (9.77%), newer beta (1.54 vs 1.80) and Damodaran's published cost of debt. **The current engine is right.**
+4. **DCF (−29.6%).** The PDF's DCF is internally inconsistent: it discounts five years of cash at 71.5% a year (16.5% + 55%), yet takes the terminal value at 16.5% **without discounting it back from Year 5 at all**, then multiplies it by 0.55. Correctly discounted at 16.5%, the terminal value is worth €803,121 today, not €1,723,499. **The current engine is right.** It discounts everything at WACC once and then applies a stated 50% survival probability (lead 2).
+5. **VC (+28.7%).** Both use the same formula. The current value is higher because Year-3 EBITDA is higher (+12.1%, note 1) and the required return is 50% instead of 55% (+10.3%); the multiple is slightly lower (−1.5%). 50% and 55% are both within the published 50–70% range for start-ups. **Neither is wrong**; the difference is an assumption.
+6. **Comparables (−67.4%).** The PDF multiplies a *forecast* EBITDA by a multiple that Damodaran computes on *past* EBITDA, then uses 0.55 as a haircut. Today's engine pairs past EBITDA with the past-EBITDA multiple and uses a labelled 30% private-company discount. **The current engine is right** about the pairing, but see issue m8: it ignores the growth plan.
+7. **Scorecard.** The PDF's €1,699,500 = sum of the listed amounts (€3,090,000) × 0.55, and those amounts were built with every criterion weighted 30% (lead 1). **The PDF is wrong.** Today the Scorecard is not used, because Payne designed it for pre-revenue companies.
+8. **Weights.** The PDF gives the Scorecard 15%; today it gets 0% and the rest is spread over the other three methods. Neither set has a published source (issue m4).
+
+---
+
+## 4. Your leads from the PDF (Step 2)
+
+1. **Scorecard 1,699,500.** Found: Σ(benchmark €2M × **30%** × score) × 0.55 = €3,090,000 × 0.55. The workbook used the team's 30% weight for every criterion (weights summed to 180%) and then cut by 0.55. Correct weights give €2M × 0.895 × 0.55 = €984,500. **Today:** the rows add up to the total, there is no 0.55 cut, and at Startup stage the Scorecard isn't used.
+2. **One 0.55 used three ways; "hurdle 40%".** Confirmed in the PDF. It is a 55% yearly return in VC, a 45% haircut in Comparables, and in DCF it is *added* to the 16.5% rate for the cash flows and used as a haircut on the terminal value. So **yes, the PDF's DCF is double-penalised**, at a 71.5% rate on cash flows. **Today:** three separate, sourced stage assumptions, each used by one method only: VC return 50%, private-company discount 30%, survival probability 50%. The DCF uses WACC (18%) once and then the survival probability. That is the standard approach (Damodaran), not double counting. The survival probability is still an app assumption with a large effect (lead below, sensitivity +10% → +3.2%).
+3. **PV of terminal value 1,723,499.** It is the Gordon growth value at 16.5% and 2% **not discounted**: 245,007 × 1.02 ÷ (16.5% − 2%) = €1,723,498. At exactly 17% it would be €1,666,048. The 19.66× exit-multiple route gives €5,702,147 undiscounted, or €2,657,106 discounted, so no blend was used. Discounted correctly: €803,121. **246,293** is the 5 years of cash flow discounted at 71.5%. **947,924** = 1,723,499 × 0.55. Their sum is the PDF's DCF, 1,194,218.
+4. **Two totals.** 1,500,314 is the simple average and 1,497,178 the weighted one. **Today:** only the weighted blend exists; the simple average was removed from the engine.
+5. **Shares in €; ownership 80%.** **Today:** shown as "Existing shares (count) 1,000,000" and "Price per new share €1.24". Ownership of 80% gives a warning in the wizard and the PDF, and the chart shows "Not specified 20.0%". The wizard blocks totals above 100%; the API only warns.
+6. **Dates 12/1/23 and 2024–2028.** **Today:** no hard-coded dates. Years are labelled from the valuation date (default: today), e.g. "Y1 (Oct 2027)". A date more than a year from today gives a warning. The data date (5 Jan 2026) is on the cover.
+7. **Y1 capex 0 vs 20k in use of funds.** The Y1 capex (€0) is used in the cash flows. Use of funds is not used in any calculation, which is correct: it describes how the raise is spent. **Today** a warning flags the mismatch.
+8. **Negative working capital.** AR 7.0% + inventory 0.2% − AP 15.7% = −8.6% of revenue. As revenue grows, suppliers fund more, so cash is released. The engine *subtracts* the change in working capital, and a negative change becomes a cash inflow. **The sign is correct.** The size is optimistic (issues m2, m3).
+
+---
+
+## 5. Input checks and edge cases (Step 3)
+
+| Input | What happens today |
 |---|---|
-| `audit/recompute.py` | Recomputes every figure of the reference case from the raw data, without calling the engine's math, and compares the result with the engine. Also prints "textbook" alternatives, 14 edge cases, and a sweep over all 658 industry × region combinations. |
-| `audit/check_benchmarks.py` | Compares `reference_data.json` with Damodaran's original spreadsheets using its own parser, so it doesn't rely on the app's refresh script. |
-| `audit/smoke_test.py` | Calls every API route in-process, writes the reference PDF, and prints the PDF's text for review. |
-| `audit/reference_case_report.pdf` | The PDF the app produces today for the reference case. |
+| Y1 revenue 3.3× last year (your case) | Runs; warning "233% above the last 12 months". Good. |
+| Y1 revenue 30× last year (€9M) | Runs, value €7.16M; same warning plus "methods disagree". |
+| PP&E €1.24M, 1 employee | Not used in any method (correct for these methods); warning "PP&E is 4.1× revenue". Value doesn't move with PP&E (0% sensitivity). |
+| Revenue blank / negative / "NaN" | Clear message, e.g. "revenue year1: should be greater than 0". |
+| Last-year revenue 0, EBITDA €50k | **Runs, value rises 11%** (issue M2). |
+| EBITDA 0 / −€50k | Comparables left out with a note; €748,684 / €470,448. |
+| EBITDA −€1M | Clear message: no method gives a value, with reasons and advice. |
+| EBITDA > revenue | **Accepted** (issue M3). |
+| Growth 0% / 100% / 1000% | €747,037 / €4,546,356 / **€2.66 billion** (issue M4). Below −100% is rejected. |
+| Huge numbers (revenue €1 trillion) | Runs and prints; above €10 trillion is rejected with a message. |
+| Capital needed 0 / exit 0 or 6 years / tax 70% | Clear message. |
+| Ownership ≠ 100% | API warns; wizard warns below 100% and blocks above. |
+| Use of funds ≠ capital needed | Warning. |
+| Unknown industry / country | Clear "Unrecognised input" message. |
+| Debt above company value | €0 valuation with explanation (issue m6). |
 
-### Reference case
+**All industries × regions × stages** (94 × 7 × 6 = 3,948 runs of your case):
+- **0** NaN or infinite values, **0** negative values, **0** crashes.
+- **0** results outside 0.1×–50× revenue: the lowest is €145,723 (0.49× last-year revenue), the highest €7,212,065 (24×).
+- 252 runs (banks and insurers past the pre-revenue stages) get a clear "can't be valued with these methods" message.
+- For Startup stage the median is €558,920 (10th–90th percentile €292k–€1.20M).
+- All 158 countries run.
 
-The brief's "famous company" line was empty, so I used the README's **Valuativa DOO** case: Tanzania, Software (Entertainment), Emerging Markets, Startup stage, Year‑1 revenue €1,000,000 growing 10%/yr, capex €30k in Years 2–5, capital needed €300k, DCF tax rate 10%. I added the operating figures from your brief: last-12-month revenue €300k, EBITDA €50k, PP&E €1.24M, committed capital €45k, 1 employee, 80% ownership, €20k capex in the use of funds. If you send me a real company's inputs, I'll add it as a second case.
+**Fallback data:** when Damodaran has no regional figure, the global one is used, and the PDF says so in a footnote ("global figure*") and in the checks table. Example: D&A for Software (Entertainment) / Emerging Markets.
 
-### Test results
+---
 
-| Check | Result |
+## 6. Robustness (Step 4)
+
+**Sensitivity: each input ±10%, change in the final value (base €911,380)**
+
+| Input | +10% | −10% |
+|---|---|---|
+| Year-1 revenue | +8.6% | −8.6% |
+| EV/EBITDA multiple (benchmark) | +7.7% | −7.7% |
+| Industry EBITDA margin (benchmark) | +6.3% | −6.3% |
+| VC required return (50%) | −4.8% | +5.4% |
+| Last-year EBITDA | +4.6% | −4.6% |
+| WACC (18%) | −3.5% | +4.4% |
+| Beta | −2.5% | +3.6% |
+| Survival probability (50%) | +3.2% | −3.2% |
+| Growth rate (10%) | +2.0% | −2.0% |
+| Last-year revenue (same EBITDA → lower margin) | −1.8% | +2.2% |
+| Private-company discount (30%) | −1.1% | +1.1% |
+| Risk-free rate | −1.1% | +1.1% |
+| Capital needed | −1.0% | +1.0% |
+| Tax rate, capex, payables, cash, long-run growth | under ±0.4% each | |
+| PP&E, committed capital | 0% | 0% |
+| Time to exit 3 → 2 / 4 years | +12.7% / −10.4% | |
+
+No input moves the value more than in proportion. The biggest levers are the Year-1 revenue plan and the industry multiple and margin. The "disproportionate" moves are the jumps described in issue M1, where a method drops out.
+
+**Determinism:** three engine runs and two preview calls gave byte-identical results. Preview = saved valuation = re-run = PDF (the PDF text matches every figure).
+**Scenario slider:** it only displays the server's scenarios, and the 100% scenario equals the main result. Re-running the engine at 80% and 120% revenue gives exactly the slider's €755,277 and €1,067,483.
+
+---
+
+## 7. Tests (Step 5)
+
+| Suite | Result |
 |---|---|
-| Existing regression or smoke tests in the repo | **None exist.** There is no `tests/` folder and no CI. |
-| `recompute.py`: independent recompute vs engine | **28/28 figures match** to the cent. The engine does exactly what its code says. |
-| README "Verified numbers" vs engine | **6/6 match** (blended €1,494,025.42, post-money €1,794,025.42). |
-| `check_benchmarks.py`: data vs Damodaran Jan 2026 files | **539 values checked, 0 mismatches.** |
-| `smoke_test.py`: API routes | **20/23 pass.** The 3 failures are inputs that crash the server with HTTP 500 instead of returning a clear message (see N4). |
+| `pytest` (as GitHub runs it) | **199 passed, 1 skipped.** The skipped item is the browser suite, which is skipped because Playwright isn't installed. |
+| Browser suite (`tests/test_frontend.py`), run here with Playwright | **26 passed** |
+| `audit/recompute.py` (independent recalculation) | **32/32** (your case) + **32/32** (German case) match; 3,948-run sweep: 0 problems |
+| `audit/check_benchmarks.py` | **819 values, 0 mismatches** with Damodaran's files |
+| `audit/smoke_test.py` (every API route) | **23/23 passed** |
+
+**Already covered:** each method's arithmetic by hand-worked cases; the full blend; edge inputs; PDF = API; same numbers on every route; scenario slider (locally only); German tax; data vs sources.
+
+**Not covered, proposed tests (not written yet):**
+1. **Direction checks:** lowering revenue, growth, EBITDA or margin, or raising capex, debt or the raise, never raises the value. These would fail today (M1).
+2. **Contradictory inputs:** EBITDA ≠ 0 with revenue 0, and EBITDA > revenue, are rejected (M2, M3). Plus: Comparables is not used when last-year revenue is 0, and the note matches the status.
+3. **Cash consistency:** adding €1 of cash adds €1 to every method that values equity (m1).
+4. **Terminal year:** the working-capital change in the terminal cash flow uses the long-run growth rate (m2).
+5. **Plausibility band:** for allowed inputs, a value above 50× revenue always carries a warning on the cover (M4).
+6. **Saved valuation stays fixed:** reopening a saved valuation after a data change shows the original figures (M5).
+7. **Methodology text matches the weights** used (m4).
+8. **Workbook reconciliation:** your PDF case with the old data pinned reproduces €1,497,178 under the workbook rules, and today's €911,380, with each documented difference. The Excel recalculation becomes a test once the file is provided.
+9. **€0 result** is shown as "can't be valued", not as a valuation (m6).
+10. **Run the browser suite in CI** (m7).
 
 ---
 
-## 1. Summary
+## 8. Prioritized fix list
 
-- **The arithmetic is right, but some of the method choices are not.** The code does exactly what it says, and the Damodaran data is copied accurately. The problems are in how the methods are set up. One "stage factor" (0.55 for Startup) is used four different ways. It cuts the Scorecard by 45%, acts as a 55% return target in the VC method, cuts Comparables by 45%, and is **added on top of** the discount rate in the DCF (18.25% + 55% = 73.25%). Each method gives a different answer from what a textbook version would give.
-- **Mature companies are penalised more than idea-stage ones.** The same 0.35 → 0.85 number serves as both the "risk multiplier" and the "hurdle rate". As a multiplier, rising with maturity is fine. As a return target it is backwards. A "Maturity stage" company is discounted at 85% a year and an "Idea stage" one at 35%. The same company is worth €713k in the VC method at Maturity and €2.31M at Idea stage.
-- **Projected profits come from industry averages, not from the company.** The last-12-month revenue, EBITDA, cash and PP&E you collect are not used in any calculation. Projected EBITDA is always revenue × the industry margin, and that margin leaves out R&D. For software and pharma, that overstates EBITDA by 10–18 percentage points (US Software (Entertainment): 50.8% in the app vs 34.9% in Damodaran's own EBITDA/Sales).
-- **The blended number is close to a textbook blend for this case, but only because the errors cancel out.** In the reference case, Scorecard and DCF are too low, Comparables is too high, and the total lands near €1.46–1.49M either way. That is luck, not accuracy. An investor who reads the per-method pages (DCF at a 73% discount rate, a Scorecard table whose rows don't add up to its total) will lose confidence.
-- **Can a customer trust the numbers today? Not yet for anything they would show an investor.** It's fine as an indicative range. Four fixes would make it defensible, and the data layer is already solid: one consistent definition of stage risk, R&D-aware margins anchored to the company's actual figures, input checks, and honest labels. See section 6.
+"Changes numbers customers have seen" means a customer who runs the same inputs again would get a different value after the fix.
 
----
-
-## 2. Accuracy findings
-
-Status codes:
-- **CONFIRMED** means the issue exists in today's code.
-- **FIXED** means it was in your old report but is gone from today's code.
-- **NOT AN ISSUE** means it is not present or is correct.
-
-Several issues in the brief came from an older build. The figures 19.6557994× and Y1 EBITDA 198k match `origin/main` exactly, not this branch (see N3).
-
-"Engine" means `valuation_engine/__init__.py`. "Data" means `valuation_engine/reference_data.json`.
-
-| # | Issue | Severity | Status | Expected vs actual (reference case) | File:line | Suggested fix |
-|---|---|---|---|---|---|---|
-| 1 | Scorecard math | High | **FIXED** (amounts) / **CONFIRMED** (table) | Each criterion's amount is now benchmark × weight × score (Opportunity = 2M × 0.25 × 0.90 = **450,000**, correct). But the PDF table's rows add up to **1,860,000** while its total row says **1,023,000**. The × 0.55 is applied between the two with no row showing it, so the table doesn't add up on the page. | Engine:636–640; report.py:701–712; index.html:1660–1670 | Add a "Subtotal (Σ weight × score × benchmark)" row before the total. Better still, remove the 0.55 (see #2), and then the rows add up to the total. |
-| 2 | One 0.55 "stage factor" used four different ways | **Critical** | **CONFIRMED** (worse than described) | Scorecard × 0.55 (**1,023,000** vs Payne's textbook 1,860,000). VC: exit ÷ 1.55³ (0.55 used as a 55% *rate*). Comparables × 0.55. DCF: discount rate = WACC **+ 55 points** = 73.25%. `risk_multiplier` equals `hurdle_rate` for every stage and rises 0.35 → 0.85 with maturity. That direction is right for a multiplier but **wrong for a hurdle rate**: same company at Maturity stage gives VC €713k vs €2.31M at Idea stage. Labels mix "Hurdle rate / risk multiplier 55.0%" and "Risk multiplier 0.55". The "Hurdle rate 40%" label from your old report no longer exists. | Engine:640, 701, 768, 869; Data:12762–12822 (stage_parameters); report.py:609, 711, 748, 775, 841; index.html:1586, 1670, 1694, 1734, 1764 | Split it into two parameters with one meaning each. **(a) VC target return by stage**, falling as the company matures. Typical ranges (Sahlman; Damodaran, *Valuing Young, Start-up and Growth Companies*, 2009): start-up 50–70%, first stage 40–60%, second stage 35–50%, bridge/IPO 25–35%. **(b)** Use it **only** in the VC method. Remove it from Scorecard (Payne's method has no haircut). In Comparables, replace it with an explicit, labelled private-company/illiquidity discount if you want one. In DCF, see #3. |
-| 3 | Risk counted twice in DCF | **Critical** | **CONFIRMED** | Rate used = 18.25% WACC + 55% = **73.25%**. DCF = **€367,591**; at WACC alone it is €1,795,765. The terminal value falls from 52% to 9% of EV. WACC already contains beta and the country risk premium. Damodaran says to put start-up risk **either** in a VC-style target rate applied to success-case cash flows, **or** in a cost of capital plus an explicit survival-probability adjustment. Doing both double-counts. The IPEV Valuation Guidelines (2022) likewise say a risk should be reflected once, in the cash flows or in the discount rate, not both. | Engine:868–873 | Discount at WACC (or an explicit cost of equity). Then apply a **stated** probability of survival/failure. The data already has an unused `survival_rate_by_years_since_incorporation` table (Data:12953), but it needs a cited source first. Show the rate actually used in the PDF. |
-| 4 | DCF present values and terminal value | Low | **FIXED** / **NOT AN ISSUE** | Current code uses end-of-year discounting (Excel NPV convention) with no stub or mid-year adjustment. The Gordon terminal value FCF₅ × 1.02 / (r − g) is computed correctly and discounted by (1 + r)⁵. My independent recompute matches to the cent. The old figures (643,351 and 1,723,499) can't be produced by any current code path. The terminal value is 52% of EV at WACC, which is normal, but the report doesn't disclose it. | Engine:820–873 | Show "Terminal value as % of EV" and the formula used. |
-| 5 | Stale dates; "2,027" label | Low | **NOT AN ISSUE** (current code) | Today's report labels years Y1–Y5 and shows only the generation date. There is no transaction date and no FY2024 label, and the "2,027" bug doesn't occur. But there is **no valuation date input at all**, so "Year 1" has no calendar meaning. | report.py:945; index.html:1476 | Add a valuation-date field. Derive FY labels from it, formatted without thousands separators. |
-| 6 | Enterprise value reported as pre-money equity | **Critical** (small for this case) | **CONFIRMED** | DCF and Comparables produce enterprise value, but the summary table calls them "Pre-money value". There is no net-debt or cash bridge. The cash (€20k) and existing debt inputs are collected and ignored (debt only changes a net-profit line that nothing uses). For a company with €1M of debt, every EBITDA method would be overstated by €1M. | Engine:932–953; report.py:654 | Equity = EV − debt + excess cash. Apply this to DCF and Comparables, and show the bridge in the PDF. |
-| 7 | Comparables uses forward EBITDA with a trailing multiple; labels inconsistent | **Critical** + High (label) | **CONFIRMED** | 19.37× (Damodaran's EV ÷ **trailing** EBITDA) × **forward** Y1 EBITDA of €273,685, when the actual EBITDA is €50,000. Y1 × multiple = €5.30M, × 0.55 = €2.92M. Actual EBITDA × multiple = €968k. The same method appears as "DCF Multiples method" (summary, chart, wizard, scenarios), "Comparables (DCF Multiples) method" (detail page) and "Comparables (Market Multiples)" (methodology). It isn't a DCF at all. Its line "Exit value" is really today's EV. | Engine:756–778; report.py:406, 409, 764, 774, 888; index.html:913, 1306, 1724–1743, 1805 | Use trailing (LTM) EBITDA with the trailing multiple. If forward is kept, use a forward multiple or discount Y1 back one year, and say so. Rename everywhere to **"Comparables (EV/EBITDA multiple)"**. Change "Exit value" to "Implied enterprise value". When LTM EBITDA ≤ 0, switch to EV/Sales or skip the method. |
-| 8 | Two totals on the summary | — | **FIXED** | Only the weighted blend is shown, labelled "Blended pre-money valuation". The engine still calculates `simple_average_valuation` and the API returns it, but nothing displays it. | Engine:949 | Optional: remove it from the API output to avoid future confusion. |
-| 9 | VC units and formulas | Low | **FIXED** (units) / formulas **NOT AN ISSUE** | The share count shows as "1,000,000" with no €. Formulas checked and correct: F = I / POST (17.4%), y = x·F/(1−F) = 210,899 new shares, p = I/y = €1.4225. Remaining issue: price per share displays as **"€1"** because money is rounded to whole euros. | Engine:704–710; report.py:756; index.html:1702 | Show price per share with 2–4 decimals. |
-| 10 | Rounding and display | Low–Medium | **Mostly FIXED** | The multiple shows 19.37× everywhere and percentages use 1 decimal. Still open: (a) WACC shows **18.2%**, actual 18.25%; (b) D&A 0.9% is a **Global fallback** (Emerging Markets is "NA") but displays as if it were regional; (c) "Other opex" (1.5% of Y1 revenue, growing a fixed 10%/yr whatever growth you enter) is not shown anywhere in the PDF. | report.py:181, 597–601, 839; Engine:393, 415 | Use 2 decimals for rates. Footnote any fallback value. List every hidden assumption on an "Assumptions" page. |
-| 11 | Capex inconsistency | Medium | **CONFIRMED** | Use of funds lists €20,000 capex, Y1 planned capex is €0, and nothing checks or links the two. The PDF capex table also **drops Year 1 entirely** (it shows Y2–Y5 only). | report.py:616; index.html:1565; Engine:448 | Show Y1 in the capex table. Warn when use-of-funds capex ≠ Y1 capex. |
-| N1 | Industry margin leaves out R&D | **Critical** | **CONFIRMED** | EBITDA = revenue × (1 − COGS% − SG&A%) − 1.5%. Damodaran's SG&A excludes R&D, so R&D is never deducted. Engine margin vs Damodaran's own EBITDA/Sales: US Software (Entertainment) **50.8% vs 34.9%**; EM Software (System & Application) **16.2% vs 2.7%**; US Pharma 48.3% vs 33.6%. For Software (Entertainment), Emerging Markets (the reference case) it's 27.4% vs 25.9%, close. | Engine:382–416 | Use Damodaran's EBITDA/Sales directly, or add R&D/Sales as a cost line. Both are in the same `margin` file. |
-| N2 | Company's actual numbers are ignored | **Critical** | **CONFIRMED** | Last-12-month revenue (300k), EBITDA (50k), cash, PP&E, committed capital and employees appear in the PDF but are used in **no** calculation. The projected margin is always the industry margin (27.4% here, vs the company's actual 16.7%). Users can't enter their own cost structure, so a loss-making plan can't be modelled. A 50k-revenue company still shows positive EBITDA. | Engine:375–451 | Start from actual margin and converge to the industry margin over 5 years. Let users override cost percentages. Show "your margin vs benchmark" side by side. |
-| N3 | Live site may run older data | High | **CONFIRMED** (deployment) | `origin/main` (776891d) doesn't have the Jan-2026 benchmark refresh. On main, the reference case gives blended **€1,114,760**; this branch gives **€1,494,025**. Main's figures (19.6557994×, Y1 EBITDA 198,142, 19.8% margin) are exactly the ones in your old report. | git: `origin/main` vs `3b2642b` | Check which branch GitHub Pages and Render deploy. Merge after the fixes. Show the data date ("Damodaran, Jan 2026") on the report. |
-| N4 | Inputs that crash the server (HTTP 500) | Medium | **CONFIRMED** | Revenue 0 → ZeroDivisionError. Capital needed 0 → ZeroDivisionError. Time to exit 6 → IndexError (the HTML limits it to 5, but the API doesn't). The user sees a raw "500" error. | Engine:690–710; app.py:205–210 | Validate in the input model (revenue > 0, capital > 0, 1 ≤ exit ≤ 5) and return a plain-language 400. |
-| N5 | Negative or impossible results pass through | Medium | **CONFIRMED** | Negative blended value for Drugs (Biotechnology)/Japan (−€26k) and Real Estate (Development)/China (−€65k). When capital needed exceeds VC post-money, the investor stake is 290% and VC pre-money is −€3.28M, still blended into the total. | Engine:701–713, 932–950 | Treat a method whose value is ≤ 0 as "not meaningful". Drop it and re-weight, with a note. |
-| N6 | Two different tax rates | Medium | **CONFIRMED** | FCF uses the user's 10%; WACC uses the country's 30%. When EBIT is negative, tax becomes a refund. | Engine:402, 507, 838 | Use one rate, defaulting to the country's statutory rate. Floor tax at 0, or carry losses forward. |
-| N7 | Cost of debt uses a derived rate instead of the published one | Medium | **CONFIRMED** | The WACC uses `book_interest_rate`, which is back-calculated (e.g. **15.96%** for Software (Entertainment) / Europe). Damodaran publishes `cost_of_debt` (5.74%), and the app stores it but never uses it. Five industry/region values are above 12%. The effect is small here because the debt weight is ~8%. | Engine:506 | Use `cost_of_debt`. |
-| N8 | Year‑1 working-capital change is always 0 | Low | **CONFIRMED** | The step from today's working capital to Y1's (revenue tripling from 300k to 1M) is ignored. | Engine:428 | Start from working capital on last-12-month revenue. |
-| N9 | Terminal-value floor applied silently | Medium | **CONFIRMED** | Banks get WACC 2.75% < g + 2%, so the floor kicks in (`terminal_value_floor_applied = True`) but the report doesn't say so. Banks and insurers are valued on EBITDA and FCF, which isn't meaningful for them. | Engine:853–864 | Show a note in the report. For financial-sector industries, block EBITDA methods or warn. |
-| N10 | DCF page describes the wrong method | High | **CONFIRMED** | The DCF page says "…then applies the same stage risk multiplier used across the other methods". The code doesn't multiply; it adds 55 points to the rate. The 73.25% rate actually used is never shown, only "Discount rate (WACC) 18.2%". | report.py:833–842; index.html:1759–1764 | Fix the wording. Show "Rate used = WACC + x%" (or, after the fix, WACC plus a survival %). |
-| N11 | Scorecard options have typos and gaps | Low (typos) / Medium (gaps) | **CONFIRMED** | Typos: "Demostrated", "Deal braker", "Well definied", "No  partners" (double space), "< $50 million " (trailing space). These strings are lookup keys, so fixing them needs a data migration. Market-size options skip **$50–100M**. Revenue-potential options skip **$50–100M**. "Unwilling" scores 0 and wipes out a third of the team score. The typos from your brief ("Strenght", "Ammount", "Avalible", "Commited", "Perpetural", "Mulltiple", "requirments") are **not present** in the current code. | Data:12895, 12911, 12928, 12932–12938 | Fix the text, keeping the old strings as aliases. Add the missing ranges. |
-| N12 | Two separate report builders | Low | **CONFIRMED** | `index.html` (browser print) and `report.py` (server PDF) build the same report separately, so they can drift apart. | index.html:1476–1810; report.py | Keep only the server PDF. |
-| N13 | Engine comments cite a missing `docs/` folder | Low | **CONFIRMED** | The engine says the bug write-ups are in `docs/`; that folder doesn't exist. | Engine:12, 396, 549, 790 | Add the documents or remove the references. |
-
-### Reference case, method by method (€)
-
-| Method | As coded today | Textbook version | Why they differ |
+| Priority | Fix | Issues | Changes numbers customers have seen? |
 |---|---|---|---|
-| Scorecard | 1,023,000 | 1,860,000 | Extra × 0.55 (#2) |
-| Venture Capital | 1,422,481 | 1,422,481 at 55%; 2,037,574 at 40% | 55% is within the start-up range; the problem is how it changes across stages (#2) |
-| Comparables | 2,915,593 | 968,465 (LTM EBITDA × 19.37) | Forward vs trailing EBITDA (#7) |
-| DCF | 367,591 | 1,795,765 at WACC (before any survival adjustment) | Double-counted risk (#3) |
-| **Blended (stage weights)** | **1,494,025** | ≈1.46M using the column above | Errors cancel out, for this case only |
+| 1 | Decide what to tell people who hold workbook-era reports (e.g. the PDF dated April 2025). Their numbers were too high; the same inputs now give 39% less. No code change. | C1 | **Already changed** (Sept–Oct 2026 fixes) |
+| 2 | Stop rewarding bad news: count a method that applies but gives ≤ €0 as €0 instead of dropping it; warn whenever a method is left out. | M1 | **Yes**, about 8% of cases, usually lower |
+| 3 | Reject contradictory inputs: EBITDA ≠ 0 with revenue 0; EBITDA > revenue. | M2, M3 | **Yes**, for those inputs (they get a message instead of a value) |
+| 4 | Plausibility guard on the result, and confirmation for growth above 100%/yr. | M4 | No (warnings only), unless you choose to block |
+| 5 | Saved valuations keep their original figures; "recalculate with today's data" becomes a separate button. | M5 | No (it prevents future silent changes) |
+| 6 | Treat cash the same in every method. | m1 | **Yes**, every company with cash (your case +€6,000) |
+| 7 | Terminal-year working capital at long-run growth; show the Year-1 working-capital inflow clearly. | m2, m3 | **Yes**, most growing companies (your case −€4,337) |
+| 8 | Run the browser tests in CI; add the tests in section 7. | m7 | No |
+| 9 | Methodology wording on weights (or exact proportional weights); unrounded WACC. | m4, m5 | No if wording only; **yes** (≈ −€2,800 / +€700) if numbers change |
+| 10 | Show "can't be valued" instead of €0; explain in the Comparables text that it ignores the growth plan. | m6, m8 | No |
+| 11 | Recalculate the Excel workbook once it is in `audit_inputs/`, and fill in the Excel column. | — | No |
 
----
-
-## 3. Data findings (benchmarks vs Damodaran, January 2026)
-
-The source spreadsheets are in git history (commit `4ff0af9`, internal "Date updated" = 5 Jan 2026). `audit/check_benchmarks.py` compared every value for 7 industries × 11 metrics × 7 regions: Software (Entertainment), Software (System & Application), Retail (General), Restaurant/Dining, Business & Consumer Services, Drugs (Pharmaceutical) and Bank (Money Center), across US, Europe, Japan, Emerging Markets, China, India and Global.
-
-**Result: 539 values, 0 mismatches.** Every regional value from fewer than 10 firms is correctly stored as "NA".
-
-| Check | Status |
-|---|---|
-| Software (Entertainment) / Emerging Markets: COGS 40.70%, SG&A 30.43%, EV/EBITDA 19.37× | **Match** `marginemerg.xls` (COGS/Sales, SG&A/Sales) and `vebitdaemerg.xls` (EV/EBITDA, positive-EBITDA firms) exactly |
-| EV/EBITDA basis | The app uses Damodaran's "only positive EBITDA firms" block (19.37×), not "all firms" (22.76×). That is defensible, but say so in the report. |
-| D&A % and book interest rate | **Can't be checked directly.** Damodaran doesn't publish them; the app derives them. Five book-interest values are above 12% (e.g. Software (Entertainment) / Europe 15.96%, Electrical Equipment / Global 21.9%). See N7. |
-| Margins (COGS + SG&A) | Copied correctly, but they leave out R&D, so EBITDA is overstated for R&D-heavy industries (N1). |
-| Country risk data (ERP, CRP, tax) | **Not verified against the source.** The `ctryprem` file isn't in the repo and Damodaran's site was blocked here. The values are internally consistent: Germany ERP 4.23% with CRP 0; US 4.46% = 4.23% + 0.23% after Moody's Aa1 downgrade; Tanzania 10.06% = 4.23% + 5.83%. **Action:** add `ctryprem.xlsx` to the refresh tool. |
-| Risk-free rate | Hard-coded at 4.00%. Damodaran's Jan 2026 sheets use a 3.95% T-bond rate. Minor, but put it in the data file with a date. |
-| **"Average pre-money by stage and region" (€2,000,000 for Startup/EM)** | **No source anywhere in the repo.** All 42 values are round numbers with no citation or date. This drives the whole Scorecard method. **Must be cited (e.g. a named Dealroom/PitchBook/Carta report and year) or replaced.** |
-| Scorecard weights 30/25/10/15/10/10 | Consistent with Payne's published Scorecard: team 30, opportunity 25, product 15, competition 10, partners 10. Payne then has "need for additional investment" 5 and "other" 5; the app merges these into one 10% "funding required". Fine, but cite Payne. |
-| Stage weights and risk multipliers/hurdles | No source cited. They also conflict as described in #2. |
-| Survival rates by year | Stored but unused, with no source. |
-| "Macedonia" country name | Damodaran's own label. Consider showing "North Macedonia". |
-
-**Claims in the PDF methodology and disclaimer:**
-- **Not present in today's code:** "47,810 companies across 134 countries", "adheres to IPEV / EVS", and PitchBook/Crunchbase/Dealroom. The app couldn't back any of them up, so don't add them back unless they become true.
-- **Present and accurate:** "four widely used methods", "weighted by stage", "Damodaran, NYU Stern, updated annually".
-- **Present and inaccurate:** the DCF subtitle (N10).
-- **Missing:** which data date was used, which values fell back to Global, and where the stage benchmarks come from.
-- **Branding:** the product calls itself "Startup Valuation Tool" throughout. "Valuativa" doesn't appear in the app or PDF.
-
----
-
-## 4. Validation gaps (input checks)
-
-The only checks today are the browser's "required field" markers (index.html:1139–1146). The API accepts any number.
-
-| Rule | Enforced today? | What happens now | Recommended |
-|---|---|---|---|
-| Y1 revenue vs last-12-month revenue (300k → 1M = +233%, then +10%/yr) | No | Accepted silently. Every EBITDA method is built on the jump. | Warn above +100% YoY. Show the growth curve, including the jump from last-12-month revenue to Y1. |
-| PP&E or capex out of scale (PP&E 1.24M, revenue 300k, 1 employee, 45k committed) | No | PP&E is ignored entirely. | Warn when PP&E > 2× revenue for asset-light industries, or capex > 30% of revenue. |
-| Projected vs actual EBITDA margin | No | The projected margin is always the industry's (27.4% vs actual 16.7%). | Show both and warn on a gap above 10 points (N2). |
-| Ownership sums to 100% | No | 80% is accepted; the PDF adds an "Unallocated 20%" slice. | Require 100% ± 0.5%, or ask the user to confirm. |
-| Use of funds = capital needed | No | 270k of 300k is accepted silently. | Warn and show the difference. |
-| Use-of-funds capex vs Y1 capex | No | No link (#11). | Warn on mismatch. |
-| Zero revenue / capital needed 0 / exit > 5 years | No | **HTTP 500 crash** (N4). | Validate with a clear message. |
-| Negative or zero EBITDA | No (and the user can't enter one; N2) | Only reachable through benchmarks. VC, Comparables and DCF go negative and are still blended; blended can be negative (N5). | Mark the method "not meaningful", drop it and re-weight. Fall back to EV/Sales. |
-| Capital needed > VC post-money | No | Investor stake 290%, negative pre-money. | Error: "the raise is larger than the exit supports". |
-| WACC ≤ growth + 2% | Yes, silently (floor) | The floor is applied without telling the user (N9). | Show a note. |
-| Missing regional benchmark (fallback) | Yes, works | Falls back to the Global value; tested with Software (Entertainment) / India, which runs fine. The fallback is disclosed only for EV/EBITDA. | Footnote every fallback value (D&A, margins, beta). |
-| Banks and insurers (no meaningful EV/EBITDA) | Partly | Bank (Money Center)/US runs, using a fallback multiple and FCF. The output looks meaningful but isn't. | Block EBITDA/FCF methods for financial-sector industries, or show a warning. |
-| Growth rates of −100% or worse; tax rate outside 0–60% | No | Accepted. | Range-check. |
-| Country vs region mismatch (e.g. Germany + "US") | No | Accepted. | Default the region from the country and warn on mismatch. |
-
----
-
-## 5. Improvement ideas, ranked by impact on getting paying customers
-
-1. **Credibility: one clear risk model, documented on one page.** Fix #2, #3 and #7, then add an "Assumptions & sources" page listing every number used, where it comes from, its date, and whether it fell back to a broader average. This page is what an investor or accountant will check first.
-2. **Explain why each method gives its number.** For each method, add a 3–4 line plain-language walk-through. Example: "Your Year‑3 EBITDA €331k × industry multiple 19.4× = exit value €6.4M. An investor wanting 55%/yr needs it to be worth €1.72M today. Minus your €300k raise = €1.42M." A small waterfall chart per method would do the same job.
-3. **Use the company's own numbers.** Start from actual revenue and margin and move gradually toward the industry average (N2). Let users override cost percentages. Founders distrust a model that ignores their real numbers.
-4. **Show a range, not a single figure.** Add a "football field" chart showing each method's low–high range (the scenario engine already computes ±20–30%), with the blended point marked. That's more honest and more persuasive.
-5. **Show warnings in the wizard.** Run every section 4 rule as a yellow "check this" note before Calculate, and list any accepted warnings in the PDF appendix.
-6. **Report clarity:**
-   - EV → equity bridge (#6)
-   - valuation date and FY labels (#5)
-   - consistent method names (#7)
-   - a subtotal row in the Scorecard table (#1)
-   - show the discount rate actually used (N10)
-   - show Y1 capex (#11)
-   - 2-decimal rates and per-share prices (#9, #10)
-7. **Make the data easy to trust and update.** Cite the stage pre-money benchmarks. Add the country-risk file to the refresh tool. Print "Damodaran data as of 5 Jan 2026" on the cover.
-8. **Reliability:**
-   - Turn the `audit/` scripts into automated tests that run on every change (there are no tests today).
-   - Return clear errors instead of crashes.
-   - Deploy one branch to both the website and the API, and check that they match (N3).
-   - Before taking money, also note that login and payment are demo-only today: any email or card is accepted. Saved history is stored in SQLite on the Render server; on many Render plans the disk is wiped on redeploy, so check yours.
-9. **Features later:**
-   - Pre/post-money cap table showing dilution from the VC method.
-   - Survival-probability DCF using a cited dataset.
-   - EV/Sales comparables for pre-profit companies.
-   - Downloadable Excel of the model, which accountants like.
-
----
-
-## 6. Recommended fix order (top 5)
-
-1. **One definition of stage risk (#2, #3).** Split the 0.55 into a VC target return that falls as the company matures, used only in the VC method. Remove it from Scorecard. In DCF, use WACC plus an explicit survival adjustment instead of WACC + 55 points. This changes every company's number, so do it first.
-2. **Fix the profit base (N1, N2, #7).** Deduct R&D (or use Damodaran's EBITDA/Sales), anchor projections to the company's actual figures, and run Comparables on trailing EBITDA with a matching multiple.
-3. **Input checks and no crashes (section 4, N4, N5).** Add range checks and plain-language warnings, and drop methods with zero or negative values from the blend.
-4. **Honest labels and an equity bridge (#6, #7, #1, N10, #10, #11).** One name per method, a correct DCF description, the actual rate shown, EV − debt + cash = equity, a Scorecard subtotal row, Y1 capex, and fallback footnotes.
-5. **Provenance and deployment (N3, section 3).** Cite or replace the stage pre-money benchmarks, add country-risk data to the refresh tool, put the data date on the PDF, confirm what's live, and add the audit scripts as automated tests.
-
-Waiting for your decisions. I haven't changed, committed or pushed any app code.
+I haven't changed any app code. Waiting for your go-ahead before fixing anything.
