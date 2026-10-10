@@ -194,3 +194,9 @@ Also looked at:
   implied). Option: a German round median per stage (e.g. from Dealroom, EY Startup-Barometer or Equidam) × the
   Scorecard score, at a modest weight. Needs a sourced dataset; the round logic itself can't serve, as it rises with the
   amount raised.
+  **Weights decided 10 October 2026:** 25% at the Startup stage, 20% at Expansion, 15% at Growth, taken proportionally
+  from the other methods. **Data still needed** for each of Seed (Startup), Series A (Expansion) and Series B (Growth),
+  pre-seed optional: median pre-money in Germany (DACH or Europe marked as such) of rounds closed since 2024, the
+  25th-75th percentile if published, number of rounds, period, source with link and publication date. Post-money with the
+  median round size also works. Likely sources: PitchBook European Venture Report, Dealroom, Equidam (pre-seed and seed
+  only), Atomico State of European Tech (Europe fallback).
