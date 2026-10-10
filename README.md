@@ -29,7 +29,7 @@ rather than being split across many modules.
 | File | Contents |
 |---|---|
 | `valuation_engine/__init__.py` | The calculation engine — reference data in `reference_data.json` next to it |
-| `app.py` | FastAPI backend — persistence, calculation endpoints, and PDF report endpoints |
+| `app.py` | FastAPI backend — persistence, calculation endpoints, PDF report endpoints, and the wizard at `/` |
 | `report.py` | Builds the branded PDF report (reportlab) from a valuation's input/output |
 | `index.html` | The web wizard — one file with CSS and JS inlined |
 | `refresh_industry_benchmarks.py` | Offline tool (not used by the app) that rebuilds the industry benchmarks in `reference_data.json` from Damodaran's regional spreadsheets |
@@ -38,10 +38,8 @@ rather than being split across many modules.
 
 ## How to run it
 
-`index.html` is just the form — it needs the backend (`app.py`) running
-in the background to actually calculate anything. If you open the page
-and see *"Could not reach the valuation API"*, that means the steps
-below haven't been done yet.
+`app.py` is the server: it calculates the valuations, builds the PDF and also serves the wizard
+(`index.html`). You start it once and open the wizard in your browser.
 
 **You'll need [Python](https://www.python.org/downloads/) installed**
 (3.10 or newer). Everything else below is typed into a terminal
@@ -55,7 +53,7 @@ cd path/to/valuation-model
 (Drag the `valuation-model` folder into the terminal window after typing
 `cd ` with a trailing space, and it'll fill in the path for you.)
 
-### Step 2 — Install and start the API
+### Step 2 — Install and start the server
 
 ```bash
 pip install -r requirements.txt
@@ -69,24 +67,22 @@ Uvicorn running on http://127.0.0.1:8000
 ```
 
 **Leave this terminal window open.** The server only runs while this
-window stays open — closing it (or hitting Ctrl+C) stops the API, and
-the frontend will go back to showing the "Could not reach" error.
+window stays open — closing it (or hitting Ctrl+C) stops it.
 
-### Step 3 — Open the frontend
+### Step 3 — Open the wizard
 
-In a **new/second** terminal window or Finder/Explorer, open
-`index.html` directly in your browser (double-click it). Refresh the
-page if it was already open — the "Could not reach the API" error
-should be gone and the dropdowns should populate.
+Open **http://localhost:8000** in your browser. The dropdowns fill in once the page has reached the server.
+
+(Double-clicking `index.html` works too: a page opened from disk talks to the server on port 8000.)
 
 ### Troubleshooting
 
 | Problem | Fix |
 |---|---|
 | `pip: command not found` | Use `pip3` instead of `pip` |
-| `Could not reach the valuation API at http://localhost:8000` | The API (Step 2) isn't running, or its terminal window was closed. Reopen it and re-run `uvicorn app:app --reload` |
+| The page stays on "The server is starting…" or says the server isn't answering | The server (Step 2) isn't running, or its terminal window was closed. Reopen it and re-run `uvicorn app:app --reload` |
 | `uvicorn: command not found` | Step 2's `pip install` didn't finish — re-run `pip install -r requirements.txt` and check for errors above the "command not found" line |
-| Port 8000 already in use | Something else is already running on that port. Run `uvicorn app:app --reload --port 8001` instead, then edit near the top of `index.html`'s `<script>` block: change `http://localhost:8000` to `http://localhost:8001` |
+| Port 8000 already in use | Something else is already running on that port. Run `uvicorn app:app --reload --port 8001` and open http://localhost:8001 instead (opened from disk, the page always looks for port 8000) |
 | PDF download fails or the logo doesn't show up in it | Make sure `reportlab` and `pillow` installed correctly in Step 2 (re-run `pip install -r requirements.txt` and check for errors) |
 
 ### Every time after the first setup
@@ -94,7 +90,7 @@ should be gone and the dropdowns should populate.
 You don't need to repeat Step 2's `pip install` again unless you
 re-download the project. Just:
 1. Open a terminal, `cd` into the project folder, run `uvicorn app:app --reload`
-2. Open `index.html` in your browser
+2. Open http://localhost:8000 in your browser
 
 ## The PDF report
 
@@ -133,7 +129,8 @@ one paragraph marked `COMMUNITY LINE`.
 | Comparables | The higher of last-12-month EBITDA × EV/EBITDA and last-12-month revenue × EV/Sales (for SaaS: ARR × the public SaaS EV/ARR multiple, if ARR is entered), less a private-company discount, minus debt plus cash | Private-company discount: 40% → 20% |
 | DCF | 5 years of free cash flow + Gordon terminal value at WACC, × probability of survival, minus debt plus cash | Survival: 30% → 95% |
 
-- Projected EBITDA margin starts from the company's own last-12-month margin (before revenue: today's EBITDA, usually the operating loss, divided by Year-1 revenue) and moves in equal steps to the industry EBITDA margin (Damodaran EBITDA/Sales, which includes R&D) by Year 5, unless the user sets a target.
+- Revenue is planned as Year-1 revenue plus a growth rate for each later year, or (wizard: "An amount for each year"; API: `revenue_by_year`) as one amount per year. The second lets sales start later (biotech, deep tech): the years before the first sales are 0, and their EBITDA stays at today's (the current loss). Once sales start, every later year needs revenue.
+- Projected EBITDA margin starts from the company's own last-12-month margin (before revenue: today's EBITDA, usually the operating loss, divided by the first year's revenue) and moves in equal steps to the industry EBITDA margin (Damodaran EBITDA/Sales, which includes R&D) by Year 5, unless the user sets a target.
 - The terminal value (years after Year 5) is a business growing at the long-run 2% forever: Year 5's profit taxed in full (no lasting loss carryforward), capex at least D&A, and working capital growing at 2%.
 - One tax rate for everything: the user's, else the country's statutory rate. Losses are carried forward.
   Germany is the exception (see below).

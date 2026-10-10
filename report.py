@@ -712,7 +712,7 @@ def _at_a_glance(output: dict, scenarios: dict) -> list:
                      T("lowest and highest method", "niedrigste und höchste Methode")))
     low, high = (scenarios or {}).get("80%"), (scenarios or {}).get("120%")
     if low and high and abs(high["blended_pre_money_valuation"] - low["blended_pre_money_valuation"]) >= 1:
-        rows.append((T("If Year-1 revenue is 20% lower or higher", "Wenn der Umsatz in Jahr 1 20 % niedriger oder höher ist"),
+        rows.append((T("If planned revenue is 20% lower or higher", "Wenn der geplante Umsatz 20 % niedriger oder höher ist"),
                      T(f"{money(low['blended_pre_money_valuation'])} to {money(high['blended_pre_money_valuation'])}",
                        f"{money(low['blended_pre_money_valuation'])} bis {money(high['blended_pre_money_valuation'])}"),
                      T("blended pre-money", "gewichtete Pre-Money-Bewertung")))
@@ -918,10 +918,13 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
                         f"Die EBITDA-Marge beginnt bei Ihrer Marge der letzten 12 Monate ({start_pct}) und erreicht "
                         f"in gleichen Schritten bis Jahr 5 {target_name} ({target_pct}).")
     else:
-        margin_text = T(f"The EBITDA margin starts from today's EBITDA ÷ Year-1 revenue ({start_pct}) and moves in "
-                        f"equal steps to {target_name} ({target_pct}) by Year 5.",
-                        f"Die EBITDA-Marge beginnt bei heutigem EBITDA ÷ Umsatz in Jahr 1 ({start_pct}) und erreicht "
-                        f"in gleichen Schritten bis Jahr 5 {target_name} ({target_pct}).")
+        first = next((i for i, y in enumerate(years) if (y.get("revenue") or 0) > 0), 0) + 1
+        before = "" if first == 1 else T(f" Until sales start in Year {first}, EBITDA stays at today's level.",
+                                           f" Bis zum Umsatzbeginn in Jahr {first} bleibt das EBITDA auf dem heutigen Stand.")
+        margin_text = T(f"The EBITDA margin starts from today's EBITDA ÷ Year-{first} revenue ({start_pct}) and moves "
+                        f"in equal steps to {target_name} ({target_pct}) by Year 5.",
+                        f"Die EBITDA-Marge beginnt bei heutigem EBITDA ÷ Umsatz in Jahr {first} ({start_pct}) und "
+                        f"erreicht in gleichen Schritten bis Jahr 5 {target_name} ({target_pct}).") + before
     vdate = format_date(proj.get("valuation_date"))
     story.append(P(T(f"Year 1 is the 12 months after the valuation date ({vdate}). {margin_text}",
                      f"Jahr 1 sind die 12 Monate nach dem Bewertungsdatum ({vdate}). {margin_text}"),
@@ -1175,10 +1178,10 @@ def _warnings_page(output: dict) -> list:
 
 
 def scenario_falls_note() -> str:
-    return T("Here a higher Year-1 revenue gives a lower value: in your plan, extra revenue costs more cash than it "
+    return T("Here higher revenue gives a lower value: in your plan, extra revenue costs more cash than it "
              "brings in (for example losses at the planned margin, or the working capital it ties up), so the "
              "cash-flow based values go down.",
-             "Hier ergibt ein höherer Umsatz in Jahr 1 einen niedrigeren Wert: In Ihrem Plan kostet zusätzlicher Umsatz "
+             "Hier ergibt ein höherer Umsatz einen niedrigeren Wert: In Ihrem Plan kostet zusätzlicher Umsatz "
              "mehr Geld, als er einbringt (zum Beispiel Verluste bei der geplanten Marge oder gebundenes Working "
              "Capital); die Cashflow-basierten Werte sinken deshalb.")
 
@@ -1186,11 +1189,11 @@ def scenario_falls_note() -> str:
 def _scenario_sensitivity_page(scenarios: dict) -> list:
     story = [P(T("Scenario & sensitivity", "Szenarien & Sensitivität"), STYLES["h2"])]
     story.append(P(T(
-        "How the valuation shifts if Year-1 revenue comes in above or below plan (later years scale with "
-        "it). Scorecard and Comparables don't move: they use your questionnaire answers and the last 12 months' "
+        "How the valuation shifts if revenue comes in above or below plan (every year of the plan moves by the "
+        "same percentage). Scorecard and Comparables don't move: they use your questionnaire answers and the last 12 months' "
         "figures, not projected revenue.",
-        "Wie sich die Bewertung verschiebt, wenn der Umsatz in Jahr 1 über oder unter dem Plan liegt (die späteren "
-        "Jahre skalieren mit). Scorecard und Vergleichsmethode bewegen sich nicht: Sie verwenden Ihre Antworten im "
+        "Wie sich die Bewertung verschiebt, wenn der Umsatz über oder unter dem Plan liegt (jedes Planjahr ändert sich "
+        "um denselben Prozentsatz). Scorecard und Vergleichsmethode bewegen sich nicht: Sie verwenden Ihre Antworten im "
         "Fragebogen und die Zahlen der letzten 12 Monate, nicht den geplanten Umsatz."), STYLES["sub"],
     ))
     if not scenarios:
@@ -1204,10 +1207,10 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
     if max(values) - min(values) < 1:
         story.append(P(T(
             f"The value is the same in every scenario ({money(values[0])}): only methods that don't use projected "
-            "revenue give a value for this company, so a higher or lower Year-1 revenue doesn't change it.",
+            "revenue give a value for this company, so higher or lower revenue doesn't change it.",
             f"Der Wert ist in jedem Szenario gleich ({money(values[0])}): Nur Methoden, die den geplanten Umsatz nicht "
-            "verwenden, ergeben einen Wert für dieses Unternehmen; ein höherer oder niedrigerer Umsatz in Jahr 1 ändert "
-            "ihn deshalb nicht."), STYLES["td_label"]))
+            "verwenden, ergeben einen Wert für dieses Unternehmen; ein höherer oder niedrigerer Umsatz ändert ihn "
+            "deshalb nicht."), STYLES["td_label"]))
         return story
 
     def val(label, key):

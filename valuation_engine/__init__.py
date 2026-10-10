@@ -516,15 +516,61 @@ class OperatingPerformance(BaseModel):
 
 
 class FinancialAssumptions(BaseModel):
+    # Set to revenue_by_year[0] when that is given (which may be 0: sales start later).
     revenue_year1: float = Field(gt=0, le=MAX_AMOUNT)
     # growth rate applied to get Y2, Y3, Y4, Y5 from the prior year (as fractions, e.g. 0.10)
     revenue_growth_rates: list[float] = Field(default_factory=lambda: [0.10, 0.10, 0.10, 0.10])
+    # Optional revenue for each of Y1..Y5, used instead of revenue_year1 and the growth rates. Years before
+    # sales start may be 0 (a biotech that licenses from Year 4, deep tech with a long build phase).
+    revenue_by_year: Optional[list[float]] = None
     # capex for Y1..Y5 (5 values)
     capex_by_year: list[float] = Field(default_factory=lambda: [0, 30000, 30000, 30000, 30000])
     # outstanding interest-bearing debt today (subtracted to get equity value)
     existing_debt_balance: float = Field(default=0.0, ge=0, le=MAX_AMOUNT)
     # Optional Year-5 EBITDA margin to use instead of the industry's.
     target_ebitda_margin_override: Optional[float] = Field(default=None, ge=-1, le=0.9)
+
+    @field_validator("revenue_by_year")
+    @classmethod
+    def _five_revenue_years(cls, v):
+        if v is None:
+            return v
+        if len(v) != 5:
+            raise ValueError("revenue_by_year must have exactly 5 values (for Y1..Y5)")
+        if any(r < 0 for r in v):
+            raise ValueError("revenue can't be negative")
+        if any(r > MAX_AMOUNT for r in v):
+            raise ValueError(f"revenue can be at most {MAX_AMOUNT:,.0f}")
+        if not any(r > 0 for r in v):
+            raise ValueError("enter revenue for at least one of the five years; the cash-flow methods need a "
+                             "revenue plan")
+        first = next(i for i, r in enumerate(v) if r > 0)
+        if any(r == 0 for r in v[first:]):
+            raise ValueError("once sales have started, every later year needs revenue above 0")
+        return v
+
+    @model_validator(mode="before")
+    @classmethod
+    def _year1_placeholder(cls, data):
+        """With a year-by-year plan, Year-1 revenue comes from it (below), so it isn't checked on its own."""
+        if isinstance(data, dict) and data.get("revenue_by_year") is not None:
+            data = {**data, "revenue_year1": 1.0}
+        return data
+
+    @model_validator(mode="after")
+    def _year1_from_plan(self):
+        if self.revenue_by_year is not None:
+            object.__setattr__(self, "revenue_year1", self.revenue_by_year[0])
+        return self
+
+    def revenues(self) -> list[float]:
+        """Planned revenue for Y1..Y5."""
+        if self.revenue_by_year is not None:
+            return list(self.revenue_by_year)
+        out = [self.revenue_year1]
+        for g in self.revenue_growth_rates:
+            out.append(out[-1] * (1 + g))
+        return out
 
     @field_validator("revenue_growth_rates")
     @classmethod
@@ -715,7 +761,7 @@ class YearProjection:
     year_label: str
     period_label: str  # e.g. "to Sep 2027"
     revenue: float
-    ebitda_margin: float
+    ebitda_margin: Optional[float]  # None in a year before sales start
     ebitda: float
     da: float
     ebit: float
@@ -768,14 +814,18 @@ def build_projections(
     else:
         target_margin, target_src = bench.get("ebitda_margin"), "industry"
 
+    revenues = assumptions.revenues()
+    # First plan year with revenue (Year 1 unless the user's plan starts sales later).
+    first = next(i for i, r in enumerate(revenues) if r > 0)
+
     # Start from the company's own margin and move in equal steps to the target
     # margin, reached in Year 5. Without revenue yet, today's EBITDA (usually the
-    # operating loss) is measured against the Year-1 revenue plan, so current
-    # costs carry into Year 1 instead of the industry margin applying at once.
+    # operating loss) is measured against the first year's revenue plan, so current
+    # costs carry into that year instead of the industry margin applying at once.
     if operating.current_revenue_last_12_months > 0:
         start_margin, start_src = operating.current_ebitda / operating.current_revenue_last_12_months, "company"
     else:
-        start_margin, start_src = operating.current_ebitda / assumptions.revenue_year1, "company_costs"
+        start_margin, start_src = operating.current_ebitda / revenues[first], "company_costs"
     start_margin = max(-1.0, min(start_margin, 0.9))
 
     da_pct = bench.get("da_pct_revenue")
@@ -788,18 +838,18 @@ def build_projections(
     taxes = tax_schedule(company)
     vdate = valuation_date_of(company)
 
-    revenues = [assumptions.revenue_year1]
-    for g in assumptions.revenue_growth_rates:
-        revenues.append(revenues[-1] * (1 + g))
-
     opening_wc = operating.current_revenue_last_12_months * wc_pct
     prior_wc = opening_wc
     loss_carryforward = 0.0
     years: list[YearProjection] = []
     n = len(revenues)
     for i, revenue in enumerate(revenues):
-        margin = start_margin + (target_margin - start_margin) * (i + 1) / n
-        ebitda = revenue * margin
+        if i < first:
+            # Before sales start, today's costs carry on: EBITDA stays at today's (a loss, or 0).
+            margin, ebitda = None, min(operating.current_ebitda, 0.0)
+        else:
+            margin = start_margin + (target_margin - start_margin) * (i - first + 1) / (n - first)
+            ebitda = revenue * margin
         da = da_pct * revenue
         ebit = ebitda - da
 
@@ -1657,7 +1707,9 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
 
     ltm = op.current_revenue_last_12_months
     has_arr = bool(op.annual_recurring_revenue)
-    if ltm > 0:
+    revenues = fa.revenues()
+    first = next(i for i, r in enumerate(revenues) if r > 0)
+    if ltm > 0 and first == 0:
         jump = fa.revenue_year1 / ltm - 1
         if jump > 1.0:
             warn("revenue_jump", _t(
@@ -1674,26 +1726,39 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                 f"Der Umsatz in Jahr 1 ({_eur(fa.revenue_year1)}) liegt {_pct0(-jump)} unter dem der letzten 12 Monate "
                 f"({_eur(ltm)}). Wenn Sie keinen Umsatzrückgang erwarten, prüfen Sie beide Zahlen: alle "
                 "Cashflow-Methoden bauen auf dem Plan für Jahr 1 auf."))
+    elif ltm > 0:
+        warn("revenue_pause", _t(
+            f"Your plan has no revenue until Year {first + 1}, although the company had {_eur(ltm)} in the last "
+            "12 months. Until sales start again, the projection keeps today's costs; check that this is your plan.",
+            f"Ihre Planung sieht bis Jahr {first + 1} keinen Umsatz vor, obwohl das Unternehmen in den letzten 12 "
+            f"Monaten {_eur(ltm)} umgesetzt hat. Bis der Umsatz wieder einsetzt, rechnet die Planung mit den "
+            "heutigen Kosten; prüfen Sie, ob das Ihr Plan ist."))
     else:
         margin_used = (_t("your own Year-5 target margin", "Ihre eigene Zielmarge für Jahr 5")
                        if fa.target_ebitda_margin_override is not None
                        else _t("the industry average margin", "die durchschnittliche Branchenmarge"))
+        before_sales = "" if first == 0 else _t(
+            f" Until sales start in Year {first + 1}, EBITDA stays at today's {_eur(min(op.current_ebitda, 0.0))} a "
+            "year.",
+            f" Bis zum Umsatzbeginn in Jahr {first + 1} bleibt das EBITDA bei den heutigen "
+            f"{_eur(min(op.current_ebitda, 0.0))} pro Jahr.")
         warn("no_revenue_history", _t(
             f"No revenue in the last 12 months: the projection starts from your current EBITDA "
-            f"({_eur(op.current_ebitda)}) measured against Year-1 revenue, a "
+            f"({_eur(op.current_ebitda)}) measured against Year-{first + 1} revenue, a "
             f"{_pct(projections.starting_ebitda_margin)} margin, and moves to {margin_used} by Year 5."
-            + ("" if has_arr else " The Comparables method can't be applied."),
+            + before_sales + ("" if has_arr else " The Comparables method can't be applied."),
             f"Kein Umsatz in den letzten 12 Monaten: Die Planung beginnt mit Ihrem aktuellen EBITDA "
-            f"({_eur(op.current_ebitda)}) im Verhältnis zum Umsatz in Jahr 1, also einer Marge von "
+            f"({_eur(op.current_ebitda)}) im Verhältnis zum Umsatz in Jahr {first + 1}, also einer Marge von "
             f"{_pct(projections.starting_ebitda_margin)}, und erreicht bis Jahr 5 {margin_used}."
-            + ("" if has_arr else " Die Vergleichsmethode kann nicht angewendet werden.")), "info")
+            + before_sales + ("" if has_arr else " Die Vergleichsmethode kann nicht angewendet werden.")), "info")
     # Growth above 100% a year is normal for a company that is only starting to sell.
-    if ltm > 0 and any(g > 1.0 for g in fa.revenue_growth_rates):
+    growth = [b / a - 1 for a, b in zip(revenues, revenues[1:]) if a > 0]
+    if ltm > 0 and any(g > 1.0 for g in growth):
         warn("high_growth", _t("One or more yearly growth rates is above 100%. Check these are realistic.",
                                "Mindestens eine jährliche Wachstumsrate liegt über 100 %. Prüfen Sie, ob das "
                                "realistisch ist."))
 
-    revenue_base = ltm if ltm > 0 else fa.revenue_year1
+    revenue_base = ltm if ltm > 0 else revenues[first]
     if op.current_ppe_value > 2 * revenue_base:
         ratio = _times(op.current_ppe_value / revenue_base)
         warn("ppe_scale", _t(
@@ -1714,7 +1779,7 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
             f"Umsatzwachstum von {_eur(ltm)} auf {_eur(y1.revenue)} Geld frei. Das erhöht den DCF-Wert; prüfen Sie, "
             "ob Ihre Lieferanten Ihnen wirklich so viel Zahlungsziel geben."), "info")
     for y in projections.years:
-        if y.capex > 0.3 * y.revenue:
+        if y.revenue > 0 and y.capex > 0.3 * y.revenue:
             warn("capex_scale", _t(f"Capex in {y.year_label} ({_eur(y.capex)}) is more than 30% of revenue.",
                                    f"Die Investitionen in {y.year_label} ({_eur(y.capex)}) betragen mehr als 30 % "
                                    "des Umsatzes."))
@@ -2245,6 +2310,7 @@ def run_valuation_scenarios(
     """
     multipliers = multipliers if multipliers is not None else SCENARIO_REVENUE_MULTIPLIERS
     base_revenue = inputs.financial_assumptions.revenue_year1
+    base_plan = inputs.financial_assumptions.revenue_by_year
     try:
         base = run_valuation(inputs)
     except ValuationError:
@@ -2254,6 +2320,8 @@ def run_valuation_scenarios(
     for m in multipliers:
         scaled_inputs = inputs.model_copy(deep=True)
         scaled_inputs.financial_assumptions.revenue_year1 = base_revenue * m
+        if base_plan is not None:  # a year-by-year plan moves as a whole
+            scaled_inputs.financial_assumptions.revenue_by_year = [r * m for r in base_plan]
         try:
             scenario = run_valuation(scaled_inputs)
         except ValuationError:
