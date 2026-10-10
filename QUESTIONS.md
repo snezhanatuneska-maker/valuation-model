@@ -163,3 +163,33 @@ value no longer jumps at break-even and never rises as EBITDA falls; `tests/test
 €0 €922,635, −€10,000 €886,543. Unlike option b, loss-making companies with revenue are valued higher than before, not
 lower (Werkpuls €1,411,688), because their revenue now counts.
 
+
+## 14. VC exit for companies still growing into their margin (decided 10 October 2026: revenue multiple at exit)
+
+Tested as German founders (Munich pre-seed, Berlin SaaS seed with €500k ARR, Hamburg e-commerce Series A,
+Heidelberg biotech), the blended values came out far below what typical rounds of their size imply, and the VC method
+was €0 for most of them. Its exit used only exit-year EBITDA × EV/EBITDA. With the default exit in Year 3, the margin is
+still on its way from today's (often a loss) to the industry margin in Year 5, so exit EBITDA was negative or small and
+the method found no value. Investors value a company that is still growing into its margin on revenue.
+
+**Decided by the owner (10 October 2026: "you decide how to tackle the problem").** The VC exit is now the higher of
+exit-year EBITDA × EV/EBITDA and exit-year revenue × EV/Sales, the rule Comparables already uses (13). More profit or
+more revenue never lowers the value, so "a weaker plan never shows a higher value" still holds. A method that finds no
+value still counts as €0. New reference figures: Tanzania test case €1,274,502 (was €1,103,096), German example
+€1,342,446 (was €1,153,087), Werkpuls pinned €1,482,841.42 (was €1,252,087.59; `tests/test_golden.py` shows the hand
+calculation). Berlin SaaS seed: €2.36M → €3.53M.
+
+Also new: when the blended value is below what a typical round of the raise implies (round logic), the checks explain
+the difference (`below_round_pricing`): the methods value what the plan supports, rounds are priced on the usual stake
+and on comparable rounds, and what narrows the gap.
+
+Not changed, for the owner to decide:
+- **Scorecard benchmark, Germany vs. other countries.** Germany uses Equidam's *average* of closed angel, pre-seed and
+  seed rounds (€6.55M); every other country uses Equidam's *median model valuation* for its region (Europe about
+  €2.9M). The same company is valued about 2.3× higher in Germany than in Austria. Options: a) keep; b) use one kind of
+  figure everywhere (a median of closed rounds per country is the most defensible), which needs those figures sourced.
+- **A market anchor for companies with revenue.** At the Startup and Expansion stages no method looks at what comparable
+  rounds pay, so seed and Series A companies stay well below typical round prices (Hamburg Series A €6.96M vs €28–45M
+  implied). Option: a German round median per stage (e.g. from Dealroom, EY Startup-Barometer or Equidam) × the
+  Scorecard score, at a modest weight. Needs a sourced dataset; the round logic itself can't serve, as it rises with the
+  amount raised.

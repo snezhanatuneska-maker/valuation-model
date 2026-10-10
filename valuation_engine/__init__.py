@@ -1069,9 +1069,12 @@ def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) 
 # ============================================================================
 # SECTION 7 — Venture Capital method
 #
-# Exit value = exit-year EBITDA x EV/EBITDA multiple; today's debt is assumed
-# still outstanding at exit, so exit equity = exit value - debt. Post-money
-# today = exit equity / (1 + target return)^years. Pre-money = post - investment.
+# Exit value = the higher of exit-year EBITDA x EV/EBITDA and exit-year revenue x
+# EV/Sales (the same rule as the Comparables method: a company still growing into
+# its margin at exit is bought on revenue, and more profit never lowers the value);
+# today's debt is assumed still outstanding at exit, so exit equity = exit value -
+# debt. Post-money today = exit equity / (1 + target return)^years. Pre-money =
+# post - investment.
 # ============================================================================
 
 
@@ -1101,6 +1104,11 @@ class VCMethodResult:
     # The method applies but leaves no value before the round, so it counts as €0 (not left out:
     # dropping it would hand its weight to the other methods and raise the blend on bad news).
     no_value_reason: Optional[str] = None
+    ebitda_based_exit_value: float = 0.0  # max(exit-year EBITDA, 0) x EV/EBITDA
+    ev_sales_multiple: Optional[float] = None
+    ev_sales_multiple_source: str = ""
+    revenue_based_exit_value: float = 0.0  # exit-year revenue x EV/Sales
+    exit_basis: str = "ebitda"  # "ebitda" | "revenue": which of the two gave the exit value
 
 
 def compute_venture_capital(
@@ -1118,7 +1126,14 @@ def compute_venture_capital(
 
     multiple = bench.get("ev_ebitda_multiple")
     multiple_source = bench.used["ev_ebitda_multiple"].source
-    exit_value = exit_year.ebitda * multiple
+    sales_multiple, sales_source = get_industry_metric_with_source(
+        company.industry, "ev_sales_multiple", company.business_territory_region)
+    ebitda_exit = max(exit_year.ebitda, 0.0) * multiple
+    revenue_exit = exit_year.revenue * sales_multiple
+    exit_basis = "revenue" if revenue_exit > ebitda_exit else "ebitda"
+    if exit_basis == "revenue":  # its benchmark (and any fallback) is then part of the result
+        bench.used["ev_sales_multiple"] = BenchmarkUsed("ev_sales_multiple", sales_multiple, sales_source)
+    exit_value = max(ebitda_exit, revenue_exit)
     exit_equity = exit_value - debt
     I = funding.capital_needed
     x = vc_assumptions.number_of_existing_shares
@@ -1132,6 +1147,8 @@ def compute_venture_capital(
         post_money_valuation=None, pre_money_valuation=None, ownership_fraction_investors=None,
         ownership_fraction_entrepreneurs=None, number_of_new_shares=None, price_per_share=None,
         final_wealth_investors=None, final_wealth_entrepreneurs=None, not_meaningful_reason=None,
+        ebitda_based_exit_value=ebitda_exit, ev_sales_multiple=sales_multiple, ev_sales_multiple_source=sales_source,
+        revenue_based_exit_value=revenue_exit, exit_basis=exit_basis,
     )
 
     if company.industry in FINANCIAL_SECTOR_INDUSTRIES:
@@ -1140,9 +1157,13 @@ def compute_venture_capital(
         return VCMethodResult(**result)
     if exit_value <= 0:
         result.update(pre_money_valuation=0.0, no_value_reason=_t(
-            f"Projected EBITDA in the exit year ({exit_year.year_label}) is not positive, so there is no exit value.",
-            f"Das geplante EBITDA im Exit-Jahr ({exit_year.year_label}) ist nicht positiv, es gibt also keinen "
-            "Exit-Wert."))
+            f"The plan has no revenue and no positive EBITDA in the exit year ({exit_year.year_label}), so there is "
+            "no exit value." + (" If your sales start later, set the planned exit after they start."
+                                if exit_year.revenue == 0 and projections.years[-1].revenue > 0 else ""),
+            f"Die Planung hat im Exit-Jahr ({exit_year.year_label}) weder Umsatz noch ein positives EBITDA, es gibt "
+            "also keinen Exit-Wert." + (" Wenn Ihr Umsatz später beginnt, legen Sie den geplanten Exit in ein "
+                                        "Jahr nach dem Umsatzbeginn." if exit_year.revenue == 0 and projections.years[-1].revenue > 0
+                                        else "")))
         return VCMethodResult(**result)
     if exit_equity <= 0:
         result.update(pre_money_valuation=0.0, no_value_reason=_t(
@@ -1314,6 +1335,28 @@ class RoundLogicResult:
 def implied_pre_money(capital_needed: float, dilution: float) -> float:
     """The pre-money at which `capital_needed` buys `dilution` of the company after the round."""
     return capital_needed * (1 - dilution) / dilution
+
+
+def round_pricing_note(rl: Optional[RoundLogicResult], blended: Optional[float]) -> Optional["ValuationWarning"]:
+    """When the methods give less than a typical round of this size implies, say why the two differ and what
+    narrows the gap, so a founder isn't surprised in talks with investors."""
+    if rl is None or not blended or blended >= rl.implied_pre_money_low:
+        return None
+    rng = f"{_eur(rl.implied_pre_money_low)}–{_eur(rl.implied_pre_money_high)}"
+    return ValuationWarning("below_round_pricing", "info", _t(
+        f"The blended value ({_eur(blended)}) is below the pre-money that a typical {rl.round_name} round of your "
+        f"size implies ({rng}). The four methods value what your plan and today's figures support; early rounds "
+        "are priced on the share investors usually buy and on recent comparable rounds, which are often higher. "
+        "Expect investors to start from comparable rounds and use this valuation to show what your plan supports. "
+        "The gap narrows with a plan that reaches more revenue by the exit year, or with a smaller raise, which "
+        "would sell a more usual share of the company.",
+        f"Der gewichtete Wert ({_eur(blended)}) liegt unter der Pre-Money-Bewertung, die eine typische "
+        f"Finanzierungsrunde dieser Phase ({rl.round_name}) in Ihrer Größe nahelegt ({rng}). Die vier Methoden bewerten, was Ihr Plan und Ihre "
+        "heutigen Zahlen tragen; frühe Runden werden nach dem Anteil bepreist, den Investoren üblicherweise "
+        "kaufen, und nach aktuellen vergleichbaren Runden, die oft höher liegen. Rechnen Sie damit, dass "
+        "Investoren von vergleichbaren Runden ausgehen, und nutzen Sie diese Bewertung, um zu zeigen, was Ihr "
+        "Plan trägt. Die Lücke wird kleiner mit einem Plan, der bis zum Exit-Jahr mehr Umsatz erreicht, oder mit "
+        "einer kleineren Runde, die einen üblicheren Anteil des Unternehmens verkauft."))
 
 
 def compute_round_logic(stage: str, capital_needed: float, blended: Optional[float]) -> Optional[RoundLogicResult]:
@@ -1792,12 +1835,12 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
             warn("margin_gap", _t(
                 f"Your current EBITDA margin ({_pct(projections.starting_ebitda_margin)}) differs from the "
                 f"{'target' if own_target else 'industry'} margin ({_pct(projections.target_ebitda_margin)}) by more "
-                "than 10 points. The projection moves from one to the other over five years; "
+                "than 10 points. The projection moves from one to the other by Year 5; "
                 + ("adjust your target margin if that isn't realistic." if own_target
                    else "enter your own target margin if that isn't realistic."),
                 f"Ihre aktuelle EBITDA-Marge ({_pct(projections.starting_ebitda_margin)}) weicht um mehr als 10 "
                 f"Prozentpunkte von der {'Ziel' if own_target else 'Branchen'}marge "
-                f"({_pct(projections.target_ebitda_margin)}) ab. Die Planung geht in fünf Jahren von der einen zur "
+                f"({_pct(projections.target_ebitda_margin)}) ab. Die Planung geht bis Jahr 5 von der einen zur "
                 "anderen; "
                 + ("passen Sie Ihre Zielmarge an, wenn das nicht realistisch ist." if own_target
                    else "geben Sie eine eigene Zielmarge ein, wenn das nicht realistisch ist.")))
@@ -2264,6 +2307,9 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
     capital_needed = inputs.funding.capital_needed
     round_logic = compute_round_logic(company.company_stage, capital_needed, blended)
     warnings = collect_warnings(inputs, projections, dcf_result, bench, scorecard_result, method_values)
+    below = round_pricing_note(round_logic, blended)
+    if below:
+        warnings.append(below)
 
     return ValuationOutput(
         valuation_date=projections.valuation_date,

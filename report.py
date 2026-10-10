@@ -1329,18 +1329,32 @@ def _vc_page(vc: dict, output: Optional[dict] = None) -> list:
     if g(vc, "post_money_valuation") is not None:
         y, ebitda, mult, exit_v = (g(vc, "exit_year_label"), money(g(vc, "exit_year_ebitda")),
                                    multiple(g(vc, "ev_ebitda_multiple")), money(g(vc, "exit_value")))
+        on_revenue = g(vc, "exit_basis") == "revenue"
+        revenue, sales_mult = money(g(vc, "exit_year_revenue")), multiple(g(vc, "ev_sales_multiple"))
+        than_ebitda = (T(f"more than EBITDA {ebitda} × {mult}", f"mehr als EBITDA {ebitda} × {mult}")
+                       if (g(vc, "exit_year_ebitda") or 0) > 0 else
+                       T("EBITDA isn't positive yet in that year", "das EBITDA ist in diesem Jahr noch nicht positiv"))
+        basis_text = (T(f"Projected revenue in the exit year ({y}) of {revenue} × the industry EV/Sales multiple of "
+                        f"{sales_mult} gives an exit value of {exit_v} ({than_ebitda}, as for a company still growing "
+                        "into its margin). ",
+                        f"Der geplante Umsatz im Exit-Jahr ({y}) von {revenue} × der EV/Umsatz-Multiplikator der Branche "
+                        f"von {sales_mult} ergibt einen Exit-Wert von {exit_v} ({than_ebitda}, wie bei einem "
+                        "Unternehmen, das noch in seine Marge hineinwächst). ")
+                      if on_revenue else
+                      T(f"Projected EBITDA in the exit year ({y}) of {ebitda} × the industry EV/EBITDA multiple of {mult} "
+                        f"gives an exit value of {exit_v}. ",
+                        f"Das geplante EBITDA im Exit-Jahr ({y}) von {ebitda} × der EV/EBITDA-Multiplikator der Branche "
+                        f"von {mult} ergibt einen Exit-Wert von {exit_v}. "))
         post, invest, pre = (money(g(vc, "post_money_valuation")), money(g(vc, "investment_amount")),
                              money(g(vc, "pre_money_valuation")))
         no_value = g(vc, "no_value_reason")
-        story += _how(T(
-            f"Projected EBITDA in the exit year ({y}) of {ebitda} × the industry EV/EBITDA multiple of {mult} gives an "
-            f"exit value of {exit_v}. An investor who needs a {pct(r)} annual return values that today at {exit_v} ÷ "
+        story += _how(basis_text + T(
+            f"An investor who needs a {pct(r)} annual return values that today at {exit_v} ÷ "
             f"(1 + {pct(r)})^{T_} = {post} "
             + (f"after the investment. Minus the {invest} being raised = {pre} before it." if not no_value else
                f"after the investment. That is less than the {invest} being raised, so this method leaves no value "
                "before the investment and counts as €0 in the blend."),
-            f"Das geplante EBITDA im Exit-Jahr ({y}) von {ebitda} × der EV/EBITDA-Multiplikator der Branche von {mult} "
-            f"ergibt einen Exit-Wert von {exit_v}. Ein Investor, der {pct(r)} Rendite pro Jahr braucht, bewertet das "
+            f"Ein Investor, der {pct(r)} Rendite pro Jahr braucht, bewertet das "
             f"heute mit {exit_v} ÷ (1 + {pct(r)})^{T_} = {post} "
             + (f"nach der Investition. Abzüglich der eingeworbenen {invest} = {pre} davor." if not no_value else
                f"nach der Investition. Das ist weniger als die eingeworbenen {invest}; diese Methode lässt vor der "
@@ -1351,6 +1365,10 @@ def _vc_page(vc: dict, output: Optional[dict] = None) -> list:
         (T(f"Exit-year ({y}) revenue", f"Umsatz im Exit-Jahr ({y})"), money(g(vc, "exit_year_revenue"))),
         (T(f"Exit-year ({y}) EBITDA", f"EBITDA im Exit-Jahr ({y})"), money(g(vc, "exit_year_ebitda"))),
         (T("EV/EBITDA multiple", "EV/EBITDA-Multiplikator"), multiple(g(vc, "ev_ebitda_multiple"))),
+        (T("EV/Sales multiple", "EV/Umsatz-Multiplikator"), multiple(g(vc, "ev_sales_multiple"))),
+        (T("Exit value used", "Verwendeter Exit-Wert"),
+         T("revenue × EV/Sales (the higher)", "Umsatz × EV/Umsatz (der höhere)") if g(vc, "exit_basis") == "revenue"
+         else T("EBITDA × EV/EBITDA (the higher)", "EBITDA × EV/EBITDA (der höhere)")),
         # A non-positive exit value has no meaning; show a dash rather than a negative amount.
         (T("Exit value (enterprise value)", "Exit-Wert (Unternehmenswert)"),
          money(g(vc, "exit_value")) if (g(vc, "exit_value") or 0) > 0 else "—"),
@@ -1659,10 +1677,12 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
           "<b>Scorecard</b> (Bill Payne): vergleicht ein Unternehmen vor Umsatzbeginn anhand von sechs gewichteten "
           "Kriterien mit dem typischen Unternehmen vor Umsatzbeginn in seiner Region. Nur in der Ideen- und "
           "Entwicklungsphase."),
-        T("<b>Venture Capital</b>: values a projected exit and discounts it at the annual return an investor at "
+        T("<b>Venture Capital</b>: values a projected exit at the higher of exit-year EBITDA × EV/EBITDA and exit-year "
+          "revenue × EV/Sales (the same rule as Comparables) and discounts it at the annual return an investor at "
           "this stage targets. This is the only place a target return is used.",
-          "<b>Venture Capital</b>: bewertet einen geplanten Exit und zinst ihn mit der Jahresrendite ab, die ein "
-          "Investor in dieser Phase anstrebt. Nur hier wird eine Zielrendite verwendet."),
+          "<b>Venture Capital</b>: bewertet einen geplanten Exit mit dem höheren Wert aus EBITDA × EV/EBITDA und "
+          "Umsatz × EV/Umsatz im Exit-Jahr (dieselbe Regel wie bei der Vergleichsmethode) und zinst ihn mit der "
+          "Jahresrendite ab, die ein Investor in dieser Phase anstrebt. Nur hier wird eine Zielrendite verwendet."),
         T("<b>Comparables</b>: applies public-company multiples to the last 12 months, taking the higher of EBITDA × "
           "EV/EBITDA and revenue × EV/Sales (ARR × the SaaS ARR multiple for subscription companies), with a "
           "private-company discount, then subtracts debt and adds cash.",

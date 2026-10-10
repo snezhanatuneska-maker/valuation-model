@@ -74,7 +74,7 @@ def test_default_region(client):
 def test_preview_and_scenarios(client):
     r = client.post("/valuations/preview", json=REFERENCE_CASE)
     assert r.status_code == 200
-    assert round(r.json()["blended_pre_money_valuation"]) == 1_103_096
+    assert round(r.json()["blended_pre_money_valuation"]) == 1_274_502
     assert len(client.post("/valuations/preview/scenarios", json=REFERENCE_CASE).json()) == 6
 
 
@@ -373,3 +373,20 @@ def test_bad_revenue_plans_get_one_clear_message(client, plan, message):
     out = client.post("/valuations/preview", json=_plan(plan))
     assert out.status_code == 422
     assert message in out.json()["detail"] and "revenue year1" not in out.json()["detail"]
+
+
+def test_saved_year_by_year_plan_reopens_and_reruns(storing_client):
+    """A saved plan with sales from Year 3 keeps its figures when reopened, rerun and printed."""
+    case = _plan([0, 0, 800_000, 1_500_000, 2_500_000])
+    case["operating_performance"].update(current_revenue_last_12_months=0, current_ebitda=-300_000,
+                                         current_ppe_value=0)
+    saved = storing_client.post("/valuations?owner_id=a", json=case)
+    assert saved.status_code == 201, saved.text
+    vid = saved.json()["id"]
+    stored = storing_client.get(f"/valuations/{vid}?owner_id=a").json()
+    assert stored["input"]["financial_assumptions"]["revenue_by_year"] == [0, 0, 800_000, 1_500_000, 2_500_000]
+    rerun = storing_client.post(f"/valuations/{vid}/rerun").json()
+    assert rerun["output"]["blended_pre_money_valuation"] == pytest.approx(
+        saved.json()["output"]["blended_pre_money_valuation"])
+    assert storing_client.get(f"/valuations/{vid}/scenarios").status_code == 200
+    assert storing_client.get(f"/valuations/{vid}/report").status_code == 200

@@ -125,7 +125,7 @@ one paragraph marked `COMMUNITY LINE`.
 | Method | What it does | Stage assumption it uses (only here) |
 |---|---|---|
 | Scorecard (Payne) | Typical pre-revenue pre-money for the region (Equidam H1 2026 median) × your weighted questionnaire score. Idea and Development stages only | — |
-| Venture Capital | Exit-year EBITDA × EV/EBITDA multiple, minus debt, discounted at the investor's target return; minus the raise | Target return: 65% (Idea) falling to 20% (Maturity) |
+| Venture Capital | Exit value: the higher of exit-year EBITDA × EV/EBITDA and exit-year revenue × EV/Sales (the same rule as Comparables), minus debt, discounted at the investor's target return; minus the raise | Target return: 65% (Idea) falling to 20% (Maturity) |
 | Comparables | The higher of last-12-month EBITDA × EV/EBITDA and last-12-month revenue × EV/Sales (for SaaS: ARR × the public SaaS EV/ARR multiple, if ARR is entered), less a private-company discount, minus debt plus cash | Private-company discount: 40% → 20% |
 | DCF | 5 years of free cash flow + Gordon terminal value at WACC, × probability of survival, minus debt plus cash | Survival: 30% → 95% |
 
@@ -135,7 +135,7 @@ one paragraph marked `COMMUNITY LINE`.
 - One tax rate for everything: the user's, else the country's statutory rate. Losses are carried forward.
   Germany is the exception (see below).
 - Comparables uses the revenue multiple when it gives the higher value, typically for loss-making or thin-margin companies. EV/Sales is Damodaran's EV/EBITDA (all firms) × EBITDA/Sales for the same industry and region, i.e. the sum of enterprise values over the sum of sales. So the method no longer drops out at break-even, and a lower EBITDA never raises the value.
-- **Round logic** (cross-check, not part of the blend): the typical round for the stage (Seed for Startup stage, etc.), its usual size and the share of the company it usually sells (dilution). The raise ÷ dilution × (1 − dilution) gives the pre-money that a typical round of your size implies; the result page and PDF compare it with the blended value and show the share your raise would buy at that value.
+- **Round logic** (cross-check, not part of the blend): the typical round for the stage (Seed for Startup stage, etc.), its usual size and the share of the company it usually sells (dilution). The raise ÷ dilution × (1 − dilution) gives the pre-money that a typical round of your size implies; the result page and PDF compare it with the blended value and show the share your raise would buy at that value. When the blended value is below that range, the checks explain why the two differ and what narrows the gap.
 - A method that doesn't apply to the company (Comparables without revenue, ARR or positive last-12-month EBITDA; VC, Comparables and DCF for banks and insurers) is left out and the other stage weights are scaled up. A method that applies but finds no value (the raise is larger than the exit supports; the cash flows are worth less than nothing) counts as €0 with a note, so a weaker plan never gives a higher value. If no method finds any value for the business, the user gets a plain-language message instead of a €0 valuation.
 - Inputs that can't be valued are rejected with a plain-language message (including EBITDA above revenue); implausible ones (revenue jumps, PP&E out of scale, ownership ≠ 100%, use of funds ≠ raise, a value above 50× revenue, …) produce warnings, and the PDF cover says how many inputs need a second look.
 - A saved valuation keeps the figures it was saved with (PDF and scenarios); `POST /valuations/{id}/rerun` recalculates with today's data.
@@ -154,11 +154,11 @@ German example (`GERMAN_CASE` in `audit/recompute.py`): Beispiel Software GmbH, 
 
 | Method | Value |
 |---|---|
-| Venture Capital | 971,446 € |
+| Venture Capital | 1,602,642 € (exit valued on revenue) |
 | Comparables | 1,134,461 € (revenue multiple) |
 | DCF | 1,327,405 € |
-| **Blended pre-money** | **1,153,087 €** |
-| **Post-money** | **1,453,087 €** |
+| **Blended pre-money** | **1,342,446 €** |
+| **Post-money** | **1,642,446 €** |
 
 ## Verified numbers (Valuativa DOO example)
 
@@ -171,14 +171,14 @@ cash €20,000, no debt. Year-1 revenue €1,000,000 growing 10% a year, capex
 | Method | Value |
 |---|---|
 | Scorecard | not used (company has revenue) |
-| Venture Capital | 1,242,335 € |
+| Venture Capital | 1,813,686 € (exit valued on revenue; on EBITDA it would be 1,242,335 €) |
 | Comparables | 1,258,079 € (revenue multiple; the EBITDA multiple gives 697,925 €) |
 | DCF | 828,766 € |
-| **Blended pre-money** | **1,103,096 €** |
-| **Post-money** | **1,403,096 €** |
+| **Blended pre-money** | **1,274,502 €** |
+| **Post-money** | **1,574,502 €** |
 
 Round logic: a typical Seed round sells 15–25% of the company (median 19.5%), so a €300,000 raise implies a
-pre-money of €900,000 to €1,700,000; at the blended value it would buy 21.4%.
+pre-money of €900,000 to €1,700,000; at the blended value it would buy 19.1%.
 
 These are pinned in `tests/test_engine.py` and recomputed independently by
 `audit/recompute.py`.

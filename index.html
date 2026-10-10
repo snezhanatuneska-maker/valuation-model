@@ -1265,12 +1265,21 @@ function errorDetail(body, fallback) {
 // (showing a friendly banner if that is slow), and a request that fails
 // because the server went back to sleep is retried once it is awake.
 // ------------------------------------------------------------
-const WAKE_TIMEOUT_MS = 120000;
+// A local server (`uvicorn app:app`) doesn't sleep: if it doesn't answer, it isn't running.
+const LOCAL_API = /^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(API_BASE);
+const WAKE_TIMEOUT_MS = LOCAL_API ? 10000 : 120000;
 let serverAwake = false;
 let wakePromise = null;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-function showWakeBanner(on) { document.getElementById("wake-banner").hidden = !on; }
+function showWakeBanner(on) {
+  const banner = document.getElementById("wake-banner");
+  if (on && LOCAL_API) {
+    banner.textContent = tr(`Waiting for the valuation server at ${API_BASE}…`,
+                            `Warte auf den Bewertungsserver unter ${API_BASE}…`);
+  }
+  banner.hidden = !on;
+}
 
 function wakeServer() {
   if (serverAwake) return Promise.resolve();
@@ -1286,8 +1295,11 @@ function wakeServer() {
         } catch (_) { /* still starting */ }
         showWakeBanner(true);
         if (Date.now() > deadline) {
-          throw new Error(tr("The valuation server isn't answering right now. Please try again in a few minutes.",
-                             "Der Bewertungsserver antwortet gerade nicht. Bitte versuchen Sie es in ein paar Minuten noch einmal."));
+          throw new Error(LOCAL_API
+            ? tr(`The valuation server at ${API_BASE} isn't running. Start it in a terminal in the project folder with "uvicorn app:app".`,
+                 `Der Bewertungsserver unter ${API_BASE} läuft nicht. Starten Sie ihn in einem Terminal im Projektordner mit „uvicorn app:app“.`)
+            : tr("The valuation server isn't answering right now. Please try again in a few minutes.",
+                 "Der Bewertungsserver antwortet gerade nicht. Bitte versuchen Sie es in ein paar Minuten noch einmal."));
         }
         await sleep(3000);
       }
@@ -2077,8 +2089,13 @@ function methodExplanation(key, o) {
     if (vc.not_meaningful_reason) return vc.not_meaningful_reason;
     if (vc.no_value_reason) return vc.no_value_reason + countsAsZero();
     const years = vc.time_to_exit;
-    return tr(`${vc.exit_year_label} EBITDA ${money(vc.exit_year_ebitda)} × ${multipleText(vc.ev_ebitda_multiple)} = exit value ${money(vc.exit_value)}, discounted ${years} year${years === 1 ? "" : "s"} at an investor's ${pct(vc.target_return)} target return = ${money(vc.post_money_valuation)} post-money, minus the ${money(vc.investment_amount)} raised.`,
-              `EBITDA ${vc.exit_year_label} ${money(vc.exit_year_ebitda)} × ${multipleText(vc.ev_ebitda_multiple)} = Exit-Wert ${money(vc.exit_value)}, ${years} Jahr${years === 1 ? "" : "e"} abgezinst mit der Zielrendite eines Investors von ${pct(vc.target_return)} = ${money(vc.post_money_valuation)} Post-Money, abzüglich der eingeworbenen ${money(vc.investment_amount)}.`);
+    const exitText = vc.exit_basis === "revenue"
+      ? tr(`${vc.exit_year_label} revenue ${money(vc.exit_year_revenue)} × ${multipleText(vc.ev_sales_multiple)} EV/Sales`,
+           `Umsatz ${vc.exit_year_label} ${money(vc.exit_year_revenue)} × ${multipleText(vc.ev_sales_multiple)} EV/Umsatz`)
+      : tr(`${vc.exit_year_label} EBITDA ${money(vc.exit_year_ebitda)} × ${multipleText(vc.ev_ebitda_multiple)}`,
+           `EBITDA ${vc.exit_year_label} ${money(vc.exit_year_ebitda)} × ${multipleText(vc.ev_ebitda_multiple)}`);
+    return tr(`${exitText} = exit value ${money(vc.exit_value)}, discounted ${years} year${years === 1 ? "" : "s"} at an investor's ${pct(vc.target_return)} target return = ${money(vc.post_money_valuation)} post-money, minus the ${money(vc.investment_amount)} raised.`,
+              `${exitText} = Exit-Wert ${money(vc.exit_value)}, ${years} Jahr${years === 1 ? "" : "e"} abgezinst mit der Zielrendite eines Investors von ${pct(vc.target_return)} = ${money(vc.post_money_valuation)} Post-Money, abzüglich der eingeworbenen ${money(vc.investment_amount)}.`);
   }
   if (key === "comparables") {
     const c = o.comparables;

@@ -78,17 +78,34 @@ def test_pinned_dcf_discounts_terminal_value(pinned_run):
     assert d.enterprise_value == pytest.approx(d.pv_of_fcf + d.pv_of_terminal_value)
 
 
-def test_vc_arithmetic_with_hand_inputs(monkeypatch):
-    """Exit EBITDA 634,230 x 18, a 55% annual return, €800,000 raised, 25,000 existing shares."""
+def _vc_by_hand(monkeypatch, ev_sales):
     projections = SimpleNamespace(years=[SimpleNamespace(year_label=f"Y{i + 1}", revenue=r, ebitda=e)
                                          for i, (r, e) in enumerate(zip(EXPECTED_REVENUE, EXPECTED_EBITDA))])
     stage = dict(ve.get_stage_params("Startup stage"), vc_target_return=PINNED_RISK_MULTIPLIER)
     monkeypatch.setattr(ve, "get_stage_params", lambda s: stage)
+    monkeypatch.setattr(ve, "get_industry_metric_with_source", lambda i, m, r: (ev_sales, "region"))
     bench = SimpleNamespace(get=lambda m: 18.0, used={"ev_ebitda_multiple": SimpleNamespace(source="region")})
-    vc = ve.compute_venture_capital(
+    return ve.compute_venture_capital(
         ve.CompanyProfile(**WERKPULS["company_profile"]), projections,
         ve.FundingRequirement(**WERKPULS["funding"]), ve.VCMethodAssumptions(**WERKPULS["vc_assumptions"]),
         bench, debt=0)
+
+
+def test_vc_exit_on_revenue_when_that_is_higher(monkeypatch):
+    """Year-4 revenue 2,349,000 x EV/Sales 6.0 = 14,094,000 is more than EBITDA 634,230 x 18 = 11,416,140, so the
+    exit is valued on revenue: / 1.55^4 = 2,441,764.33 post-money, - 800,000 raised."""
+    vc = _vc_by_hand(monkeypatch, ev_sales=6.0)
+    assert vc.exit_basis == "revenue" and vc.ebitda_based_exit_value == pytest.approx(11_416_140.00)
+    assert vc.exit_value == pytest.approx(14_094_000.00)
+    assert vc.post_money_valuation == pytest.approx(14_094_000 / 1.55 ** 4)
+    assert vc.pre_money_valuation == pytest.approx(14_094_000 / 1.55 ** 4 - 800_000)
+
+
+def test_vc_arithmetic_with_hand_inputs(monkeypatch):
+    """Exit EBITDA 634,230 x 18, a 55% annual return, €800,000 raised, 25,000 existing shares (EV/Sales 4.0, so
+    revenue gives less: 2,349,000 x 4.0 = 9,396,000)."""
+    vc = _vc_by_hand(monkeypatch, ev_sales=4.0)
+    assert vc.exit_basis == "ebitda"
     assert vc.exit_value == pytest.approx(11_416_140.00)
     assert vc.post_money_valuation == pytest.approx(1_977_846.09, abs=0.01)
     assert vc.pre_money_valuation == pytest.approx(1_177_846.09, abs=0.01)
@@ -176,14 +193,19 @@ def test_pinned_werkpuls_final_values(pinned_run):
     left out before (blend 6/13 VC + 7/13 DCF).
     Changed 8 October 2026 (AUDIT_REPORT.md, m2): the terminal year is a business growing 2% forever
     (working capital grows 2%, capex at least D&A), so the DCF enterprise value moves from 2,340,541.08 and
-    the blend from 1,050,656.82."""
+    the blend from 1,050,656.82.
+    Changed 10 October 2026 (QUESTIONS.md 14): the VC exit is valued at the higher of EBITDA x EV/EBITDA and revenue x
+    EV/Sales: Year-4 revenue 2,349,000 x 4.86 = 11,416,140 beats EBITDA 417,898.29 x 18 = 7,522,169.14, so the VC
+    pre-money is (11,416,140 - 100,000) / 1.5^4 - 800,000 = 1,435,286.91 (was 666,107.49) and the blend
+    30% x 1,435,286.91 + 35% x 1,638,840 + 35% x 1,367,603.85 = 1,482,841.42 (was 1,252,087.59)."""
     r = pinned_run(WERKPULS)
     assert r.dcf.enterprise_value == pytest.approx(2_315_207.71, abs=0.01)
     assert r.dcf.pre_money_valuation == pytest.approx(1_367_603.85, abs=0.01)
-    assert r.venture_capital.exit_value == pytest.approx(7_522_169.14, abs=0.01)
-    assert r.venture_capital.pre_money_valuation == pytest.approx(666_107.49, abs=0.01)
+    assert r.venture_capital.ebitda_based_exit_value == pytest.approx(7_522_169.14, abs=0.01)
+    assert r.venture_capital.exit_value == pytest.approx(11_416_140.00, abs=0.01)
+    assert r.venture_capital.pre_money_valuation == pytest.approx(1_435_286.91, abs=0.01)
     assert r.comparables.pre_money_valuation == pytest.approx(1_638_840.00, abs=0.01)
     assert r.method_values["scorecard"].status == "not_used"
     assert r.method_values["venture_capital"].weight_used == pytest.approx(0.30)
-    assert r.blended_pre_money_valuation == pytest.approx(1_252_087.59, abs=0.01)
-    assert r.post_money_valuation == pytest.approx(2_052_087.59, abs=0.01)
+    assert r.blended_pre_money_valuation == pytest.approx(1_482_841.42, abs=0.01)
+    assert r.post_money_valuation == pytest.approx(2_282_841.42, abs=0.01)

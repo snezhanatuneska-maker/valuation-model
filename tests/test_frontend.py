@@ -407,7 +407,9 @@ def test_result_shows_method_range_and_revenue_scenarios(wizard):
     assert lines[0] == f"Range across methods: {money(r['low'])} (Venture Capital) to {money(r['high'])} (DCF)"
     assert lines[1] == (f"If planned revenue is 20% lower or higher: {money(scen['80%']['blended_pre_money_valuation'])}"
                         f" to {money(scen['120%']['blended_pre_money_valuation'])}")
-    assert "The methods disagree" in w.page.text_content(".checks-list")
+    checks = " ".join(w.page.text_content(".checks-list").split())
+    assert all(" ".join(x["message"].split()) in checks for x in result["warnings"])
+    assert "below_round_pricing" in {x["code"] for x in result["warnings"]}  # the gap to round pricing is explained
     assert w.errors == []
 
 
