@@ -71,7 +71,8 @@ def test_no_value_for_the_business_is_a_message_not_a_valuation():
     with pytest.raises(ve.ValuationError, match="finds any value for the business"):
         run(variant(financial_assumptions__target_ebitda_margin_override=-0.6,
                     operating_performance__current_revenue_last_12_months=0,
-                    operating_performance__current_ebitda=-50_000))
+                    operating_performance__current_ebitda=-50_000,
+                    funding__capital_needed=5_000_000))  # more than even the revenue-based exit supports
 
 
 @pytest.mark.parametrize("revenue,ebitda", [(300_000, 400_000), (0, 50_000)])
@@ -144,10 +145,11 @@ def test_saved_valuation_keeps_its_figures_after_a_data_change(tmp_path, monkeyp
         saved = client.post("/valuations", json=REFERENCE_CASE).json()
         before = saved["output"]["blended_pre_money_valuation"]
         scenarios_before = client.get(f"/valuations/{saved['id']}/scenarios").json()
-        # A later data refresh: every EV/EBITDA multiple 10% higher.
+        # A later data refresh: every EV/EBITDA and EV/Sales multiple 10% higher.
         original = ve.get_industry_metric_with_source
         monkeypatch.setattr(ve, "get_industry_metric_with_source", lambda i, m, r: (
-            (original(i, m, r)[0] * 1.1, original(i, m, r)[1]) if m == "ev_ebitda_multiple" else original(i, m, r)))
+            (original(i, m, r)[0] * 1.1, original(i, m, r)[1]) if m in ("ev_ebitda_multiple", "ev_sales_multiple")
+            else original(i, m, r)))
         assert client.post(f"/valuations/{saved['id']}/rerun").json()["output"]["blended_pre_money_valuation"] > before
         assert client.get(f"/valuations/{saved['id']}/scenarios").json() == scenarios_before
         pdf = client.get(f"/valuations/{saved['id']}/report")

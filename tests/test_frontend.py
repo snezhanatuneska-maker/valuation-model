@@ -246,6 +246,32 @@ def test_projection_preview_matches_api(wizard):
     assert truncated_inputs(w.page) == []
 
 
+def test_revenue_per_year_with_sales_starting_later(wizard):
+    """A company whose sales start in Year 4 plans revenue year by year; the years before show no margin."""
+    w = wizard
+    fill_werkpuls(w, stop_after=4)
+    w.select("revenue_mode", "amounts")
+    assert w.page.is_hidden("#revenue_year1") and w.page.is_visible("#revenue_amount_y1")
+    w.next()
+    assert w.step() == 4
+    assert "at least one of the five years" in w.page.text_content("#form-error")
+    for i, r in enumerate([0, 0, 0, 400000, 900000], start=1):
+        w.fill(f"revenue_amount_y{i}", r)
+    w.page.wait_for_selector(".suggested-table")
+    w.page.wait_for_timeout(800)
+    rows = w.page.eval_on_selector_all(".suggested-table tbody tr", "rs => rs.map(r => r.innerText)")
+    margin_row = next(r for r in rows if r.startswith("EBITDA margin"))
+    assert margin_row.split("\t")[1:4] == ["—", "—", "—"]
+    payload = w.page.evaluate("buildPayload()")
+    assert payload["financial_assumptions"]["revenue_by_year"] == [0, 0, 0, 400000, 900000]
+    w.next()
+    assert w.step() == 5, w.page.text_content("#form-error")
+    w.fill("capital_needed", WERKPULS["funding"]["capital_needed"])
+    result = calculate(w)
+    assert [y["revenue"] for y in result["projections"]["years"]] == [0, 0, 0, 400000, 900000]
+    assert w.errors == [] and w.failed == []
+
+
 def test_scenario_slider_matches_api(wizard):
     w = wizard
     fill_werkpuls(w)
@@ -379,9 +405,11 @@ def test_result_shows_method_range_and_revenue_scenarios(wizard):
     lines = w.page.eval_on_selector_all(".headline-range", "ps => ps.map(p => p.innerText)")
     r = result["method_range"]
     assert lines[0] == f"Range across methods: {money(r['low'])} (Venture Capital) to {money(r['high'])} (DCF)"
-    assert lines[1] == (f"If Year-1 revenue is 20% lower or higher: {money(scen['80%']['blended_pre_money_valuation'])}"
+    assert lines[1] == (f"If planned revenue is 20% lower or higher: {money(scen['80%']['blended_pre_money_valuation'])}"
                         f" to {money(scen['120%']['blended_pre_money_valuation'])}")
-    assert "The methods disagree" in w.page.text_content(".checks-list")
+    checks = " ".join(w.page.text_content(".checks-list").split())
+    assert all(" ".join(x["message"].split()) in checks for x in result["warnings"])
+    assert "below_round_pricing" in {x["code"] for x in result["warnings"]}  # the gap to round pricing is explained
     assert w.errors == []
 
 

@@ -74,7 +74,7 @@ def test_default_region(client):
 def test_preview_and_scenarios(client):
     r = client.post("/valuations/preview", json=REFERENCE_CASE)
     assert r.status_code == 200
-    assert round(r.json()["blended_pre_money_valuation"]) == 1_103_096
+    assert round(r.json()["blended_pre_money_valuation"]) == 1_274_502
     assert len(client.post("/valuations/preview/scenarios", json=REFERENCE_CASE).json()) == 6
 
 
@@ -310,3 +310,83 @@ def test_scenario_page_explains_a_value_that_falls_with_revenue():
     text = lambda s: " ".join(getattr(f, "text", "") for f in report._scenario_sensitivity_page(s))  # noqa: E731
     assert report.scenario_falls_note() in text(falling)
     assert report.scenario_falls_note() not in text(rising)
+
+
+def test_wizard_is_served_and_a_page_from_disk_may_call(client):
+    """`uvicorn app:app` alone is enough locally: the wizard is at /, and index.html opened from disk
+    (browser origin "null") may call the API."""
+    page = client.get("/")
+    assert page.status_code == 200 and page.headers["content-type"].startswith("text/html")
+    assert "btn-calculate" in page.text
+    health = client.get("/health", headers={"Origin": "null"})
+    assert health.headers.get("access-control-allow-origin") == "null"
+    assert client.get("/health", headers={"Origin": "https://example.com"}).headers.get(
+        "access-control-allow-origin") is None
+
+
+def _plan(revenue_by_year):
+    case = copy.deepcopy(GERMAN_CASE)
+    case["financial_assumptions"]["revenue_by_year"] = revenue_by_year
+    return case
+
+
+def test_revenue_per_year_equals_the_growth_plan(client):
+    """The same revenue entered year by year gives exactly the same valuation as Year 1 + growth rates."""
+    fa = GERMAN_CASE["financial_assumptions"]
+    revenues = [fa["revenue_year1"]]
+    for g in fa["revenue_growth_rates"]:
+        revenues.append(revenues[-1] * (1 + g))
+    by_growth = client.post("/valuations/preview", json=GERMAN_CASE).json()
+    by_year = client.post("/valuations/preview", json=_plan(revenues)).json()
+    assert by_year["blended_pre_money_valuation"] == pytest.approx(by_growth["blended_pre_money_valuation"])
+    assert by_year["warnings"] == by_growth["warnings"]
+
+
+def test_sales_starting_in_year_4(client):
+    """A pre-revenue company (biotech) whose sales start in Year 4 can be valued: until then EBITDA stays at
+    today's loss, then the margin moves from today's EBITDA / Year-4 revenue to the target by Year 5."""
+    case = _plan([0, 0, 0, 2_000_000, 6_000_000])
+    case["company_profile"]["company_stage"] = "Development stage"
+    case["operating_performance"].update(current_revenue_last_12_months=0, current_ebitda=-1_200_000,
+                                         current_ppe_value=0)
+    out = client.post("/valuations/preview?lang=de", json=case)
+    assert out.status_code == 200, out.text
+    out = out.json()
+    years = out["projections"]["years"]
+    assert [y["ebitda"] for y in years[:3]] == [-1_200_000] * 3
+    assert [y["ebitda_margin"] for y in years[:3]] == [None] * 3
+    assert years[3]["ebitda_margin"] == pytest.approx((-0.6 + out["projections"]["target_ebitda_margin"]) / 2)
+    assert out["method_values"]["scorecard"]["status"] == "ok"
+    assert any("Umsatzbeginn in Jahr 4" in w["message"] for w in out["warnings"])
+    scenarios = client.post("/valuations/preview/scenarios", json=case).json()
+    assert len(scenarios) == 6
+    assert client.post("/valuations/preview/report?lang=de", json=case).status_code == 200
+
+
+@pytest.mark.parametrize("plan, message", [
+    ([0, 0, 0, 0, 0], "at least one of the five years"),
+    ([0, 100, 0, 100, 100], "once sales have started"),
+    ([0, 0, 100, 100], "exactly 5 values"),
+    ([0, 0, -1, 100, 100], "can't be negative"),
+])
+def test_bad_revenue_plans_get_one_clear_message(client, plan, message):
+    out = client.post("/valuations/preview", json=_plan(plan))
+    assert out.status_code == 422
+    assert message in out.json()["detail"] and "revenue year1" not in out.json()["detail"]
+
+
+def test_saved_year_by_year_plan_reopens_and_reruns(storing_client):
+    """A saved plan with sales from Year 3 keeps its figures when reopened, rerun and printed."""
+    case = _plan([0, 0, 800_000, 1_500_000, 2_500_000])
+    case["operating_performance"].update(current_revenue_last_12_months=0, current_ebitda=-300_000,
+                                         current_ppe_value=0)
+    saved = storing_client.post("/valuations?owner_id=a", json=case)
+    assert saved.status_code == 201, saved.text
+    vid = saved.json()["id"]
+    stored = storing_client.get(f"/valuations/{vid}?owner_id=a").json()
+    assert stored["input"]["financial_assumptions"]["revenue_by_year"] == [0, 0, 800_000, 1_500_000, 2_500_000]
+    rerun = storing_client.post(f"/valuations/{vid}/rerun").json()
+    assert rerun["output"]["blended_pre_money_valuation"] == pytest.approx(
+        saved.json()["output"]["blended_pre_money_valuation"])
+    assert storing_client.get(f"/valuations/{vid}/scenarios").status_code == 200
+    assert storing_client.get(f"/valuations/{vid}/report").status_code == 200

@@ -800,6 +800,15 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
       <p class="step-intro">A 5-year revenue and capital-expenditure plan. The EBITDA margin starts from your last 12 months and moves to the industry margin by Year 5, unless you set your own target below.</p>
 
       <div class="field">
+        <label for="revenue_mode">How do you want to plan revenue?</label>
+        <select id="revenue_mode">
+          <option value="growth">Year-1 revenue and yearly growth</option>
+          <option value="amounts">An amount for each year (sales can start later)</option>
+        </select>
+      </div>
+
+      <div id="revenue-growth-inputs">
+      <div class="field">
         <label for="revenue_year1">Projected revenue, Year 1 (&euro;)</label>
         <input type="number" id="revenue_year1" min="0" step="1" required>
       </div>
@@ -813,6 +822,19 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
           <div class="field"><label for="growth_y5">Year 5</label><input type="number" id="growth_y5" min="-99" max="1000" step="0.1" placeholder="e.g. 10" required></div>
         </div>
         <p class="field-hint">E.g. 10 = revenue grows 10% over the prior year. Enter 0 for no growth.</p>
+      </fieldset>
+      </div>
+
+      <fieldset class="field-group" id="revenue-amount-inputs" hidden>
+        <legend>Projected revenue per year (&euro;)</legend>
+        <div class="field-row field-row-5">
+          <div class="field"><label for="revenue_amount_y1">Year 1</label><input type="number" id="revenue_amount_y1" min="0" step="1" placeholder="0"></div>
+          <div class="field"><label for="revenue_amount_y2">Year 2</label><input type="number" id="revenue_amount_y2" min="0" step="1" placeholder="0"></div>
+          <div class="field"><label for="revenue_amount_y3">Year 3</label><input type="number" id="revenue_amount_y3" min="0" step="1" placeholder="0"></div>
+          <div class="field"><label for="revenue_amount_y4">Year 4</label><input type="number" id="revenue_amount_y4" min="0" step="1" placeholder="0"></div>
+          <div class="field"><label for="revenue_amount_y5">Year 5</label><input type="number" id="revenue_amount_y5" min="0" step="1" placeholder="0"></div>
+        </div>
+        <p class="field-hint">For companies whose sales start later (biotech, deep tech): leave the years before the first sales at 0. Until then the plan keeps today's costs (your current EBITDA).</p>
       </fieldset>
 
       <fieldset class="field-group">
@@ -930,8 +952,13 @@ input.is-invalid, select.is-invalid { border-color: var(--rust) !important; box-
 // ============================================================
 // Configuration
 // ============================================================
-// Point this at wherever the FastAPI app from step 3 is running.
-const API_BASE = window.VALUATION_API_BASE || "https://valuation-model-a1iu.onrender.com";
+// Where the FastAPI app (app.py) runs. Served by a local `uvicorn app:app` (http://localhost:8000), the page
+// uses that same server; opened straight from disk, it uses a local API on port 8000; anywhere else (the
+// GitHub Pages demo), the hosted API.
+const API_BASE = window.VALUATION_API_BASE
+  || (location.protocol === "file:" ? "http://localhost:8000"
+    : ["localhost", "127.0.0.1"].includes(location.hostname) ? location.origin
+    : "https://valuation-model-a1iu.onrender.com");
 const DEFAULT_COUNTRY = "Germany";
 const DEFAULT_REGION = "Europe (EU, UK, Switzerland & Scandinavia)";
 
@@ -1039,6 +1066,11 @@ const DE = {
   "Subscription businesses only: monthly recurring revenue today × 12. The Comparables method then values it with the multiple of listed SaaS companies.": "Nur für Abo-Geschäfte: heutiger monatlich wiederkehrender Umsatz × 12. Die Vergleichsmethode bewertet ihn dann mit dem Multiplikator börsennotierter SaaS-Unternehmen.",
   "A 5-year revenue and capital-expenditure plan. The EBITDA margin starts from your last 12 months and moves to the industry margin by Year 5, unless you set your own target below.": "Ein 5-Jahres-Plan für Umsatz und Investitionen. Die EBITDA-Marge beginnt bei Ihren letzten 12 Monaten und erreicht bis Jahr 5 die Branchenmarge, außer Sie geben unten ein eigenes Ziel ein.",
   "Projected revenue, Year 1 (€)": "Geplanter Umsatz, Jahr 1 (€)",
+  "How do you want to plan revenue?": "Wie möchten Sie den Umsatz planen?",
+  "Year-1 revenue and yearly growth": "Umsatz in Jahr 1 und jährliches Wachstum",
+  "An amount for each year (sales can start later)": "Ein Betrag für jedes Jahr (Umsatz kann später beginnen)",
+  "Projected revenue per year (€)": "Geplanter Umsatz pro Jahr (€)",
+  "For companies whose sales start later (biotech, deep tech): leave the years before the first sales at 0. Until then the plan keeps today's costs (your current EBITDA).": "Für Unternehmen, deren Umsatz später beginnt (Biotech, Deep Tech): Lassen Sie die Jahre vor dem ersten Umsatz bei 0. Bis dahin rechnet die Planung mit den heutigen Kosten (Ihrem aktuellen EBITDA).",
   "Revenue growth, year over year (%)": "Umsatzwachstum gegenüber dem Vorjahr (%)",
   "Year 1": "Jahr 1", "Year 2": "Jahr 2", "Year 3": "Jahr 3", "Year 4": "Jahr 4", "Year 5": "Jahr 5",
   "e.g. 10": "z. B. 10",
@@ -1233,12 +1265,21 @@ function errorDetail(body, fallback) {
 // (showing a friendly banner if that is slow), and a request that fails
 // because the server went back to sleep is retried once it is awake.
 // ------------------------------------------------------------
-const WAKE_TIMEOUT_MS = 120000;
+// A local server (`uvicorn app:app`) doesn't sleep: if it doesn't answer, it isn't running.
+const LOCAL_API = /^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(API_BASE);
+const WAKE_TIMEOUT_MS = LOCAL_API ? 10000 : 120000;
 let serverAwake = false;
 let wakePromise = null;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-function showWakeBanner(on) { document.getElementById("wake-banner").hidden = !on; }
+function showWakeBanner(on) {
+  const banner = document.getElementById("wake-banner");
+  if (on && LOCAL_API) {
+    banner.textContent = tr(`Waiting for the valuation server at ${API_BASE}…`,
+                            `Warte auf den Bewertungsserver unter ${API_BASE}…`);
+  }
+  banner.hidden = !on;
+}
 
 function wakeServer() {
   if (serverAwake) return Promise.resolve();
@@ -1254,8 +1295,11 @@ function wakeServer() {
         } catch (_) { /* still starting */ }
         showWakeBanner(true);
         if (Date.now() > deadline) {
-          throw new Error(tr("The valuation server isn't answering right now. Please try again in a few minutes.",
-                             "Der Bewertungsserver antwortet gerade nicht. Bitte versuchen Sie es in ein paar Minuten noch einmal."));
+          throw new Error(LOCAL_API
+            ? tr(`The valuation server at ${API_BASE} isn't running. Start it in a terminal in the project folder with "uvicorn app:app".`,
+                 `Der Bewertungsserver unter ${API_BASE} läuft nicht. Starten Sie ihn in einem Terminal im Projektordner mit „uvicorn app:app“.`)
+            : tr("The valuation server isn't answering right now. Please try again in a few minutes.",
+                 "Der Bewertungsserver antwortet gerade nicht. Bitte versuchen Sie es in ein paar Minuten noch einmal."));
         }
         await sleep(3000);
       }
@@ -1536,7 +1580,7 @@ function scheduleProjectionPreview() {
 async function updateProjectionPreview() {
   const wrap = document.getElementById("suggested-data-wrap");
   const payload = buildPayload();
-  if (!(payload.financial_assumptions.revenue_year1 > 0) || !payload.company_profile.company_name) {
+  if (!hasRevenuePlan() || !payload.company_profile.company_name) {
     wrap.innerHTML = "";
     return;
   }
@@ -1562,11 +1606,12 @@ async function updateProjectionPreview() {
   const proj = data.projections;
   const years = proj.years;
   const cells = (fn) => years.map((y) => `<td>${fn(y)}</td>`).join("");
+  const firstSalesYear = Math.max(0, years.findIndex((y) => y.revenue > 0)) + 1;
   const startText = proj.starting_margin_source === "company"
     ? tr(`your last-12-month margin (${pct(proj.starting_ebitda_margin)})`,
          `Ihrer Marge der letzten 12 Monate (${pct(proj.starting_ebitda_margin)})`)
-    : tr(`your current EBITDA measured against Year-1 revenue (${pct(proj.starting_ebitda_margin)}, no revenue yet)`,
-         `Ihrem heutigen EBITDA im Verhältnis zum Umsatz in Jahr 1 (${pct(proj.starting_ebitda_margin)}, noch kein Umsatz)`);
+    : tr(`your current EBITDA measured against Year-${firstSalesYear} revenue (${pct(proj.starting_ebitda_margin)}, no revenue yet)`,
+         `Ihrem heutigen EBITDA im Verhältnis zum Umsatz in Jahr ${firstSalesYear} (${pct(proj.starting_ebitda_margin)}, noch kein Umsatz)`);
   const stepped = proj.tax_schedule && proj.tax_schedule.basis === "germany_schedule";
   const targetText = proj.target_margin_source === "user_override"
     ? tr(`your Year-5 target (${pct(proj.target_ebitda_margin)})`, `Ihr Ziel für Jahr 5 (${pct(proj.target_ebitda_margin)})`)
@@ -1749,9 +1794,21 @@ function extraChecks(step) {
     }
   }
   if (step === 4) {
-    if (!(Number(val("revenue_year1")) > 0)) {
-      return { error: tr("Year-1 revenue must be above zero: the cash-flow methods need a revenue plan to build on.",
-                         "Der Umsatz in Jahr 1 muss über null liegen: Die Cashflow-Methoden brauchen einen Umsatzplan."), field: "revenue_year1" };
+    if (val("revenue_mode") === "amounts") {
+      const amounts = REVENUE_AMOUNT_IDS.map((id) => Number(val(id) || 0));
+      const first = amounts.findIndex((r) => r > 0);
+      if (first < 0) {
+        return { error: tr("Enter revenue for at least one of the five years: the cash-flow methods need a revenue plan to build on.",
+                           "Geben Sie für mindestens eines der fünf Jahre einen Umsatz ein: Die Cashflow-Methoden brauchen einen Umsatzplan."), field: "revenue_amount_y5" };
+      }
+      const gap = amounts.findIndex((r, i) => i > first && !(r > 0));
+      if (gap >= 0) {
+        return { error: tr("Once sales have started, every later year needs revenue above zero.",
+                           "Nach dem Umsatzbeginn braucht jedes weitere Jahr einen Umsatz über null."), field: REVENUE_AMOUNT_IDS[gap] };
+      }
+    } else if (!(Number(val("revenue_year1")) > 0)) {
+      return { error: tr("Year-1 revenue must be above zero: the cash-flow methods need a revenue plan to build on. If your sales start later, plan revenue with an amount for each year.",
+                         "Der Umsatz in Jahr 1 muss über null liegen: Die Cashflow-Methoden brauchen einen Umsatzplan. Wenn Ihr Umsatz später beginnt, planen Sie ihn mit einem Betrag für jedes Jahr."), field: "revenue_year1" };
     }
   }
   if (step === 5) {
@@ -1844,6 +1901,26 @@ function val(id) {
   const el = document.getElementById(id);
   return el ? el.value : "";
 }
+// Revenue as Year 1 + growth rates, or (revenue_mode "amounts") one amount per year, where the years
+// before sales start can be 0.
+const REVENUE_AMOUNT_IDS = ["revenue_amount_y1", "revenue_amount_y2", "revenue_amount_y3", "revenue_amount_y4", "revenue_amount_y5"];
+function revenuePlan() {
+  if (val("revenue_mode") === "amounts") {
+    const amounts = REVENUE_AMOUNT_IDS.map((id) => Number(val(id) || 0));
+    return { revenue_year1: amounts[0], revenue_by_year: amounts };
+  }
+  return { revenue_year1: Number(val("revenue_year1") || 0) };
+}
+function hasRevenuePlan() {
+  const plan = revenuePlan();
+  return plan.revenue_by_year ? plan.revenue_by_year.some((r) => r > 0) : plan.revenue_year1 > 0;
+}
+function showRevenueMode() {
+  const amounts = val("revenue_mode") === "amounts";
+  document.getElementById("revenue-growth-inputs").hidden = amounts;
+  document.getElementById("revenue-amount-inputs").hidden = !amounts;
+}
+
 function numOrNull(id) {
   const v = val(id);
   return v === "" ? null : Number(v);
@@ -1920,7 +1997,7 @@ function buildPayload() {
       annual_recurring_revenue: numOrNull("annual_recurring_revenue"),
     },
     financial_assumptions: {
-      revenue_year1: Number(val("revenue_year1") || 0),
+      ...revenuePlan(),
       revenue_growth_rates: ["growth_y2", "growth_y3", "growth_y4", "growth_y5"]
         .map((id) => Number(val(id) || 0) / 100),
       capex_by_year: ["capex_y1", "capex_y2", "capex_y3", "capex_y4", "capex_y5"]
@@ -2012,8 +2089,13 @@ function methodExplanation(key, o) {
     if (vc.not_meaningful_reason) return vc.not_meaningful_reason;
     if (vc.no_value_reason) return vc.no_value_reason + countsAsZero();
     const years = vc.time_to_exit;
-    return tr(`${vc.exit_year_label} EBITDA ${money(vc.exit_year_ebitda)} × ${multipleText(vc.ev_ebitda_multiple)} = exit value ${money(vc.exit_value)}, discounted ${years} year${years === 1 ? "" : "s"} at an investor's ${pct(vc.target_return)} target return = ${money(vc.post_money_valuation)} post-money, minus the ${money(vc.investment_amount)} raised.`,
-              `EBITDA ${vc.exit_year_label} ${money(vc.exit_year_ebitda)} × ${multipleText(vc.ev_ebitda_multiple)} = Exit-Wert ${money(vc.exit_value)}, ${years} Jahr${years === 1 ? "" : "e"} abgezinst mit der Zielrendite eines Investors von ${pct(vc.target_return)} = ${money(vc.post_money_valuation)} Post-Money, abzüglich der eingeworbenen ${money(vc.investment_amount)}.`);
+    const exitText = vc.exit_basis === "revenue"
+      ? tr(`${vc.exit_year_label} revenue ${money(vc.exit_year_revenue)} × ${multipleText(vc.ev_sales_multiple)} EV/Sales`,
+           `Umsatz ${vc.exit_year_label} ${money(vc.exit_year_revenue)} × ${multipleText(vc.ev_sales_multiple)} EV/Umsatz`)
+      : tr(`${vc.exit_year_label} EBITDA ${money(vc.exit_year_ebitda)} × ${multipleText(vc.ev_ebitda_multiple)}`,
+           `EBITDA ${vc.exit_year_label} ${money(vc.exit_year_ebitda)} × ${multipleText(vc.ev_ebitda_multiple)}`);
+    return tr(`${exitText} = exit value ${money(vc.exit_value)}, discounted ${years} year${years === 1 ? "" : "s"} at an investor's ${pct(vc.target_return)} target return = ${money(vc.post_money_valuation)} post-money, minus the ${money(vc.investment_amount)} raised.`,
+              `${exitText} = Exit-Wert ${money(vc.exit_value)}, ${years} Jahr${years === 1 ? "" : "e"} abgezinst mit der Zielrendite eines Investors von ${pct(vc.target_return)} = ${money(vc.post_money_valuation)} Post-Money, abzüglich der eingeworbenen ${money(vc.investment_amount)}.`);
   }
   if (key === "comparables") {
     const c = o.comparables;
@@ -2049,15 +2131,15 @@ function scenarioBlock(scenarios) {
   const title = `<h2 class="ledger-title" style="margin-top:32px">${tr("Scenario &amp; sensitivity", "Szenarien &amp; Sensitivität")}</h2>`;
   if (Math.max(...blends) - Math.min(...blends) < 1) {
     return `${title}
-    <p class="ledger-subtitle">${tr(`The value stays at ${money(blends[0])} whatever Year-1 revenue turns out to be: only methods that don't use projected revenue give a value for this company, so there are no revenue scenarios to compare.`,
-      `Der Wert bleibt bei ${money(blends[0])}, egal wie hoch der Umsatz in Jahr 1 ausfällt: Nur Methoden, die den geplanten Umsatz nicht verwenden, ergeben einen Wert für dieses Unternehmen; es gibt also keine Umsatzszenarien zu vergleichen.`)}</p>`;
+    <p class="ledger-subtitle">${tr(`The value stays at ${money(blends[0])} whatever revenue turns out to be: only methods that don't use projected revenue give a value for this company, so there are no revenue scenarios to compare.`,
+      `Der Wert bleibt bei ${money(blends[0])}, egal wie hoch der Umsatz ausfällt: Nur Methoden, die den geplanten Umsatz nicht verwenden, ergeben einen Wert für dieses Unternehmen; es gibt also keine Umsatzszenarien zu vergleichen.`)}</p>`;
   }
   const labels = Object.keys(scenarios).map((l) => Number(l.replace("%", "")));
   const falls = blends.some((b, i) => i > 0 && b < blends[i - 1] - 1);
   return `${title}
-    <p class="ledger-subtitle">${tr("How the valuation shifts if Year-1 revenue comes in above or below plan. Scorecard and Comparables don't move: they use your answers and the last 12 months' figures, not projected revenue. The weights stay as in your result above; a method that gives no positive value in a scenario counts as €0.",
-      "Wie sich die Bewertung verschiebt, wenn der Umsatz in Jahr 1 über oder unter dem Plan liegt. Scorecard und Vergleichsmethode bewegen sich nicht: Sie verwenden Ihre Antworten und die Zahlen der letzten 12 Monate, nicht den geplanten Umsatz. Die Gewichte bleiben wie oben; eine Methode, die in einem Szenario keinen positiven Wert ergibt, zählt mit 0 €.")}${falls ? " " + tr("Here a higher Year-1 revenue gives a lower value: in your plan, extra revenue costs more cash than it brings in (for example losses at the planned margin, or the working capital it ties up), so the cash-flow based values go down.",
-      "Hier ergibt ein höherer Umsatz in Jahr 1 einen niedrigeren Wert: In Ihrem Plan kostet zusätzlicher Umsatz mehr Geld, als er einbringt (zum Beispiel Verluste bei der geplanten Marge oder gebundenes Working Capital); die Cashflow-basierten Werte sinken deshalb.") : ""}</p>
+    <p class="ledger-subtitle">${tr("How the valuation shifts if revenue comes in above or below plan (every year of the plan moves by the same percentage). Scorecard and Comparables don't move: they use your answers and the last 12 months' figures, not projected revenue. The weights stay as in your result above; a method that gives no positive value in a scenario counts as €0.",
+      "Wie sich die Bewertung verschiebt, wenn der Umsatz über oder unter dem Plan liegt (jedes Planjahr ändert sich um denselben Prozentsatz). Scorecard und Vergleichsmethode bewegen sich nicht: Sie verwenden Ihre Antworten und die Zahlen der letzten 12 Monate, nicht den geplanten Umsatz. Die Gewichte bleiben wie oben; eine Methode, die in einem Szenario keinen positiven Wert ergibt, zählt mit 0 €.")}${falls ? " " + tr("Here higher revenue gives a lower value: in your plan, extra revenue costs more cash than it brings in (for example losses at the planned margin, or the working capital it ties up), so the cash-flow based values go down.",
+      "Hier ergibt ein höherer Umsatz einen niedrigeren Wert: In Ihrem Plan kostet zusätzlicher Umsatz mehr Geld, als er einbringt (zum Beispiel Verluste bei der geplanten Marge oder gebundenes Working Capital); die Cashflow-basierten Werte sinken deshalb.") : ""}</p>
     <div class="scenario-slider-row">
       <label for="scenario-slider">${tr("Revenue scenario", "Umsatzszenario")}</label>
       <input type="range" id="scenario-slider" min="${Math.min(...labels)}" max="${Math.max(...labels)}" step="10" value="100">
@@ -2248,8 +2330,8 @@ function readResultBox(result, scenarios) {
              `Der gewichtete Wert kombiniert sie nach der Phase Ihres Unternehmens (hier: ${escapeHtml(weights)}); eine Methode, die nicht zu Ihrem Unternehmen passt, entfällt.`)
         : tr(`The blended value normally weights them by your company's stage, but with these inputs only ${METHOD_IN_TEXT[used[0][0]][0]} gives a meaningful value, so it carries the whole result; the checks below say why the others were left out.`,
              `Der gewichtete Wert kombiniert sie normalerweise nach der Phase Ihres Unternehmens, aber mit diesen Angaben ergibt nur ${METHOD_IN_TEXT[used[0][0]][1]} einen aussagekräftigen Wert und trägt das ganze Ergebnis; die Hinweise unten sagen, warum die anderen entfallen.`)}
-      ${hasScenarios ? tr("The revenue scenario slider further down shows how the value moves if Year-1 revenue comes in lower or higher than planned. ",
-                          "Der Regler für Umsatzszenarien weiter unten zeigt, wie sich der Wert bewegt, wenn der Umsatz in Jahr 1 niedriger oder höher ausfällt als geplant. ") : ""}${tr("The round-logic table shows what a typical funding round at your stage would make of your raise. Treat the result as a well-reasoned starting point for a conversation with investors, not as a fixed price.",
+      ${hasScenarios ? tr("The revenue scenario slider further down shows how the value moves if revenue comes in lower or higher than planned. ",
+                          "Der Regler für Umsatzszenarien weiter unten zeigt, wie sich der Wert bewegt, wenn der Umsatz niedriger oder höher ausfällt als geplant. ") : ""}${tr("The round-logic table shows what a typical funding round at your stage would make of your raise. Treat the result as a well-reasoned starting point for a conversation with investors, not as a fixed price.",
           "Die Tabelle zur Rundenlogik zeigt, was eine typische Finanzierungsrunde Ihrer Phase aus Ihrem Kapitalbedarf machen würde. Verstehen Sie das Ergebnis als gut begründeten Ausgangspunkt für Gespräche mit Investoren, nicht als festen Preis.")}</p>
     </div>`;
 }
@@ -2309,8 +2391,8 @@ function rangeLines(result, scenarios) {
   }
   const lo = scenarios && scenarios["80%"], hi = scenarios && scenarios["120%"];
   if (lo && hi && Math.abs(hi.blended_pre_money_valuation - lo.blended_pre_money_valuation) >= 1) {
-    lines.push(tr(`If Year-1 revenue is 20% lower or higher: ${money(lo.blended_pre_money_valuation)} to ${money(hi.blended_pre_money_valuation)}`,
-                  `Wenn der Umsatz in Jahr 1 20 % niedriger oder höher ist: ${money(lo.blended_pre_money_valuation)} bis ${money(hi.blended_pre_money_valuation)}`));
+    lines.push(tr(`If planned revenue is 20% lower or higher: ${money(lo.blended_pre_money_valuation)} to ${money(hi.blended_pre_money_valuation)}`,
+                  `Wenn der geplante Umsatz 20 % niedriger oder höher ist: ${money(lo.blended_pre_money_valuation)} bis ${money(hi.blended_pre_money_valuation)}`));
   }
   const rl = result.round_logic;
   if (rl) {
@@ -2461,7 +2543,12 @@ document.getElementById("btn-remove-logo").addEventListener("click", () => clear
 // ============================================================
 // Init
 // ============================================================
-["revenue_year1", "growth_y2", "growth_y3", "growth_y4", "growth_y5", "capex_y1", "capex_y2",
+document.getElementById("revenue_mode").addEventListener("change", () => {
+  showRevenueMode();
+  if (currentStep === 4) scheduleProjectionPreview();
+});
+showRevenueMode(); // a browser may restore the choice on reload
+["revenue_year1", "growth_y2", "growth_y3", "growth_y4", "growth_y5", ...REVENUE_AMOUNT_IDS, "capex_y1", "capex_y2",
   "capex_y3", "capex_y4", "capex_y5", "target_ebitda_margin_override"].forEach((id) => {
   document.getElementById(id).addEventListener("input", () => {
     if (currentStep === 4) scheduleProjectionPreview();
@@ -2601,6 +2688,8 @@ function fillSample(c) {
   setVal("cash_available", between(40, 250, 10) * 1000);
   setVal("current_ppe_value", between(10, 80, 5) * 1000);
 
+  setVal("revenue_mode", "growth");
+  showRevenueMode();
   setVal("revenue_year1", c.year1);
   ["growth_y2", "growth_y3", "growth_y4", "growth_y5"].forEach((id, i) => setVal(id, c.growth[i]));
   const capex = [c.capexY1, ...[2, 3, 4, 5].map(() => between(20, 80, 5) * 1000)];
@@ -2660,6 +2749,7 @@ async function resetForm() {
   setVal("country", DEFAULT_COUNTRY);
   setVal("business_territory_region", DEFAULT_REGION);
   setVal("valuation_date", todayIso());
+  showRevenueMode();
   regionTouched = false;
   lastResult = null;
   document.getElementById("results-panel").innerHTML = "";

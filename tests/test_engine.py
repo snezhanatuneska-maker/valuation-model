@@ -37,9 +37,9 @@ def test_reference_case_regression_values():
     """Pinned values (README "Verified numbers"); update deliberately if the method changes."""
     r = run(REFERENCE_CASE)
     got = {k: round(v.pre_money_value) for k, v in r.method_values.items()}
-    assert got == {"scorecard": 2_202_240, "venture_capital": 1_242_335, "comparables": 1_258_079, "dcf": 828_766}
-    assert round(r.blended_pre_money_valuation) == 1_103_096
-    assert round(r.post_money_valuation) == 1_403_096
+    assert got == {"scorecard": 2_202_240, "venture_capital": 1_813_686, "comparables": 1_258_079, "dcf": 828_766}
+    assert round(r.blended_pre_money_valuation) == 1_274_502
+    assert round(r.post_money_valuation) == 1_574_502
 
 
 def test_scorecard_rows_add_up_to_total():
@@ -238,9 +238,9 @@ def test_german_example_regression_values():
     """Pinned values for the German example (README); update deliberately if data or method change."""
     r = run(GERMAN_CASE)
     got = {k: round(v.pre_money_value) for k, v in r.method_values.items()}
-    assert got == {"scorecard": 2_696_070, "venture_capital": 971_446, "comparables": 1_134_461, "dcf": 1_327_405}
-    assert round(r.blended_pre_money_valuation) == 1_153_087
-    assert round(r.post_money_valuation) == 1_453_087
+    assert got == {"scorecard": 2_696_070, "venture_capital": 1_602_642, "comparables": 1_134_461, "dcf": 1_327_405}
+    assert round(r.blended_pre_money_valuation) == 1_342_446
+    assert round(r.post_money_valuation) == 1_642_446
 
 
 def test_germany_has_no_country_risk_premium():
@@ -476,7 +476,8 @@ def test_banks_get_one_message_not_four():
 
 def test_no_method_message_lists_reasons_and_advice():
     case = german(company_profile__company_stage="Startup stage", operating_performance__current_revenue_last_12_months=0,
-                  operating_performance__current_ebitda=-200_000, financial_assumptions__target_ebitda_margin_override=-0.5)
+                  operating_performance__current_ebitda=-200_000, financial_assumptions__target_ebitda_margin_override=-0.5,
+                  funding__capital_needed=5_000_000)  # more than even the revenue-based exit supports
     with pytest.raises(ve.ValuationError) as e:
         run(case)
     text = str(e.value)

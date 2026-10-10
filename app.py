@@ -14,6 +14,7 @@ back on (there are no user accounts yet: each browser has an anonymous
 owner ID, and saved valuations are listed and deleted per owner ID).
 
 Run with:  uvicorn app:app --reload
+Wizard at: http://localhost:8000  (index.html, served by this app)
 Docs at:   http://localhost:8000/docs
 """
 from __future__ import annotations
@@ -33,7 +34,7 @@ from urllib.parse import parse_qs
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 import valuation_engine as ve
@@ -515,13 +516,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Restricted to the deployed frontend + localhost (for local dev/testing).
+# Restricted to the deployed frontend + localhost (for local dev/testing). "null" is the origin browsers send
+# for a page opened straight from disk (index.html double-clicked); the API stores nothing and needs no login,
+# so accepting it opens nothing that a plain HTTP call couldn't already reach.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://snezhanatuneska-maker.github.io",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
+        "null",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
@@ -555,6 +559,7 @@ _FIELD_NAMES_DE = {
     "current_revenue_last_12_months": "Umsatz der letzten 12 Monate", "current_ebitda": "EBITDA der letzten 12 Monate",
     "cash_available": "liquide Mittel", "current_ppe_value": "Sachanlagen",
     "annual_recurring_revenue": "jährlich wiederkehrender Umsatz (ARR)", "revenue_year1": "Umsatz in Jahr 1",
+    "revenue_by_year": "Umsatz pro Jahr",
     "revenue_growth_rates": "Wachstumsraten", "capex_by_year": "Investitionen",
     "existing_debt_balance": "bestehende Schulden", "target_ebitda_margin_override": "Ziel-EBITDA-Marge",
     "ownership_pct": "Beteiligung", "name": "Name", "capital_needed": "Kapitalbedarf",
@@ -576,6 +581,13 @@ _MESSAGES_DE = [
     (r"^revenue_growth_rates must have exactly 4 values.*$", "es müssen genau 4 Werte sein (für J2 bis J5)"),
     (r"^each growth rate must be above -100% and at most 1000%$",
      "jede Wachstumsrate muss über -100 % und höchstens bei 1000 % liegen"),
+    (r"^revenue_by_year must have exactly 5 values.*$", "es müssen genau 5 Werte sein (für J1 bis J5)"),
+    (r"^revenue can't be negative$", "der Umsatz kann nicht negativ sein"),
+    (r"^revenue can be at most (.+)$", r"der Umsatz darf höchstens \1 betragen"),
+    (r"^enter revenue for at least one of the five years.*$",
+     "geben Sie für mindestens eines der fünf Jahre einen Umsatz ein; die Cashflow-Methoden brauchen einen Umsatzplan"),
+    (r"^once sales have started, every later year needs revenue above 0$",
+     "nach dem Umsatzbeginn braucht jedes weitere Jahr einen Umsatz über 0"),
     (r"^capex_by_year must have exactly 5 values.*$", "es müssen genau 5 Werte sein (für J1 bis J5)"),
     (r"^capex can't be negative$", "Investitionen können nicht negativ sein"),
     (r"^capex can be at most (.+)$", r"Investitionen dürfen höchstens \1 betragen"),
@@ -622,6 +634,12 @@ async def _validation_handler(request: Request, exc: RequestValidationError):
 
 app.include_router(valuations_router)
 app.include_router(reference_router)
+
+
+@app.get("/", include_in_schema=False)
+def wizard() -> FileResponse:
+    """The web wizard, so a local run needs only `uvicorn app:app` and http://localhost:8000."""
+    return FileResponse(Path(__file__).resolve().parent / "index.html", media_type="text/html")
 
 
 @app.get("/health", tags=["health"])

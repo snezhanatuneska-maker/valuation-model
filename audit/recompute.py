@@ -184,18 +184,24 @@ def recompute(case):
     target = fa.get("target_ebitda_margin_override")
     target = bench(ind, "ebitda_margin", reg)[0] if target is None else target
     ltm_rev = op["current_revenue_last_12_months"]
-    # without revenue yet, today's EBITDA (the operating loss) is measured against Year-1 revenue
-    start = max(-1.0, min(op["current_ebitda"] / (ltm_rev if ltm_rev > 0 else fa["revenue_year1"]), 0.9))
+    # revenue: one amount per year if given, else Year 1 grown at the yearly rates
+    if fa.get("revenue_by_year") is not None:
+        rev = list(fa["revenue_by_year"])
+    else:
+        rev = [fa["revenue_year1"]]
+        for gr in fa["revenue_growth_rates"]:
+            rev.append(rev[-1] * (1 + gr))
+    k = next(i for i, r in enumerate(rev) if r > 0)  # first year with sales
+    # without revenue yet, today's EBITDA (the operating loss) is measured against the first sales year
+    start = max(-1.0, min(op["current_ebitda"] / (ltm_rev if ltm_rev > 0 else rev[k]), 0.9))
     da_pct = bench(ind, "da_pct_revenue", reg)[0]
     wc_pct = (bench(ind, "acc_receivable_pct_revenue", reg)[0] + bench(ind, "inventory_pct_revenue", reg)[0]
               - bench(ind, "acc_payable_pct_revenue", reg)[0])
-    rev = [fa["revenue_year1"]]
-    for gr in fa["revenue_growth_rates"]:
-        rev.append(rev[-1] * (1 + gr))
     g = mkt["perpetual_growth_rate"]
     prev_wc, nol, fcf, ebitdas = ltm_rev * wc_pct, 0.0, [], []
     for i, r in enumerate(rev):
-        ebitda = r * (start + (target - start) * (i + 1) / 5)
+        # before the first sales, today's costs carry on; then the margin glides over the remaining years
+        ebitda = min(op["current_ebitda"], 0.0) if i < k else r * (start + (target - start) * (i - k + 1) / (5 - k))
         ebit = ebitda - r * da_pct
         if ebit <= 0:
             taxable, nol = 0.0, nol - ebit
@@ -241,13 +247,15 @@ def recompute(case):
     out["scorecard_amounts"] = {k: benchmark * w * sum(s(q) for q in qs) / len(qs) for k, (w, qs) in groups.items()}
     out["scorecard"] = sum(out["scorecard_amounts"].values())
 
-    # --- Venture Capital: exit / (1 + target return)^T - investment ---
+    # --- Venture Capital: exit / (1 + target return)^T - investment, where the exit value is the higher of
+    # exit-year EBITDA x EV/EBITDA and exit-year revenue x EV/Sales ---
     mult = bench(ind, "ev_ebitda_multiple", reg)[0]
     T = cp["planned_time_to_exit_years"]
-    exit_equity = ebitdas[T - 1] * mult - debt  # today's debt assumed outstanding at exit
+    exit_value = max(max(ebitdas[T - 1], 0.0) * mult, rev[T - 1] * bench(ind, "ev_sales_multiple", reg)[0])
+    exit_equity = exit_value - debt  # today's debt assumed outstanding at exit
     I = case["funding"]["capital_needed"]
     post = (exit_equity / (1 + stage["vc_target_return"]) ** T
-            if ebitdas[T - 1] > 0 and exit_equity > 0 and ind not in FINANCIALS else None)
+            if exit_value > 0 and exit_equity > 0 and ind not in FINANCIALS else None)
     out["vc_post"] = post
     # applies to every non-financial company; no value left before the round counts as 0
     out["vc"] = None if ind in FINANCIALS else (post - I if post is not None and post > I else 0.0)
@@ -382,6 +390,13 @@ EDGE_CASES = {
     "Raise larger than VC post-money (5M)": variant(funding__capital_needed=5_000_000),
     "Exit in 5 years": variant(company_profile__planned_time_to_exit_years=5),
     "Revenue collapses (-90% in Y2)": variant(financial_assumptions__revenue_growth_rates=[-0.9, 0.1, 0.1, 0.1]),
+    "Revenue entered per year (same plan)": variant(
+        financial_assumptions__revenue_by_year=[1_000_000 * 1.1 ** i for i in range(5)]),
+    "Pre-revenue, sales start in Year 4 (Development stage)": variant(
+        company_profile__company_stage="Development stage",
+        operating_performance__current_revenue_last_12_months=0, operating_performance__current_ebitda=-400_000,
+        operating_performance__current_ppe_value=0,
+        financial_assumptions__revenue_by_year=[0, 0, 0, 1_500_000, 4_000_000]),
 }
 
 
