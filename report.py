@@ -11,7 +11,7 @@ Sections (in order):
   3. Projected financials & valuation inputs (projection table and charts,
      benchmarks actually used with their sources, capex, use of funds,
      ownership)
-  4. Valuation summary (all four methods, blended value, pre/post-money)
+  4. Valuation summary (every method, blended value, pre/post-money)
   5. Checks on your inputs (warnings raised by the engine)
   6. Scenario & sensitivity
   7-10. One page per method, each starting with a plain-language
@@ -501,9 +501,11 @@ _METHOD_LABELS = {
     "venture_capital": ("Venture Capital", "Venture Capital"),
     "comparables": ("Comparables (revenue or EBITDA multiple)", "Vergleichsmethode (Umsatz- oder EBITDA-Multiplikator)"),
     "dcf": ("Discounted cash flow (DCF)", "Discounted Cashflow (DCF)"),
+    "market": ("Market (comparable rounds)", "Marktmethode (vergleichbare Runden)"),
 }
 _METHOD_CHART_LABELS = {"scorecard": ("Scorecard", "Scorecard"), "venture_capital": ("VC", "VC"),
-                        "comparables": ("Comparables", "Vergleich"), "dcf": ("DCF", "DCF")}
+                        "comparables": ("Comparables", "Vergleich"), "dcf": ("DCF", "DCF"),
+                        "market": ("Market", "Markt")}
 _SOURCE_NOTES = {
     "region": ("", ""),
     "industry_global": ("global figure*", "weltweiter Wert*"),
@@ -677,7 +679,8 @@ def _not_meaningful(reason: Optional[str]) -> list:
 
 
 _METHOD_SHORT = {"scorecard": ("Scorecard", "Scorecard"), "venture_capital": ("Venture Capital", "Venture Capital"),
-                 "comparables": ("Comparables", "Vergleichsmethode"), "dcf": ("DCF", "DCF")}
+                 "comparables": ("Comparables", "Vergleichsmethode"), "dcf": ("DCF", "DCF"),
+                 "market": ("Market", "Marktmethode")}
 
 
 def method_short(key: str) -> str:
@@ -712,7 +715,7 @@ def _at_a_glance(output: dict, scenarios: dict) -> list:
                      T("lowest and highest method", "niedrigste und höchste Methode")))
     low, high = (scenarios or {}).get("80%"), (scenarios or {}).get("120%")
     if low and high and abs(high["blended_pre_money_valuation"] - low["blended_pre_money_valuation"]) >= 1:
-        rows.append((T("If Year-1 revenue is 20% lower or higher", "Wenn der Umsatz in Jahr 1 20 % niedriger oder höher ist"),
+        rows.append((T("If planned revenue is 20% lower or higher", "Wenn der geplante Umsatz 20 % niedriger oder höher ist"),
                      T(f"{money(low['blended_pre_money_valuation'])} to {money(high['blended_pre_money_valuation'])}",
                        f"{money(low['blended_pre_money_valuation'])} bis {money(high['blended_pre_money_valuation'])}"),
                      T("blended pre-money", "gewichtete Pre-Money-Bewertung")))
@@ -918,10 +921,13 @@ def _projections_page(cp: dict, fin: dict, funding: dict, ownership: list, outpu
                         f"Die EBITDA-Marge beginnt bei Ihrer Marge der letzten 12 Monate ({start_pct}) und erreicht "
                         f"in gleichen Schritten bis Jahr 5 {target_name} ({target_pct}).")
     else:
-        margin_text = T(f"The EBITDA margin starts from today's EBITDA ÷ Year-1 revenue ({start_pct}) and moves in "
-                        f"equal steps to {target_name} ({target_pct}) by Year 5.",
-                        f"Die EBITDA-Marge beginnt bei heutigem EBITDA ÷ Umsatz in Jahr 1 ({start_pct}) und erreicht "
-                        f"in gleichen Schritten bis Jahr 5 {target_name} ({target_pct}).")
+        first = next((i for i, y in enumerate(years) if (y.get("revenue") or 0) > 0), 0) + 1
+        before = "" if first == 1 else T(f" Until sales start in Year {first}, EBITDA stays at today's level.",
+                                           f" Bis zum Umsatzbeginn in Jahr {first} bleibt das EBITDA auf dem heutigen Stand.")
+        margin_text = T(f"The EBITDA margin starts from today's EBITDA ÷ Year-{first} revenue ({start_pct}) and moves "
+                        f"in equal steps to {target_name} ({target_pct}) by Year 5.",
+                        f"Die EBITDA-Marge beginnt bei heutigem EBITDA ÷ Umsatz in Jahr {first} ({start_pct}) und "
+                        f"erreicht in gleichen Schritten bis Jahr 5 {target_name} ({target_pct}).") + before
     vdate = format_date(proj.get("valuation_date"))
     story.append(P(T(f"Year 1 is the 12 months after the valuation date ({vdate}). {margin_text}",
                      f"Jahr 1 sind die 12 Monate nach dem Bewertungsdatum ({vdate}). {margin_text}"),
@@ -1122,6 +1128,8 @@ def _valuation_summary_page(output: dict) -> list:
         elif key == "scorecard" and mv.get("status") == "not_used":
             story.append(P(T(f"Scorecard: not used at this stage. {scorecard_not_used()}",
                              f"Scorecard: in dieser Phase nicht verwendet. {scorecard_not_used()}"), STYLES["sub"]))
+        elif key == "market" and mv.get("status") == "ok":
+            story.append(P(market_explanation(g(output, "market", {}) or {}), STYLES["sub"]))
     story.append(Spacer(1, 8))
     story.append(bar_chart(cats, vals, color=NAVY_LINE, width=CONTENT_W, height=100))
     story.append(Spacer(1, 8))
@@ -1150,6 +1158,21 @@ def _valuation_summary_page(output: dict) -> list:
     return story
 
 
+def market_explanation(m: dict) -> str:
+    """One line on how the market method's value was reached."""
+    debt = m.get("debt") or 0
+    minus_debt = (T(f", minus debt of {money(debt)}", f", abzüglich Schulden von {money(debt)}") if debt else "")
+    return T(f"{method_label('market')}: a typical {m.get('round_name')} round in {m.get('region')} is priced at "
+             f"{money(m.get('benchmark_pre_money_valuation'))} pre-money ({m.get('benchmark_basis')}); your "
+             f"questionnaire answers score {pct(m.get('total_factor'))} of that company{minus_debt}: "
+             f"{money(m.get('pre_money_valuation'))}.",
+             f"{method_label('market')}: Eine typische Finanzierungsrunde dieser Phase ({m.get('round_name')}) in "
+             f"{m.get('region')} wird mit "
+             f"{money(m.get('benchmark_pre_money_valuation'))} Pre-Money bewertet ({m.get('benchmark_basis')}); nach "
+             f"Ihren Antworten im Fragebogen erreichen Sie {pct(m.get('total_factor'))} davon{minus_debt}: "
+             f"{money(m.get('pre_money_valuation'))}.")
+
+
 def _warnings_page(output: dict) -> list:
     warnings = g(output, "warnings", []) or []
     has_checks = any(w.get("severity") == "warning" for w in warnings)
@@ -1175,10 +1198,10 @@ def _warnings_page(output: dict) -> list:
 
 
 def scenario_falls_note() -> str:
-    return T("Here a higher Year-1 revenue gives a lower value: in your plan, extra revenue costs more cash than it "
+    return T("Here higher revenue gives a lower value: in your plan, extra revenue costs more cash than it "
              "brings in (for example losses at the planned margin, or the working capital it ties up), so the "
              "cash-flow based values go down.",
-             "Hier ergibt ein höherer Umsatz in Jahr 1 einen niedrigeren Wert: In Ihrem Plan kostet zusätzlicher Umsatz "
+             "Hier ergibt ein höherer Umsatz einen niedrigeren Wert: In Ihrem Plan kostet zusätzlicher Umsatz "
              "mehr Geld, als er einbringt (zum Beispiel Verluste bei der geplanten Marge oder gebundenes Working "
              "Capital); die Cashflow-basierten Werte sinken deshalb.")
 
@@ -1186,11 +1209,11 @@ def scenario_falls_note() -> str:
 def _scenario_sensitivity_page(scenarios: dict) -> list:
     story = [P(T("Scenario & sensitivity", "Szenarien & Sensitivität"), STYLES["h2"])]
     story.append(P(T(
-        "How the valuation shifts if Year-1 revenue comes in above or below plan (later years scale with "
-        "it). Scorecard and Comparables don't move: they use your questionnaire answers and the last 12 months' "
+        "How the valuation shifts if revenue comes in above or below plan (every year of the plan moves by the "
+        "same percentage). Scorecard and Comparables don't move: they use your questionnaire answers and the last 12 months' "
         "figures, not projected revenue.",
-        "Wie sich die Bewertung verschiebt, wenn der Umsatz in Jahr 1 über oder unter dem Plan liegt (die späteren "
-        "Jahre skalieren mit). Scorecard und Vergleichsmethode bewegen sich nicht: Sie verwenden Ihre Antworten im "
+        "Wie sich die Bewertung verschiebt, wenn der Umsatz über oder unter dem Plan liegt (jedes Planjahr ändert sich "
+        "um denselben Prozentsatz). Scorecard und Vergleichsmethode bewegen sich nicht: Sie verwenden Ihre Antworten im "
         "Fragebogen und die Zahlen der letzten 12 Monate, nicht den geplanten Umsatz."), STYLES["sub"],
     ))
     if not scenarios:
@@ -1204,10 +1227,10 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
     if max(values) - min(values) < 1:
         story.append(P(T(
             f"The value is the same in every scenario ({money(values[0])}): only methods that don't use projected "
-            "revenue give a value for this company, so a higher or lower Year-1 revenue doesn't change it.",
+            "revenue give a value for this company, so higher or lower revenue doesn't change it.",
             f"Der Wert ist in jedem Szenario gleich ({money(values[0])}): Nur Methoden, die den geplanten Umsatz nicht "
-            "verwenden, ergeben einen Wert für dieses Unternehmen; ein höherer oder niedrigerer Umsatz in Jahr 1 ändert "
-            "ihn deshalb nicht."), STYLES["td_label"]))
+            "verwenden, ergeben einen Wert für dieses Unternehmen; ein höherer oder niedrigerer Umsatz ändert ihn "
+            "deshalb nicht."), STYLES["td_label"]))
         return story
 
     def val(label, key):
@@ -1216,15 +1239,16 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
             return money_compact(mv.get("pre_money_value"))
         return T("not used", "nicht verw.") if mv.get("status") == "not_used" else "n/m"
 
-    rows = [[method_chart_label(k)] + [val(l, k) for l in labels]
-            for k in ("scorecard", "venture_capital", "comparables", "dcf")]
+    keys = [k for k in ("scorecard", "venture_capital", "comparables", "dcf", "market")
+            if k in scenarios[labels[0]].get("method_values", {})]
+    rows = [[method_chart_label(k)] + [val(l, k) for l in labels] for k in keys]
     total_row = [T("Blended pre-money", "Gewichtete Pre-Money")] + [
         money_compact(scenarios[l].get("blended_pre_money_valuation")) for l in labels]
     col_w = [CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n
     story.append(data_table([T("Method", "Methode")] + [scenario_label(l) for l in labels], rows,
                             total_row=total_row, col_widths=col_w))
     any_nm = any(scenarios[l].get("method_values", {}).get(k, {}).get("status") == "not_meaningful"
-                 for l in labels for k in ("scorecard", "venture_capital", "comparables", "dcf"))
+                 for l in labels for k in keys)
     story.append(P(T("The weights stay as in the main result; a method that gives no positive value in a scenario "
                      "counts as €0.", "Die Gewichte bleiben wie im Hauptergebnis; eine Methode, die in einem Szenario "
                      "keinen positiven Wert ergibt, zählt mit 0 €.")
@@ -1326,18 +1350,32 @@ def _vc_page(vc: dict, output: Optional[dict] = None) -> list:
     if g(vc, "post_money_valuation") is not None:
         y, ebitda, mult, exit_v = (g(vc, "exit_year_label"), money(g(vc, "exit_year_ebitda")),
                                    multiple(g(vc, "ev_ebitda_multiple")), money(g(vc, "exit_value")))
+        on_revenue = g(vc, "exit_basis") == "revenue"
+        revenue, sales_mult = money(g(vc, "exit_year_revenue")), multiple(g(vc, "ev_sales_multiple"))
+        than_ebitda = (T(f"more than EBITDA {ebitda} × {mult}", f"mehr als EBITDA {ebitda} × {mult}")
+                       if (g(vc, "exit_year_ebitda") or 0) > 0 else
+                       T("EBITDA isn't positive yet in that year", "das EBITDA ist in diesem Jahr noch nicht positiv"))
+        basis_text = (T(f"Projected revenue in the exit year ({y}) of {revenue} × the industry EV/Sales multiple of "
+                        f"{sales_mult} gives an exit value of {exit_v} ({than_ebitda}, as for a company still growing "
+                        "into its margin). ",
+                        f"Der geplante Umsatz im Exit-Jahr ({y}) von {revenue} × der EV/Umsatz-Multiplikator der Branche "
+                        f"von {sales_mult} ergibt einen Exit-Wert von {exit_v} ({than_ebitda}, wie bei einem "
+                        "Unternehmen, das noch in seine Marge hineinwächst). ")
+                      if on_revenue else
+                      T(f"Projected EBITDA in the exit year ({y}) of {ebitda} × the industry EV/EBITDA multiple of {mult} "
+                        f"gives an exit value of {exit_v}. ",
+                        f"Das geplante EBITDA im Exit-Jahr ({y}) von {ebitda} × der EV/EBITDA-Multiplikator der Branche "
+                        f"von {mult} ergibt einen Exit-Wert von {exit_v}. "))
         post, invest, pre = (money(g(vc, "post_money_valuation")), money(g(vc, "investment_amount")),
                              money(g(vc, "pre_money_valuation")))
         no_value = g(vc, "no_value_reason")
-        story += _how(T(
-            f"Projected EBITDA in the exit year ({y}) of {ebitda} × the industry EV/EBITDA multiple of {mult} gives an "
-            f"exit value of {exit_v}. An investor who needs a {pct(r)} annual return values that today at {exit_v} ÷ "
+        story += _how(basis_text + T(
+            f"An investor who needs a {pct(r)} annual return values that today at {exit_v} ÷ "
             f"(1 + {pct(r)})^{T_} = {post} "
             + (f"after the investment. Minus the {invest} being raised = {pre} before it." if not no_value else
                f"after the investment. That is less than the {invest} being raised, so this method leaves no value "
                "before the investment and counts as €0 in the blend."),
-            f"Das geplante EBITDA im Exit-Jahr ({y}) von {ebitda} × der EV/EBITDA-Multiplikator der Branche von {mult} "
-            f"ergibt einen Exit-Wert von {exit_v}. Ein Investor, der {pct(r)} Rendite pro Jahr braucht, bewertet das "
+            f"Ein Investor, der {pct(r)} Rendite pro Jahr braucht, bewertet das "
             f"heute mit {exit_v} ÷ (1 + {pct(r)})^{T_} = {post} "
             + (f"nach der Investition. Abzüglich der eingeworbenen {invest} = {pre} davor." if not no_value else
                f"nach der Investition. Das ist weniger als die eingeworbenen {invest}; diese Methode lässt vor der "
@@ -1348,6 +1386,10 @@ def _vc_page(vc: dict, output: Optional[dict] = None) -> list:
         (T(f"Exit-year ({y}) revenue", f"Umsatz im Exit-Jahr ({y})"), money(g(vc, "exit_year_revenue"))),
         (T(f"Exit-year ({y}) EBITDA", f"EBITDA im Exit-Jahr ({y})"), money(g(vc, "exit_year_ebitda"))),
         (T("EV/EBITDA multiple", "EV/EBITDA-Multiplikator"), multiple(g(vc, "ev_ebitda_multiple"))),
+        (T("EV/Sales multiple", "EV/Umsatz-Multiplikator"), multiple(g(vc, "ev_sales_multiple"))),
+        (T("Exit value used", "Verwendeter Exit-Wert"),
+         T("revenue × EV/Sales (the higher)", "Umsatz × EV/Umsatz (der höhere)") if g(vc, "exit_basis") == "revenue"
+         else T("EBITDA × EV/EBITDA (the higher)", "EBITDA × EV/EBITDA (der höhere)")),
         # A non-positive exit value has no meaning; show a dash rather than a negative amount.
         (T("Exit value (enterprise value)", "Exit-Wert (Unternehmenswert)"),
          money(g(vc, "exit_value")) if (g(vc, "exit_value") or 0) > 0 else "—"),
@@ -1656,10 +1698,12 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
           "<b>Scorecard</b> (Bill Payne): vergleicht ein Unternehmen vor Umsatzbeginn anhand von sechs gewichteten "
           "Kriterien mit dem typischen Unternehmen vor Umsatzbeginn in seiner Region. Nur in der Ideen- und "
           "Entwicklungsphase."),
-        T("<b>Venture Capital</b>: values a projected exit and discounts it at the annual return an investor at "
+        T("<b>Venture Capital</b>: values a projected exit at the higher of exit-year EBITDA × EV/EBITDA and exit-year "
+          "revenue × EV/Sales (the same rule as Comparables) and discounts it at the annual return an investor at "
           "this stage targets. This is the only place a target return is used.",
-          "<b>Venture Capital</b>: bewertet einen geplanten Exit und zinst ihn mit der Jahresrendite ab, die ein "
-          "Investor in dieser Phase anstrebt. Nur hier wird eine Zielrendite verwendet."),
+          "<b>Venture Capital</b>: bewertet einen geplanten Exit mit dem höheren Wert aus EBITDA × EV/EBITDA und "
+          "Umsatz × EV/Umsatz im Exit-Jahr (dieselbe Regel wie bei der Vergleichsmethode) und zinst ihn mit der "
+          "Jahresrendite ab, die ein Investor in dieser Phase anstrebt. Nur hier wird eine Zielrendite verwendet."),
         T("<b>Comparables</b>: applies public-company multiples to the last 12 months, taking the higher of EBITDA × "
           "EV/EBITDA and revenue × EV/Sales (ARR × the SaaS ARR multiple for subscription companies), with a "
           "private-company discount, then subtracts debt and adds cash.",
@@ -1672,11 +1716,18 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
           "<b>Discounted Cashflow</b>: zinst geplante freie Cashflows und einen Endwert mit den Kapitalkosten (WACC) "
           "ab, gewichtet das Ergebnis mit der Überlebenswahrscheinlichkeit, zieht Schulden ab und addiert liquide "
           "Mittel."),
-        T("The four results are blended with weights for the company's stage. A method that doesn't apply to the "
+        T("<b>Market</b> (comparable rounds; Germany, Austria and Switzerland, Startup and Expansion stages): the "
+          "typical pre-money of the company's round in DACH (PitchBook) × the questionnaire score, minus debt. It "
+          "prices the company like a typical round, so it is often well above the fundamental methods.",
+          "<b>Marktmethode</b> (vergleichbare Runden; Deutschland, Österreich und Schweiz, Start- und "
+          "Expansionsphase): die typische Pre-Money-Bewertung der Finanzierungsrunde des Unternehmens in DACH "
+          "(PitchBook) × die Punktzahl im Fragebogen, abzüglich Schulden. Sie bepreist das Unternehmen wie eine "
+          "typische Runde und liegt deshalb oft deutlich über den fundamentalen Methoden."),
+        T("The results are blended with weights for the company's stage. A method that doesn't apply to the "
           "company (for example Comparables without revenue) is left out and the other weights are scaled "
           "up; a method that applies but finds no value for the shares counts as €0, so a weaker plan never raises "
           "the result.",
-          "Die vier Ergebnisse werden mit Gewichten für die Phase des Unternehmens kombiniert. Eine Methode, die nicht "
+          "Die Ergebnisse werden mit Gewichten für die Phase des Unternehmens kombiniert. Eine Methode, die nicht "
           "zum Unternehmen passt (etwa die Vergleichsmethode ohne Umsatz), entfällt und die anderen Gewichte werden "
           "hochskaliert; eine Methode, die passt, aber keinen Wert für die Anteile findet, zählt mit 0 €, sodass ein "
           "schwächerer Plan das Ergebnis nie erhöht."),
@@ -1719,11 +1770,13 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
         ("scorecard_benchmark", T("Scorecard benchmark", "Scorecard-Vergleichswert")),
         ("scorecard", T("Scorecard method", "Scorecard-Methode")),
         ("method_weights", T("Method weights", "Gewichte der Methoden")),
+        ("market_round_benchmarks", T("Market method (comparable rounds)", "Marktmethode (vergleichbare Runden)")),
         ("round_benchmarks", T("Round logic", "Rundenlogik")),
     ]
     comparables = g(output or {}, "comparables", {}) or {}
     used_basis = comparables.get("basis_used") if comparables.get("pre_money_valuation") is not None else None
-    shown = {"ev_sales_multiple": used_basis == "revenue", "saas_arr_multiple": used_basis == "arr"}
+    shown = {"ev_sales_multiple": used_basis == "revenue", "saas_arr_multiple": used_basis == "arr",
+             "market_round_benchmarks": bool(g(output or {}, "market"))}
     for key, label in labels:
         if sources.get(key) and shown.get(key, True):  # a multiple's source only where it was used
             story.append(P(f"<b>{esc(label)}:</b> {esc(_relevant_sentences(sources[key], country, industry))}",

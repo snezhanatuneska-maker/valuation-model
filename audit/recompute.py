@@ -184,18 +184,24 @@ def recompute(case):
     target = fa.get("target_ebitda_margin_override")
     target = bench(ind, "ebitda_margin", reg)[0] if target is None else target
     ltm_rev = op["current_revenue_last_12_months"]
-    # without revenue yet, today's EBITDA (the operating loss) is measured against Year-1 revenue
-    start = max(-1.0, min(op["current_ebitda"] / (ltm_rev if ltm_rev > 0 else fa["revenue_year1"]), 0.9))
+    # revenue: one amount per year if given, else Year 1 grown at the yearly rates
+    if fa.get("revenue_by_year") is not None:
+        rev = list(fa["revenue_by_year"])
+    else:
+        rev = [fa["revenue_year1"]]
+        for gr in fa["revenue_growth_rates"]:
+            rev.append(rev[-1] * (1 + gr))
+    k = next(i for i, r in enumerate(rev) if r > 0)  # first year with sales
+    # without revenue yet, today's EBITDA (the operating loss) is measured against the first sales year
+    start = max(-1.0, min(op["current_ebitda"] / (ltm_rev if ltm_rev > 0 else rev[k]), 0.9))
     da_pct = bench(ind, "da_pct_revenue", reg)[0]
     wc_pct = (bench(ind, "acc_receivable_pct_revenue", reg)[0] + bench(ind, "inventory_pct_revenue", reg)[0]
               - bench(ind, "acc_payable_pct_revenue", reg)[0])
-    rev = [fa["revenue_year1"]]
-    for gr in fa["revenue_growth_rates"]:
-        rev.append(rev[-1] * (1 + gr))
     g = mkt["perpetual_growth_rate"]
     prev_wc, nol, fcf, ebitdas = ltm_rev * wc_pct, 0.0, [], []
     for i, r in enumerate(rev):
-        ebitda = r * (start + (target - start) * (i + 1) / 5)
+        # before the first sales, today's costs carry on; then the margin glides over the remaining years
+        ebitda = min(op["current_ebitda"], 0.0) if i < k else r * (start + (target - start) * (i - k + 1) / (5 - k))
         ebit = ebitda - r * da_pct
         if ebit <= 0:
             taxable, nol = 0.0, nol - ebit
@@ -241,13 +247,15 @@ def recompute(case):
     out["scorecard_amounts"] = {k: benchmark * w * sum(s(q) for q in qs) / len(qs) for k, (w, qs) in groups.items()}
     out["scorecard"] = sum(out["scorecard_amounts"].values())
 
-    # --- Venture Capital: exit / (1 + target return)^T - investment ---
+    # --- Venture Capital: exit / (1 + target return)^T - investment, where the exit value is the higher of
+    # exit-year EBITDA x EV/EBITDA and exit-year revenue x EV/Sales ---
     mult = bench(ind, "ev_ebitda_multiple", reg)[0]
     T = cp["planned_time_to_exit_years"]
-    exit_equity = ebitdas[T - 1] * mult - debt  # today's debt assumed outstanding at exit
+    exit_value = max(max(ebitdas[T - 1], 0.0) * mult, rev[T - 1] * bench(ind, "ev_sales_multiple", reg)[0])
+    exit_equity = exit_value - debt  # today's debt assumed outstanding at exit
     I = case["funding"]["capital_needed"]
     post = (exit_equity / (1 + stage["vc_target_return"]) ** T
-            if ebitdas[T - 1] > 0 and exit_equity > 0 and ind not in FINANCIALS else None)
+            if exit_value > 0 and exit_equity > 0 and ind not in FINANCIALS else None)
     out["vc_post"] = post
     # applies to every non-financial company; no value left before the round counts as 0
     out["vc"] = None if ind in FINANCIALS else (post - I if post is not None and post > I else 0.0)
@@ -275,10 +283,21 @@ def recompute(case):
     out.update(dcf_pv_fcf=pv, dcf_pv_tv=pv_tv, dcf_ev=ev)
     out["dcf"] = max(eq, 0.0) if ind not in FINANCIALS else None
 
-    # --- blend: stage weights rescaled over the meaningful methods ---
+    # --- Market (DACH, Startup/Expansion): typical round pre-money x questionnaire score - debt, at least 0 ---
+    mr = REF["market_round_benchmarks"]
+    row = mr["stages"].get(cp["company_stage"])
+    mw = mr["weights"].get(cp["company_stage"], 0.0) if row and cp["country"] in mr["countries"] else 0.0
+    factor = sum(w * sum(s(q) for q in qs) / len(qs) for w, qs in groups.values())
+    out["market"] = max(row["eur"] * factor - debt, 0.0) if mw else None
+
+    # --- blend: stage weights rescaled over the meaningful methods; the market method, where it exists, takes
+    # its weight from the others in proportion ---
     vals = {"scorecard": out["scorecard"], "venture_capital": out["vc"],
             "comparables": out["comparables"], "dcf": out["dcf"]}
-    w = stage["method_weights"]
+    w = dict(stage["method_weights"])
+    if mw:
+        w = {k: v * (1 - mw) for k, v in w.items()}
+        w["market"], vals["market"] = mw, out["market"]
     usable = {k: v for k, v in vals.items() if v is not None and w[k] > 0}
     total_w = sum(w[k] for k in usable)
     blended = sum(v * w[k] for k, v in usable.items()) / total_w if total_w else None
@@ -316,6 +335,7 @@ def compare(case, mine=None):
         ("DCF PV(FCF)", mine["dcf_pv_fcf"], e.dcf.pv_of_fcf),
         ("DCF PV(TV)", mine["dcf_pv_tv"], e.dcf.pv_of_terminal_value),
         ("DCF", mine["dcf"], mv["dcf"].pre_money_value),
+        ("Market", mine["market"], mv["market"].pre_money_value if "market" in mv else None),
         ("Blended pre-money", mine["blended"], e.blended_pre_money_valuation),
         ("Post-money", mine["post_money"], e.post_money_valuation),
     ]
@@ -382,6 +402,24 @@ EDGE_CASES = {
     "Raise larger than VC post-money (5M)": variant(funding__capital_needed=5_000_000),
     "Exit in 5 years": variant(company_profile__planned_time_to_exit_years=5),
     "Revenue collapses (-90% in Y2)": variant(financial_assumptions__revenue_growth_rates=[-0.9, 0.1, 0.1, 0.1]),
+    "Germany, Expansion stage (market method: Series A)": variant(
+        company_profile__country="Germany", company_profile__business_territory_region=EU,
+        company_profile__company_stage="Expansion stage", company_profile__dcf_tax_rate_override=None),
+    "Austria, Startup stage (market method: seed)": variant(
+        company_profile__country="Austria", company_profile__business_territory_region=EU),
+    "Germany, Growth stage (no market method)": variant(
+        company_profile__country="Germany", company_profile__business_territory_region=EU,
+        company_profile__company_stage="Growth stage"),
+    "Germany, debt above the market value (8M)": variant(
+        company_profile__country="Germany", company_profile__business_territory_region=EU,
+        financial_assumptions__existing_debt_balance=8_000_000),
+    "Revenue entered per year (same plan)": variant(
+        financial_assumptions__revenue_by_year=[1_000_000 * 1.1 ** i for i in range(5)]),
+    "Pre-revenue, sales start in Year 4 (Development stage)": variant(
+        company_profile__company_stage="Development stage",
+        operating_performance__current_revenue_last_12_months=0, operating_performance__current_ebitda=-400_000,
+        operating_performance__current_ppe_value=0,
+        financial_assumptions__revenue_by_year=[0, 0, 0, 1_500_000, 4_000_000]),
 }
 
 

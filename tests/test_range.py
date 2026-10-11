@@ -20,15 +20,15 @@ def test_method_range_lists_lowest_and_highest_method():
     used = {k: mv.pre_money_value for k, mv in r.method_values.items() if mv.status == "ok" and mv.weight_used > 0}
     assert r.method_range.low == pytest.approx(min(used.values()))
     assert r.method_range.high == pytest.approx(max(used.values()))
-    assert r.method_range.low_method == "venture_capital" and r.method_range.high_method == "dcf"
+    assert r.method_range.low_method == "venture_capital" and r.method_range.high_method == "market"
     assert r.method_range.low <= r.blended_pre_money_valuation <= r.method_range.high
 
 
 def test_methods_far_apart_get_a_note_naming_the_cause():
-    r = run(WERKPULS)  # VC about €145k, DCF about €2.14M
-    note = next(w for w in r.warnings if w.code == "methods_disagree")
+    r = run(case(funding__capital_needed=2_000_000, funding__use_of_funds={"Others": 2_000_000}))
+    note = next(w for w in r.warnings if w.code == "methods_disagree")  # VC about €443k, DCF about €2.14M
     assert note.severity == "warning"
-    assert "€145,499" in note.message and "€2,138,436" in note.message and "15×" in note.message
+    assert "€442,675" in note.message and "€2,138,436" in note.message and "5×" in note.message
     assert "amount raised" in note.message  # the VC method is the low one: say what drives it
     assert "vc_low" not in {w.code for w in r.warnings}  # one note, not two saying the same
 
@@ -36,7 +36,11 @@ def test_methods_far_apart_get_a_note_naming_the_cause():
 def test_methods_close_together_get_no_note():
     r = run(case(funding__capital_needed=150_000, funding__use_of_funds={"Others": 150_000},
                  financial_assumptions__capex_by_year=[0, 50_000, 60_000, 70_000, 80_000]))
-    assert r.method_range.high <= 3 * r.method_range.low
+    fundamental = [mv.pre_money_value for k, mv in r.method_values.items()
+                   if mv.status == "ok" and mv.weight_used > 0 and k != "market"]
+    assert max(fundamental) <= 3 * min(fundamental)
+    # The market method is far above (a typical seed round), but that is no input error: no note for it.
+    assert r.method_range.high_method == "market" and r.method_range.high > 3 * r.method_range.low
     assert "methods_disagree" not in {w.code for w in r.warnings}
 
 
@@ -61,7 +65,7 @@ def test_cover_page_shows_value_range_and_revenue_scenarios():
     cover = " ".join(pdfplumber.open(io.BytesIO(pdf.content)).pages[0].extract_text().split())
     rng = out["method_range"]
     assert "Pre-money valuation" in cover and report.money(out["blended_pre_money_valuation"]) in cover
-    assert f"{report.money(rng['low'])} (Venture Capital) to {report.money(rng['high'])} (DCF)" in cover
+    assert f"{report.money(rng['low'])} (Venture Capital) to {report.money(rng['high'])} (Market)" in cover
     assert (f"{report.money(scen['80%']['blended_pre_money_valuation'])} to "
             f"{report.money(scen['120%']['blended_pre_money_valuation'])}") in cover
     assert "Post-money valuation" in cover
