@@ -1191,6 +1191,7 @@ const METHOD_LABELS = {
   venture_capital: ["Venture Capital", "Venture Capital"],
   comparables: ["Comparables (revenue or EBITDA multiple)", "Vergleichsmethode (Umsatz- oder EBITDA-Multiplikator)"],
   dcf: ["Discounted cash flow (DCF)", "Discounted Cashflow (DCF)"],
+  market: ["Market (comparable rounds)", "Marktmethode (vergleichbare Runden)"],
 };
 const methodLabel = (key) => (METHOD_LABELS[key] ? tr(...METHOD_LABELS[key]) : key);
 
@@ -1389,14 +1390,16 @@ async function loadLanguageData() {
 }
 
 async function loadReferenceData() {
-  const [countries, industries, stages, options, scorecardLookup] = await Promise.all([
+  const [countries, industries, stages, options, scorecardLookup, marketInfo] = await Promise.all([
     apiFetch("/reference-data/countries"),
     apiFetch("/reference-data/industries"),
     apiFetch("/reference-data/stages"),
     apiFetch("/reference-data/options"),
     apiFetch("/reference-data/scorecard-lookup"),
+    apiFetch("/reference-data/market-rounds"),
     loadLanguageData(),
   ]);
+  marketRounds = marketInfo || marketRounds;
   referenceLists = { countries, industries, stages, regions: options.business_territory_region, scorecardLookup };
 
   fillSelect("country", countries, labels.countries, true);
@@ -1480,13 +1483,21 @@ function relabelScorecardFields() {
 const PRE_REVENUE_STAGES = ["Idea stage", "Development stage"];
 const isPreRevenueStage = () => PRE_REVENUE_STAGES.includes(val("company_stage"));
 
+// Where the market method (comparable rounds) applies, from /reference-data/market-rounds.
+let marketRounds = { countries: [], weights: {} };
+const marketWeight = () => (marketRounds.countries.includes(val("country")) && marketRounds.weights[val("company_stage")]) || 0;
+
 // Step 2 says whether the questionnaire matters for the chosen stage.
 function updateScorecardNote() {
   const note = document.getElementById("scorecard-stage-note");
   const stage = val("company_stage");
   if (!note || !stage) return;
   const stageName = escapeHtml(stageInSentence(stage));
-  note.innerHTML = isPreRevenueStage()
+  const market = marketWeight();
+  note.innerHTML = market
+    ? tr(`<strong>Please answer every question.</strong> At the ${stageName} stage the market method counts for ${pct(market)} of your valuation: it starts from a typical funding round and uses your answers to say how your company compares with the typical one. Unanswered questions count as typical.`,
+         `<strong>Bitte beantworten Sie alle Fragen.</strong> In der ${stageName} zählt die Marktmethode mit ${pct(market)} zu Ihrer Bewertung: Sie geht von einer typischen Finanzierungsrunde aus und zeigt mit Ihren Antworten, wie Ihr Unternehmen im Vergleich zum typischen dasteht. Unbeantwortete Fragen zählen als durchschnittlich.`)
+    : isPreRevenueStage()
     ? tr(`<strong>Please answer every question.</strong> At the ${stageName} stage the Scorecard is part of your valuation.`,
          `<strong>Bitte beantworten Sie alle Fragen.</strong> In der ${stageName} ist die Scorecard Teil Ihrer Bewertung.`)
     : tr(`<strong>Optional for your company.</strong> At the ${stageName} stage your company is valued on its numbers and the Scorecard isn't used, so you can skip this step and press Continue.`,
@@ -2113,6 +2124,12 @@ function methodExplanation(key, o) {
     return tr(`Last-12-month revenue ${money(c.revenue_amount)} × ${multipleText(c.revenue_multiple)} EV/Sales of listed companies (more than EBITDA gives), `,
               `Umsatz der letzten 12 Monate ${money(c.revenue_amount)} × ${multipleText(c.revenue_multiple)} EV/Umsatz börsennotierter Unternehmen (mehr als über das EBITDA), `) + discount;
   }
+  if (key === "market") {
+    const m = o.market;
+    const minusDebt = m.debt ? tr(`, minus debt of ${money(m.debt)}`, `, abzüglich Schulden von ${money(m.debt)}`) : "";
+    return tr(`A typical ${m.round_name} round in ${m.region} is priced at ${money(m.benchmark_pre_money_valuation)} pre-money (${m.benchmark_basis}); your questionnaire answers score ${pct(m.total_factor)} of that company${minusDebt}.`,
+              `Eine typische Finanzierungsrunde dieser Phase (${m.round_name}) in ${m.region} wird mit ${money(m.benchmark_pre_money_valuation)} Pre-Money bewertet (${m.benchmark_basis}); nach Ihren Antworten erreichen Sie ${pct(m.total_factor)} davon${minusDebt}.`);
+  }
   if (key === "dcf") {
     const d = o.dcf;
     if (d.not_meaningful_reason) return d.not_meaningful_reason;
@@ -2284,6 +2301,7 @@ const METHOD_IN_TEXT = {
   venture_capital: ["the Venture Capital method", "die Venture-Capital-Methode"],
   comparables: ["the Comparables method", "die Vergleichsmethode"],
   dcf: ["the DCF method", "die DCF-Methode"],
+  market: ["the market method", "die Marktmethode"],
 };
 const METHOD_TIPS = {
   venture_capital: ["hurdle_rate", ["a target return", "eine Zielrendite"]],
@@ -2324,7 +2342,8 @@ function readResultBox(result, scenarios) {
     <div class="read-result">
       <h3>${tr("How to read your result", "So lesen Sie Ihr Ergebnis")}</h3>
       <p>${tr("The four methods look at your company from different angles: how your team and market compare with a typical startup (Scorecard), what an investor could earn at exit (Venture Capital), what similar listed companies are worth (Comparables) and the cash your plan generates (DCF). That is why they rarely agree.",
-              "Die vier Methoden betrachten Ihr Unternehmen aus verschiedenen Blickwinkeln: wie Team und Markt im Vergleich zu einem typischen Startup dastehen (Scorecard), was ein Investor beim Exit verdienen könnte (Venture Capital), was ähnliche börsennotierte Unternehmen wert sind (Vergleichsmethode) und welches Geld Ihr Plan erwirtschaftet (DCF). Deshalb stimmen sie selten überein.")}
+              "Die vier Methoden betrachten Ihr Unternehmen aus verschiedenen Blickwinkeln: wie Team und Markt im Vergleich zu einem typischen Startup dastehen (Scorecard), was ein Investor beim Exit verdienen könnte (Venture Capital), was ähnliche börsennotierte Unternehmen wert sind (Vergleichsmethode) und welches Geld Ihr Plan erwirtschaftet (DCF). Deshalb stimmen sie selten überein.")}${result.market ? " " + tr("In Germany, Austria and Switzerland a fifth, the market method, prices your company like a typical funding round at your stage; it is usually well above the others, which value what your plan supports.",
+              "In Deutschland, Österreich und der Schweiz bepreist eine fünfte, die Marktmethode, Ihr Unternehmen wie eine typische Finanzierungsrunde Ihrer Phase; sie liegt meist deutlich über den anderen, die bewerten, was Ihr Plan trägt.") : ""}
       ${used.length > 1
         ? tr(`The blended value weights them by your company's stage (here: ${escapeHtml(weights)}); a method that doesn't fit your company is left out.`,
              `Der gewichtete Wert kombiniert sie nach der Phase Ihres Unternehmens (hier: ${escapeHtml(weights)}); eine Methode, die nicht zu Ihrem Unternehmen passt, entfällt.`)
@@ -2380,7 +2399,8 @@ window.addEventListener("resize", closeTip);
 // A startup's value is uncertain: show how far apart the methods are, what a 20% revenue miss does,
 // and how a typical round would price the company.
 const METHOD_SHORT = { scorecard: ["Scorecard", "Scorecard"], venture_capital: ["Venture Capital", "Venture Capital"],
-                       comparables: ["Comparables", "Vergleichsmethode"], dcf: ["DCF", "DCF"] };
+                       comparables: ["Comparables", "Vergleichsmethode"], dcf: ["DCF", "DCF"],
+                       market: ["Market", "Marktmethode"] };
 const methodShort = (key) => tr(...METHOD_SHORT[key]);
 function rangeLines(result, scenarios) {
   const lines = [];
@@ -2432,8 +2452,8 @@ function renderResults(result, scenarios) {
     </div>
     ${readResultBox(result, scenarios)}
     <h2 class="ledger-title">${tr("Valuation summary", "Bewertung im Überblick")}</h2>
-    <p class="ledger-subtitle">${tr(`Pre-money equity value as of ${escapeHtml(asOf)}, blended across four methods with weights for the company's stage.`,
-      `Pre-Money-Wert des Eigenkapitals zum ${escapeHtml(asOf)}, gewichtet aus vier Methoden nach der Phase des Unternehmens.`)}${leftOut ? tr(" Methods that don't apply to this company are left out and the other weights scaled up.",
+    <p class="ledger-subtitle">${tr(`Pre-money equity value as of ${escapeHtml(asOf)}, blended across ${result.market ? "five" : "four"} methods with weights for the company's stage.`,
+      `Pre-Money-Wert des Eigenkapitals zum ${escapeHtml(asOf)}, gewichtet aus ${result.market ? "fünf" : "vier"} Methoden nach der Phase des Unternehmens.`)}${leftOut ? tr(" Methods that don't apply to this company are left out and the other weights scaled up.",
       " Methoden, die nicht zu diesem Unternehmen passen, entfallen, und die anderen Gewichte werden hochskaliert.") : ""}</p>
     <table class="ledger-table stacked">
       <thead>
@@ -2605,9 +2625,11 @@ function sampleIsClean(c, result) {
   const vcSensible = vc.weight === 0 || (vc.pre_money_value || 0) > 0.2 * result.blended_pre_money_valuation;
   const noWarnings = result.warnings.every((w) => w.severity !== "warning" || w.code === "nm_comparables");
   // Methods that disagree wildly (e.g. a DCF 8x the VC value) make a poor showcase.
-  // (Before revenue the Scorecard naturally sits well above the cash-flow methods, so it isn't compared.)
+  // (Before revenue the Scorecard, and the market method in DACH, naturally sit well above the cash-flow
+  // methods, so they aren't compared.)
   const values = Object.entries(result.method_values)
-    .filter(([key, mv]) => mv.status === "ok" && mv.weight > 0 && !(c.preRevenue && key === "scorecard"))
+    .filter(([key, mv]) => mv.status === "ok" && mv.weight > 0 && key !== "market"
+      && !(c.preRevenue && key === "scorecard"))
     .map(([, mv]) => mv.pre_money_value);
   const agree = values.length > 0 && Math.max(...values) <= 3.5 * Math.min(...values);
   // Forecast years that burn cash overall push the whole DCF into the terminal value.

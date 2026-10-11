@@ -15771,10 +15771,11 @@
     "scorecard": "Scorecard method (Bill Payne / Ohio TechAngels), which compares a pre-revenue company with the typical pre-revenue company in its region: criterion weights 30/25/15/10/10/10 (Payne's 'need for additional investment' and 'other' 5% each are combined into 'funding required'). Used only for the Idea and Development stages; companies with revenue are valued on their numbers.",
     "country_data_as_of": "2026-07-01",
     "scorecard_benchmark": "Equidam, Startup Valuation Delta H1 2026: median pre-seed valuations from 3,000+ valuations of pre-seed companies preparing their first institutional round (results of Equidam's five-method valuations, not prices paid in closed rounds). United States $5.16M, Europe $3.30M; Emerging Markets uses the average of the Africa ($2.99M) and Latin America ($2.40M) medians; Japan, China, India and Global use the all-region median ($5.20M). Converted to euros at the ECB reference rate of 1 July 2026 (1.1383 US$ per euro). Used only for pre-revenue stages (Idea, Development).",
-    "method_weights": "App assumption: stage weights carried over from the original workbook, except that once a company has revenue (Startup and Expansion stages) the Scorecard's weight is spread over the other three methods (roughly in proportion, rounded: Startup 30/35/35%, Expansion 15/42.5/42.5%).",
+    "method_weights": "App assumption: stage weights carried over from the original workbook, except that once a company has revenue (Startup and Expansion stages) the Scorecard's weight is spread over the other three methods (roughly in proportion, rounded: Startup 30/35/35%, Expansion 15/42.5/42.5%). In Germany, Austria and Switzerland the market method takes 25% at the Startup stage and 20% at the Expansion stage; the other weights are scaled down in proportion.",
     "ev_sales_multiple": "Derived from the same Damodaran January 2026 regional files, as EV/EBITDA (all firms) × EBITDA/Sales (all firms); both are aggregate ratios over the same companies, so the product is their total enterprise value ÷ total sales. Used by the Comparables method when revenue gives more than EBITDA (always for companies without positive EBITDA).",
     "saas_arr_multiple": "ARR multiple for subscription (SaaS) companies: SaaS Capital Index, median enterprise value ÷ annualised run-rate revenue of about 100 listed SaaS companies, 4.2× on 30 September 2026 (down from 5.6× in December 2025). Figure as reported by secondary sources; check the monthly index file at saas-capital.com when updating. Reduced by the stage's private-company discount, as for the other multiples.",
-    "round_benchmarks": "Median share sold per round in US software companies on Carta, 2025 (seed 19.5%, Series A 18.0%, Series B 14.0%, Series C 10.0%; pre-seed SAFE rounds of $1–1.9M 15.6%, under $250k 5–6%, so 10% at the Idea stage). No German figures by stage are published. The low–high band is an app assumption. Round sizes: Dealroom round bands (pre-seed $0.1–1M, seed $1–4M, Series A $4–15M) and DealRoom Q2 2026 typical raises for Series B ($20–60M) and C ($30–100M, US), at the ECB rate of 1 July 2026. Median German VC round 2025: €4M (KfW VC Dashboard Q4 2025, Dealroom data)."
+    "round_benchmarks": "Median share sold per round in US software companies on Carta, 2025 (seed 19.5%, Series A 18.0%, Series B 14.0%, Series C 10.0%; pre-seed SAFE rounds of $1–1.9M 15.6%, under $250k 5–6%, so 10% at the Idea stage). No German figures by stage are published. The low–high band is an app assumption. Round sizes: Dealroom round bands (pre-seed $0.1–1M, seed $1–4M, Series A $4–15M) and DealRoom Q2 2026 typical raises for Series B ($20–60M) and C ($30–100M, US), at the ECB rate of 1 July 2026. Median German VC round 2025: €4M (KfW VC Dashboard Q4 2025, Dealroom data).",
+    "market_round_benchmarks": "PitchBook, Q2 2026 European VC Valuations Report (published 20 August 2026, data as of 30 June 2026), 'Median pre-seed/seed pre-money valuation (€M) by region' (p. 12) and 'Median Series A-B pre-money valuation (€M) by region' (p. 13), region DACH (Germany, Austria, Switzerland). Seed: €6.4M, the DACH median for 2025 (full year; H1 2026 shows €9.3M on fewer than 20 rounds). Series A: €23.0M, the DACH long-term median of Series A-B rounds (2025 €40.4M and H1 2026 €112.4M include Series B rounds and rest on few deals). PitchBook reports pre-seed with seed and Series A with Series B; there is no separate Series B figure, so the Growth stage has no market method."
   },
   "stage_descriptions": {
     "Idea stage": "An idea or concept; no product and no revenue yet.",
@@ -16000,10 +16001,11 @@
     "survival_probability": "Annahme des Tools je Phase, nur in der DCF-Methode, verankert in den Business-Employment-Dynamics-Daten der US-Statistikbehörde BLS (etwa 78 % neuer Unternehmen überleben ein Jahr, etwa 49 % fünf Jahre und etwa 35 % zehn Jahre): Startphase 50 % (Fünfjahres-Überleben), vor Umsatzbeginn niedriger (Ideenphase 30 %, Entwicklungsphase 40 %), bei etablierten Unternehmen höher (Expansionsphase 65 %, Wachstumsphase 80 %, Reifephase 95 %).",
     "scorecard": "Scorecard-Methode (Bill Payne / Ohio TechAngels), die ein Unternehmen vor Umsatzbeginn mit dem typischen Unternehmen vor Umsatzbeginn in seiner Region vergleicht: Gewichte der Kriterien 30/25/15/10/10/10 (Paynes 'Bedarf an weiterer Finanzierung' und 'Sonstiges' mit je 5 % sind zu 'Kapitalbedarf' zusammengefasst). Nur in der Ideen- und Entwicklungsphase verwendet; Unternehmen mit Umsatz werden anhand ihrer Zahlen bewertet.",
     "scorecard_benchmark": "Equidam, Startup Valuation Delta H1 2026: Median-Bewertungen in der Pre-Seed-Phase aus über 3.000 Bewertungen von Unternehmen vor ihrer ersten institutionellen Runde (Ergebnisse von Equidams Bewertung mit fünf Methoden, keine in abgeschlossenen Runden gezahlten Preise). USA 5,16 Mio. US$, Europa 3,30 Mio. US$; Schwellenländer verwenden den Durchschnitt der Mediane für Afrika (2,99 Mio. US$) und Lateinamerika (2,40 Mio. US$); Japan, China, Indien und weltweit verwenden den Median aller Regionen (5,20 Mio. US$). Umgerechnet zum EZB-Referenzkurs vom 1. Juli 2026 (1,1383 US$ je Euro). Nur vor Umsatzbeginn verwendet (Ideen- und Entwicklungsphase).",
-    "method_weights": "Annahme des Tools: Gewichte je Phase aus der ursprünglichen Arbeitsmappe übernommen; sobald ein Unternehmen Umsatz hat (Start- und Expansionsphase), wird das Gewicht der Scorecard auf die anderen drei Methoden verteilt (etwa anteilig, gerundet: Startphase 30/35/35 %, Expansionsphase 15/42,5/42,5 %).",
+    "method_weights": "Annahme des Tools: Gewichte je Phase aus der ursprünglichen Arbeitsmappe übernommen; sobald ein Unternehmen Umsatz hat (Start- und Expansionsphase), wird das Gewicht der Scorecard auf die anderen drei Methoden verteilt (etwa anteilig, gerundet: Startphase 30/35/35 %, Expansionsphase 15/42,5/42,5 %). In Deutschland, Österreich und der Schweiz erhält die Marktmethode 25 % in der Startphase und 20 % in der Expansionsphase; die anderen Gewichte werden anteilig verringert.",
     "ev_sales_multiple": "Abgeleitet aus denselben regionalen Damodaran-Dateien vom Januar 2026 als EV/EBITDA (alle Unternehmen) × EBITDA/Umsatz (alle Unternehmen); beide sind aggregierte Kennzahlen über dieselben Unternehmen, das Produkt ist also deren gesamter Unternehmenswert ÷ gesamter Umsatz. Von der Vergleichsmethode verwendet, wenn der Umsatz mehr ergibt als das EBITDA (immer bei Unternehmen ohne positives EBITDA).",
     "saas_arr_multiple": "ARR-Multiplikator für Abo-Unternehmen (SaaS): SaaS Capital Index, Median aus Unternehmenswert ÷ annualisiertem wiederkehrendem Umsatz von etwa 100 börsennotierten SaaS-Unternehmen, 4,2× am 30. September 2026 (5,6× im Dezember 2025). Wert laut Sekundärquellen; bei einer Aktualisierung die monatliche Indexdatei auf saas-capital.com prüfen. Wie die anderen Multiplikatoren um den Abschlag für nicht börsennotierte Unternehmen der jeweiligen Phase gekürzt.",
-    "round_benchmarks": "Median des je Runde verkauften Anteils bei US-Softwareunternehmen auf Carta, 2025 (Seed 19,5 %, Series A 18,0 %, Series B 14,0 %, Series C 10,0 %; Pre-Seed-SAFE-Runden von 1-1,9 Mio. US$ 15,6 %, unter 250.000 US$ 5-6 %, deshalb 10 % in der Ideenphase). Deutsche Werte je Phase werden nicht veröffentlicht. Die Spanne ist eine Annahme des Tools. Rundengrößen: Dealroom-Rundenklassen (Pre-Seed 0,1-1 Mio. US$, Seed 1-4 Mio. US$, Series A 4-15 Mio. US$) und typische Runden laut DealRoom Q2 2026 für Series B (20-60 Mio. US$) und C (30-100 Mio. US$, USA), zum EZB-Kurs vom 1. Juli 2026. Mittlere deutsche VC-Runde 2025: 4 Mio. € (KfW VC-Dashboard Q4 2025, Dealroom-Daten)."
+    "round_benchmarks": "Median des je Runde verkauften Anteils bei US-Softwareunternehmen auf Carta, 2025 (Seed 19,5 %, Series A 18,0 %, Series B 14,0 %, Series C 10,0 %; Pre-Seed-SAFE-Runden von 1-1,9 Mio. US$ 15,6 %, unter 250.000 US$ 5-6 %, deshalb 10 % in der Ideenphase). Deutsche Werte je Phase werden nicht veröffentlicht. Die Spanne ist eine Annahme des Tools. Rundengrößen: Dealroom-Rundenklassen (Pre-Seed 0,1-1 Mio. US$, Seed 1-4 Mio. US$, Series A 4-15 Mio. US$) und typische Runden laut DealRoom Q2 2026 für Series B (20-60 Mio. US$) und C (30-100 Mio. US$, USA), zum EZB-Kurs vom 1. Juli 2026. Mittlere deutsche VC-Runde 2025: 4 Mio. € (KfW VC-Dashboard Q4 2025, Dealroom-Daten).",
+    "market_round_benchmarks": "PitchBook, Q2 2026 European VC Valuations Report (veröffentlicht am 20. August 2026, Datenstand 30. Juni 2026), 'Median pre-seed/seed pre-money valuation (€M) by region' (S. 12) und 'Median Series A-B pre-money valuation (€M) by region' (S. 13), Region DACH (Deutschland, Österreich, Schweiz). Seed: 6,4 Mio. €, der DACH-Median für 2025 (ganzes Jahr; H1 2026 zeigt 9,3 Mio. € bei weniger als 20 Runden). Series A: 23,0 Mio. €, der langfristige DACH-Median der Series-A-B-Runden (2025 40,4 Mio. € und H1 2026 112,4 Mio. € enthalten Series-B-Runden und beruhen auf wenigen Deals). PitchBook weist Pre-Seed zusammen mit Seed und Series A zusammen mit Series B aus; eine eigene Series-B-Zahl gibt es nicht, deshalb hat die Wachstumsphase keine Marktmethode."
   },
   "scorecard_option_labels_de": {
     "strength_of_competitors_in_market": {
@@ -16078,6 +16080,35 @@
       "None": "Keine",
       "Another angel round": "Eine weitere Angel-Runde",
       "Need venture capital": "Venture Capital nötig"
+    }
+  },
+  "market_round_benchmarks": {
+    "_note": "Market method: typical pre-money valuation of the company's financing round in its region, times the questionnaire score (the Scorecard's total factor). Used only for the countries and stages listed, with the weight given; the other methods' stage weights are scaled down by that weight. Update with each PitchBook European VC Valuations Report (twice a year).",
+    "as_of": "2026-08-20",
+    "region": "DACH",
+    "region_de": "DACH",
+    "countries": [
+      "Germany",
+      "Austria",
+      "Switzerland"
+    ],
+    "weights": {
+      "Startup stage": 0.25,
+      "Expansion stage": 0.2
+    },
+    "stages": {
+      "Startup stage": {
+        "round": "Seed",
+        "eur": 6400000.0,
+        "basis": "PitchBook median pre-money of pre-seed/seed rounds in DACH, 2025",
+        "basis_de": "PitchBook-Median der Pre-Money-Bewertung von Pre-Seed-/Seed-Runden in DACH, 2025"
+      },
+      "Expansion stage": {
+        "round": "Series A",
+        "eur": 23000000.0,
+        "basis": "PitchBook long-term median pre-money of Series A-B rounds in DACH",
+        "basis_de": "Langfristiger PitchBook-Median der Pre-Money-Bewertung von Series-A-B-Runden in DACH"
+      }
     }
   }
 }

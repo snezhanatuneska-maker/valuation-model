@@ -390,3 +390,16 @@ def test_saved_year_by_year_plan_reopens_and_reruns(storing_client):
         saved.json()["output"]["blended_pre_money_valuation"])
     assert storing_client.get(f"/valuations/{vid}/scenarios").status_code == 200
     assert storing_client.get(f"/valuations/{vid}/report").status_code == 200
+
+
+def test_market_rounds_route_and_pdf_line(client):
+    info = client.get("/reference-data/market-rounds").json()
+    assert info == {"countries": ["Germany", "Austria", "Switzerland"],
+                    "weights": {"Startup stage": 0.25, "Expansion stage": 0.2}}
+    import io
+
+    import pdfplumber
+    pdf = client.post("/valuations/preview/report?lang=de", json=GERMAN_CASE)
+    text = " ".join("\n".join(p.extract_text() or "" for p in pdfplumber.open(io.BytesIO(pdf.content)).pages).split())
+    assert "Marktmethode (vergleichbare Runden): Eine typische Finanzierungsrunde dieser Phase (Seed) in DACH" in text
+    assert "PitchBook, Q2 2026 European VC Valuations Report" in text

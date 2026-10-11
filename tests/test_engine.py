@@ -238,9 +238,10 @@ def test_german_example_regression_values():
     """Pinned values for the German example (README); update deliberately if data or method change."""
     r = run(GERMAN_CASE)
     got = {k: round(v.pre_money_value) for k, v in r.method_values.items()}
-    assert got == {"scorecard": 2_696_070, "venture_capital": 1_602_642, "comparables": 1_134_461, "dcf": 1_327_405}
-    assert round(r.blended_pre_money_valuation) == 1_342_446
-    assert round(r.post_money_valuation) == 1_642_446
+    assert got == {"scorecard": 2_696_070, "venture_capital": 1_602_642, "comparables": 1_134_461, "dcf": 1_327_405,
+                   "market": 5_952_000}  # €6.4M typical seed round in DACH x 93% questionnaire score
+    assert round(r.blended_pre_money_valuation) == 2_494_834
+    assert round(r.post_money_valuation) == 2_794_834
 
 
 def test_germany_has_no_country_risk_premium():
@@ -350,7 +351,8 @@ def test_one_unanswered_scorecard_question_reads_correctly():
     case = german(company_profile__company_stage="Idea stage")
     case["market_and_team_assessment"].pop("target_market_size")
     msg = next(w.message for w in run(case).warnings if w.code == "scorecard_unanswered")
-    assert msg.startswith("1 of the 13 Scorecard questions was not answered and is scored")
+    assert msg.startswith("1 of the 13 questionnaire questions was not answered and is scored")
+    assert msg.endswith("for a Scorecard value that reflects your company.")
 
 
 def codes(case):
@@ -365,7 +367,7 @@ def test_stage_and_revenue_mismatch_is_flagged():
 
 
 def test_large_investor_stake_is_flagged():
-    assert "investor_stake" in codes(german(funding__capital_needed=2_000_000))
+    assert "investor_stake" in codes(german(funding__capital_needed=3_000_000))
     assert "investor_stake" not in codes(GERMAN_CASE)
 
 
@@ -384,12 +386,21 @@ def test_unanswered_scorecard_questions_count_as_typical():
     team = r.scorecard.criteria["strength_of_the_team"]
     assert team.score == pytest.approx((1.2 + 1 + 1) / 3)
     assert full.unanswered == []
-    # Companies with revenue don't need to answer at all, and get no Scorecard warning.
+    # Outside Germany, Austria and Switzerland, companies with revenue don't need to answer at all, and get no
+    # questionnaire warning.
+    case = german(company_profile__country="France")
+    case["market_and_team_assessment"] = {}
+    r = run(case)
+    assert r.blended_pre_money_valuation == pytest.approx(
+        run(german(company_profile__country="France")).blended_pre_money_valuation)
+    assert "scorecard_unanswered" not in {w.code for w in r.warnings}
+    # In Germany the market method uses the answers: unanswered ones count as typical, with a note.
     case = german()
     case["market_and_team_assessment"] = {}
     r = run(case)
-    assert r.blended_pre_money_valuation == pytest.approx(run(GERMAN_CASE).blended_pre_money_valuation)
-    assert "scorecard_unanswered" not in {w.code for w in r.warnings}
+    assert r.market.total_factor == pytest.approx(1.0) and r.market.pre_money_valuation == pytest.approx(6_400_000)
+    msg = next(w.message for w in r.warnings if w.code == "scorecard_unanswered")
+    assert "13 of the 13 questionnaire questions" in msg and "market method" in msg
 
 
 
@@ -477,7 +488,8 @@ def test_banks_get_one_message_not_four():
 def test_no_method_message_lists_reasons_and_advice():
     case = german(company_profile__company_stage="Startup stage", operating_performance__current_revenue_last_12_months=0,
                   operating_performance__current_ebitda=-200_000, financial_assumptions__target_ebitda_margin_override=-0.5,
-                  funding__capital_needed=5_000_000)  # more than even the revenue-based exit supports
+                  funding__capital_needed=5_000_000,  # more than even the revenue-based exit supports
+                  company_profile__country="France")  # no market method outside DACH
     with pytest.raises(ve.ValuationError) as e:
         run(case)
     text = str(e.value)
@@ -497,3 +509,45 @@ def test_industry_names_are_spelled_out_and_old_names_still_work():
     case["company_profile"]["industry"] = "Telecom. Services"  # Damodaran's spelling
     assert ve.ValuationInput(**case).company_profile.industry == "Telecom Services"
     assert "Insurance (Property & Casualty)" in ve.FINANCIAL_SECTOR_INDUSTRIES
+
+
+# The market method (comparable rounds, QUESTIONS.md 14): DACH only, Startup and Expansion stages.
+@pytest.mark.parametrize("country,stage,weight,benchmark", [
+    ("Germany", "Startup stage", 0.25, 6_400_000), ("Austria", "Startup stage", 0.25, 6_400_000),
+    ("Switzerland", "Expansion stage", 0.20, 23_000_000), ("Germany", "Expansion stage", 0.20, 23_000_000),
+])
+def test_market_method_where_round_data_exists(country, stage, weight, benchmark):
+    r = run(german(company_profile__country=country, company_profile__company_stage=stage))
+    mv = r.method_values["market"]
+    assert mv.status == "ok" and mv.weight == pytest.approx(weight)
+    assert r.market.benchmark_pre_money_valuation == benchmark
+    assert mv.pre_money_value == pytest.approx(benchmark * r.scorecard.total_factor)
+    assert sum(m.weight for m in r.method_values.values()) == pytest.approx(1.0)
+    assert sum(m.weight_used for m in r.method_values.values()) == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("changes", [
+    dict(company_profile__country="France"), dict(company_profile__company_stage="Growth stage"),
+    dict(company_profile__company_stage="Idea stage"),
+])
+def test_no_market_method_elsewhere_and_other_weights_unchanged(changes):
+    case = german(**changes)
+    r = run(case)
+    assert "market" not in r.method_values and r.market is None
+    stage = ve.get_stage_params(case["company_profile"]["company_stage"])
+    assert {k: mv.weight for k, mv in r.method_values.items()} == stage["method_weights"]
+
+
+def test_market_method_subtracts_debt_and_never_goes_below_zero():
+    r = run(german(financial_assumptions__existing_debt_balance=1_000_000))
+    assert r.market.pre_money_valuation == pytest.approx(6_400_000 * r.scorecard.total_factor - 1_000_000)
+    r = run(german(financial_assumptions__existing_debt_balance=7_000_000,
+                   operating_performance__cash_available=7_000_000))
+    assert r.market.pre_money_valuation == 0.0
+    assert r.market.debt_exceeds_value and "Debt exceeds" in r.method_values["market"].note
+
+
+def test_market_method_does_not_trigger_the_methods_disagree_note():
+    r = run(GERMAN_CASE)
+    assert r.method_range.high_method == "market" and r.method_range.high > 3 * r.method_range.low
+    assert "methods_disagree" not in {w.code for w in r.warnings}

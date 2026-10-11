@@ -404,12 +404,15 @@ def test_result_shows_method_range_and_revenue_scenarios(wizard):
     scen = w.api_post("/valuations/preview/scenarios", payload)
     lines = w.page.eval_on_selector_all(".headline-range", "ps => ps.map(p => p.innerText)")
     r = result["method_range"]
-    assert lines[0] == f"Range across methods: {money(r['low'])} (Venture Capital) to {money(r['high'])} (DCF)"
+    short = {"venture_capital": "Venture Capital", "comparables": "Comparables", "dcf": "DCF", "market": "Market"}
+    assert lines[0] == (f"Range across methods: {money(r['low'])} ({short[r['low_method']]}) to {money(r['high'])} "
+                        f"({short[r['high_method']]})")
     assert lines[1] == (f"If planned revenue is 20% lower or higher: {money(scen['80%']['blended_pre_money_valuation'])}"
                         f" to {money(scen['120%']['blended_pre_money_valuation'])}")
     checks = " ".join(w.page.text_content(".checks-list").split())
     assert all(" ".join(x["message"].split()) in checks for x in result["warnings"])
-    assert "below_round_pricing" in {x["code"] for x in result["warnings"]}  # the gap to round pricing is explained
+    below = result["blended_pre_money_valuation"] < result["round_logic"]["implied_pre_money_low"]
+    assert ("below_round_pricing" in {x["code"] for x in result["warnings"]}) == below  # a gap is explained
     assert w.errors == []
 
 

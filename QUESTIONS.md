@@ -189,7 +189,7 @@ Also looked at:
   model valuation* for its region (Europe about €2.9M), so the same company is valued about 2.3× higher in Germany than
   in Austria. Options were a) keep; b) use one kind of figure everywhere. The owner kept it: Germany is the default
   experience.
-- **A market anchor for companies with revenue (open: waiting for sourced German round data).** At the Startup and Expansion stages no method looks at what comparable
+- **A market anchor for companies with revenue (built 11 October 2026 with PitchBook data; see below).** At the Startup and Expansion stages no method looks at what comparable
   rounds pay, so seed and Series A companies stay well below typical round prices (Hamburg Series A €6.96M vs €28–45M
   implied). Option: a German round median per stage (e.g. from Dealroom, EY Startup-Barometer or Equidam) × the
   Scorecard score, at a modest weight. Needs a sourced dataset; the round logic itself can't serve, as it rises with the
@@ -200,3 +200,16 @@ Also looked at:
   25th-75th percentile if published, number of rounds, period, source with link and publication date. Post-money with the
   median round size also works. Likely sources: PitchBook European Venture Report, Dealroom, Equidam (pre-seed and seed
   only), Atomico State of European Tech (Europe fallback).
+
+**Market method, built 11 October 2026.** Source: PitchBook, Q2 2026 European VC Valuations Report (20 August 2026),
+median pre-money valuations by region, DACH (pp. 12-13). The owner downloaded the report; only its figures are kept
+(`market_round_benchmarks` in `reference_data.json`), the PDF was removed from the repository. Figures chosen with the
+owner: seed €6.4M (DACH 2025; H1 2026's €9.3M rests on fewer than 20 rounds; Equidam's German €6.55M agrees) and
+Series A €23.0M (DACH long-term median of Series A-B; the 2025 and 2026 figures include Series B and rest on few
+deals). No separate Series B figure exists, so the Growth stage has no market method (the 15% approved for it is not
+used). Value = round benchmark × questionnaire score − debt, at least €0; weights 25% (Startup) and 20% (Expansion),
+the other methods scaled down in proportion. Only for Germany, Austria and Switzerland; every other country and stage is
+unchanged. The market method is left out of the "methods disagree" check, as it is above the fundamental methods by
+design. New figures: German example €2,494,834 (was €1,342,446); Werkpuls pinned €2,567,131.07 (was €1,482,841.42).
+Caveat: the benchmark doesn't scale with the company's size, so the stage choice matters more in DACH (a small company
+at the Expansion stage gets the Series A benchmark).

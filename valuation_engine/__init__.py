@@ -188,6 +188,11 @@ def saas_arr_multiple() -> dict:
     return _all_reference_data()["saas_arr_multiple"]
 
 
+def market_round_benchmarks() -> dict:
+    """Typical pre-money of the company's financing round in its region (the market method)."""
+    return _all_reference_data()["market_round_benchmarks"]
+
+
 def round_benchmarks() -> dict:
     """Typical financing round per stage: dilution and round size (the 'round logic' cross-check)."""
     return _all_reference_data()["round_benchmarks"]
@@ -1067,6 +1072,51 @@ def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) 
 
 
 # ============================================================================
+# SECTION 6b — Market method (comparable rounds)
+#
+# Pre-money = typical pre-money of the company's financing round in its region
+# (PitchBook, DACH) x the questionnaire score (the Scorecard's total factor),
+# minus the company's debt (a typical round's company carries little), at least 0.
+# Only for the countries and stages in market_round_benchmarks; elsewhere the
+# method doesn't exist and the other weights are unchanged.
+# ============================================================================
+
+
+@dataclass
+class MarketResult:
+    round_name: str
+    region: str
+    benchmark_pre_money_valuation: float
+    benchmark_basis: str
+    total_factor: float  # questionnaire score, the same as the Scorecard's
+    pre_money_valuation: float
+    weight: float  # the method's stage weight
+    debt: float = 0.0
+    debt_exceeds_value: bool = False
+    unanswered: list[str] = field(default_factory=list)
+
+
+def compute_market(company: CompanyProfile, scorecard: ScorecardResult, debt: float = 0.0) -> Optional[MarketResult]:
+    data = market_round_benchmarks()
+    row = data["stages"].get(company.company_stage)
+    weight = data["weights"].get(company.company_stage, 0.0)
+    if row is None or weight <= 0 or company.country not in data["countries"]:
+        return None
+    return MarketResult(
+        round_name=row["round"],
+        region=_t(data["region"], data.get("region_de", data["region"])),
+        benchmark_pre_money_valuation=row["eur"],
+        benchmark_basis=_t(row["basis"], row.get("basis_de", row["basis"])),
+        total_factor=scorecard.total_factor,
+        pre_money_valuation=max(row["eur"] * scorecard.total_factor - debt, 0.0),
+        weight=weight,
+        debt=debt,
+        debt_exceeds_value=debt > row["eur"] * scorecard.total_factor,
+        unanswered=list(scorecard.unanswered),
+    )
+
+
+# ============================================================================
 # SECTION 7 — Venture Capital method
 #
 # Exit value = the higher of exit-year EBITDA x EV/EBITDA and exit-year revenue x
@@ -1345,13 +1395,13 @@ def round_pricing_note(rl: Optional[RoundLogicResult], blended: Optional[float])
     rng = f"{_eur(rl.implied_pre_money_low)}–{_eur(rl.implied_pre_money_high)}"
     return ValuationWarning("below_round_pricing", "info", _t(
         f"The blended value ({_eur(blended)}) is below the pre-money that a typical {rl.round_name} round of your "
-        f"size implies ({rng}). The four methods value what your plan and today's figures support; early rounds "
+        f"size implies ({rng}). The methods value mostly what your plan and today's figures support; early rounds "
         "are priced on the share investors usually buy and on recent comparable rounds, which are often higher. "
         "Expect investors to start from comparable rounds and use this valuation to show what your plan supports. "
         "The gap narrows with a plan that reaches more revenue by the exit year, or with a smaller raise, which "
         "would sell a more usual share of the company.",
         f"Der gewichtete Wert ({_eur(blended)}) liegt unter der Pre-Money-Bewertung, die eine typische "
-        f"Finanzierungsrunde dieser Phase ({rl.round_name}) in Ihrer Größe nahelegt ({rng}). Die vier Methoden bewerten, was Ihr Plan und Ihre "
+        f"Finanzierungsrunde dieser Phase ({rl.round_name}) in Ihrer Größe nahelegt ({rng}). Die Methoden bewerten vor allem, was Ihr Plan und Ihre "
         "heutigen Zahlen tragen; frühe Runden werden nach dem Anteil bepreist, den Investoren üblicherweise "
         "kaufen, und nach aktuellen vergleichbaren Runden, die oft höher liegen. Rechnen Sie damit, dass "
         "Investoren von vergleichbaren Runden ausgehen, und nutzen Sie diese Bewertung, um zu zeigen, was Ihr "
@@ -1728,6 +1778,8 @@ def _method_driver(key: str) -> str:
                               "ein späterer Exit oder ein stärkerer Plan würden ihn erhöhen)"),
         "comparables": _t("the last 12 months' revenue and EBITDA", "Umsatz und EBITDA der letzten 12 Monate"),
         "dcf": _t("the five-year cash flows and the discount rate", "den Cashflows der fünf Jahre und dem Diskontsatz"),
+        "market": _t("your questionnaire answers and typical round valuations",
+                     "Ihren Antworten im Fragebogen und typischen Bewertungen vergleichbarer Runden"),
     }[key]
 
 
@@ -1963,16 +2015,19 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
             f"Für {region_name} gibt es keinen eigenen veröffentlichten Vergleichswert vor Umsatzbeginn; die "
             "Scorecard verwendet deshalb den Median aller Regionen. Geben Sie einen lokalen Vergleichswert ein, "
             "wenn Sie einen haben."), "info")
-    if method_values["scorecard"].status == "ok" and scorecard.unanswered:
+    market_used = "market" in method_values and method_values["market"].status == "ok"
+    if (method_values["scorecard"].status == "ok" or market_used) and scorecard.unanswered:
         n = len(scorecard.unanswered)
         total_q = sum(len(q) for q in SCORECARD_CRITERIA_QUESTIONS.values())
+        uses = (_t("Scorecard", "Scorecard") if method_values["scorecard"].status == "ok"
+                else _t("market method", "Marktmethode"))
         warn("scorecard_unanswered", _t(
-            f"{n} of the {total_q} Scorecard questions {'were' if n > 1 else 'was'} not answered and "
-            f"{'are' if n > 1 else 'is'} scored as typical (100%). Answer them for a Scorecard value that reflects "
+            f"{n} of the {total_q} questionnaire questions {'were' if n > 1 else 'was'} not answered and "
+            f"{'are' if n > 1 else 'is'} scored as typical (100%). Answer them for a {uses} value that reflects "
             "your company.",
-            f"{n} der {total_q} Scorecard-Fragen {'wurden' if n > 1 else 'wurde'} nicht beantwortet und "
+            f"{n} der {total_q} Fragen im Fragebogen {'wurden' if n > 1 else 'wurde'} nicht beantwortet und "
             f"{'werden' if n > 1 else 'wird'} als durchschnittlich (100 %) gewertet. Beantworten Sie sie für einen "
-            "Scorecard-Wert, der Ihr Unternehmen widerspiegelt."))
+            f"Wert der {uses}, der Ihr Unternehmen widerspiegelt."))
 
     # Stage and revenue should tell the same story: the stage decides the method weights.
     stage_name = stage_label(cp.company_stage)
@@ -2021,7 +2076,9 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
             f"Monate. Startups werden selten mit mehr als etwa dem {IMPLAUSIBLE_REVENUE_MULTIPLE}fachen des Umsatzes "
             "bewertet; prüfen Sie Wachstumsplan, Zielmarge und Exit-Jahr, bevor Sie sich auf diese Zahl verlassen."))
 
-    rng = method_range(method_values)
+    # The market method is left out here: it prices the company like a typical round and is often far above the
+    # fundamental methods by design (the below_round_pricing note explains that gap), not because of an input error.
+    rng = method_range({k: mv for k, mv in method_values.items() if k != "market"})
     # A method at €0 already has its own note saying why; no second "methods disagree" note for it.
     disagree = bool(rng and rng.high > METHODS_DISAGREE_RATIO * rng.low and not method_values[rng.low_method].note)
     if disagree:
@@ -2132,12 +2189,14 @@ METHOD_NAMES = {
     "venture_capital": "Venture Capital method",
     "comparables": "Comparables (revenue or EBITDA multiple)",
     "dcf": "DCF method",
+    "market": "Market method (comparable rounds)",
 }
 METHOD_NAMES_DE = {
     "scorecard": "Scorecard-Methode",
     "venture_capital": "Venture-Capital-Methode",
     "comparables": "Vergleichsmethode (Umsatz- oder EBITDA-Multiplikator)",
     "dcf": "DCF-Methode",
+    "market": "Marktmethode (vergleichbare Runden)",
 }
 
 
@@ -2202,6 +2261,7 @@ class ValuationOutput:
     warnings: list[ValuationWarning]
     method_range: Optional[MethodRange] = None
     round_logic: Optional[RoundLogicResult] = None  # cross-check: how a typical round would price the company
+    market: Optional[MarketResult] = None  # the market method, where round data exists (DACH, Startup/Expansion)
 
 
 def run_valuation(inputs: ValuationInput) -> ValuationOutput:
@@ -2223,6 +2283,7 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
     vc_result = compute_venture_capital(company, projections, inputs.funding, inputs.vc_assumptions, bench, debt)
     comparables_result = compute_comparables(company, op, debt, bench)
     dcf_result = compute_dcf(company, projections, wacc_result, op, debt)
+    market_result = compute_market(company, scorecard_result, debt)
 
     raw = {
         "scorecard": (scorecard_result.pre_money_valuation, None),
@@ -2230,7 +2291,11 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
         "comparables": (comparables_result.pre_money_valuation, comparables_result.not_meaningful_reason),
         "dcf": (dcf_result.pre_money_valuation, dcf_result.not_meaningful_reason),
     }
-    weights = stage["method_weights"]
+    weights = dict(stage["method_weights"])
+    if market_result:  # the market method takes its weight from the others in proportion
+        weights = {k: w * (1 - market_result.weight) for k, w in weights.items()}
+        weights["market"] = market_result.weight
+        raw["market"] = (market_result.pre_money_valuation, None)
     usable_weight = sum(weights[k] for k, (v, _) in raw.items() if v is not None and weights[k] > 0)
     if usable_weight <= 0 and company.industry in FINANCIAL_SECTOR_INDUSTRIES:
         raise ValuationError(_t(
@@ -2279,7 +2344,8 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
         elif no_value.get(key):
             status, note = "ok", no_value[key] + _t(f" It counts as {_eur(value)} in the blend.",
                                                     f" Sie zählt mit {_eur(value)} in der Gewichtung.")
-        elif key in ("comparables", "dcf") and (comparables_result if key == "comparables" else dcf_result).debt_exceeds_value:
+        elif key in ("comparables", "dcf", "market") and {"comparables": comparables_result, "dcf": dcf_result,
+                                                          "market": market_result}[key].debt_exceeds_value:
             status, note = "ok", _t("Debt exceeds the enterprise value, so the equity is worth about zero.",
                                     "Die Schulden übersteigen den Unternehmenswert; das Eigenkapital ist also etwa "
                                     "nichts wert.")
@@ -2328,6 +2394,7 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
         warnings=warnings,
         method_range=method_range(method_values),
         round_logic=round_logic,
+        market=market_result,
     )
 
 

@@ -283,10 +283,21 @@ def recompute(case):
     out.update(dcf_pv_fcf=pv, dcf_pv_tv=pv_tv, dcf_ev=ev)
     out["dcf"] = max(eq, 0.0) if ind not in FINANCIALS else None
 
-    # --- blend: stage weights rescaled over the meaningful methods ---
+    # --- Market (DACH, Startup/Expansion): typical round pre-money x questionnaire score - debt, at least 0 ---
+    mr = REF["market_round_benchmarks"]
+    row = mr["stages"].get(cp["company_stage"])
+    mw = mr["weights"].get(cp["company_stage"], 0.0) if row and cp["country"] in mr["countries"] else 0.0
+    factor = sum(w * sum(s(q) for q in qs) / len(qs) for w, qs in groups.values())
+    out["market"] = max(row["eur"] * factor - debt, 0.0) if mw else None
+
+    # --- blend: stage weights rescaled over the meaningful methods; the market method, where it exists, takes
+    # its weight from the others in proportion ---
     vals = {"scorecard": out["scorecard"], "venture_capital": out["vc"],
             "comparables": out["comparables"], "dcf": out["dcf"]}
-    w = stage["method_weights"]
+    w = dict(stage["method_weights"])
+    if mw:
+        w = {k: v * (1 - mw) for k, v in w.items()}
+        w["market"], vals["market"] = mw, out["market"]
     usable = {k: v for k, v in vals.items() if v is not None and w[k] > 0}
     total_w = sum(w[k] for k in usable)
     blended = sum(v * w[k] for k, v in usable.items()) / total_w if total_w else None
@@ -324,6 +335,7 @@ def compare(case, mine=None):
         ("DCF PV(FCF)", mine["dcf_pv_fcf"], e.dcf.pv_of_fcf),
         ("DCF PV(TV)", mine["dcf_pv_tv"], e.dcf.pv_of_terminal_value),
         ("DCF", mine["dcf"], mv["dcf"].pre_money_value),
+        ("Market", mine["market"], mv["market"].pre_money_value if "market" in mv else None),
         ("Blended pre-money", mine["blended"], e.blended_pre_money_valuation),
         ("Post-money", mine["post_money"], e.post_money_valuation),
     ]
@@ -390,6 +402,17 @@ EDGE_CASES = {
     "Raise larger than VC post-money (5M)": variant(funding__capital_needed=5_000_000),
     "Exit in 5 years": variant(company_profile__planned_time_to_exit_years=5),
     "Revenue collapses (-90% in Y2)": variant(financial_assumptions__revenue_growth_rates=[-0.9, 0.1, 0.1, 0.1]),
+    "Germany, Expansion stage (market method: Series A)": variant(
+        company_profile__country="Germany", company_profile__business_territory_region=EU,
+        company_profile__company_stage="Expansion stage", company_profile__dcf_tax_rate_override=None),
+    "Austria, Startup stage (market method: seed)": variant(
+        company_profile__country="Austria", company_profile__business_territory_region=EU),
+    "Germany, Growth stage (no market method)": variant(
+        company_profile__country="Germany", company_profile__business_territory_region=EU,
+        company_profile__company_stage="Growth stage"),
+    "Germany, debt above the market value (8M)": variant(
+        company_profile__country="Germany", company_profile__business_territory_region=EU,
+        financial_assumptions__existing_debt_balance=8_000_000),
     "Revenue entered per year (same plan)": variant(
         financial_assumptions__revenue_by_year=[1_000_000 * 1.1 ** i for i in range(5)]),
     "Pre-revenue, sales start in Year 4 (Development stage)": variant(

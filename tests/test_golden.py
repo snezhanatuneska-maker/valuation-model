@@ -197,7 +197,11 @@ def test_pinned_werkpuls_final_values(pinned_run):
     Changed 10 October 2026 (QUESTIONS.md 14): the VC exit is valued at the higher of EBITDA x EV/EBITDA and revenue x
     EV/Sales: Year-4 revenue 2,349,000 x 4.86 = 11,416,140 beats EBITDA 417,898.29 x 18 = 7,522,169.14, so the VC
     pre-money is (11,416,140 - 100,000) / 1.5^4 - 800,000 = 1,435,286.91 (was 666,107.49) and the blend
-    30% x 1,435,286.91 + 35% x 1,638,840 + 35% x 1,367,603.85 = 1,482,841.42 (was 1,252,087.59)."""
+    30% x 1,435,286.91 + 35% x 1,638,840 + 35% x 1,367,603.85 = 1,482,841.42 (was 1,252,087.59).
+    Changed 11 October 2026 (QUESTIONS.md 14): the market method counts for 25% at the Startup stage in Germany:
+    €6,400,000 typical seed round in DACH (PitchBook) x 92.5% questionnaire score - 100,000 debt = 5,820,000; the
+    other weights scale by 75% (VC 22.5%, Comparables 26.25%, DCF 26.25%), so the blend is
+    22.5% x 1,435,286.91 + 26.25% x 1,638,840 + 26.25% x 1,367,603.85 + 25% x 5,820,000 = 2,567,131.07."""
     r = pinned_run(WERKPULS)
     assert r.dcf.enterprise_value == pytest.approx(2_315_207.71, abs=0.01)
     assert r.dcf.pre_money_valuation == pytest.approx(1_367_603.85, abs=0.01)
@@ -206,6 +210,8 @@ def test_pinned_werkpuls_final_values(pinned_run):
     assert r.venture_capital.pre_money_valuation == pytest.approx(1_435_286.91, abs=0.01)
     assert r.comparables.pre_money_valuation == pytest.approx(1_638_840.00, abs=0.01)
     assert r.method_values["scorecard"].status == "not_used"
-    assert r.method_values["venture_capital"].weight_used == pytest.approx(0.30)
-    assert r.blended_pre_money_valuation == pytest.approx(1_482_841.42, abs=0.01)
-    assert r.post_money_valuation == pytest.approx(2_282_841.42, abs=0.01)
+    assert r.market.pre_money_valuation == pytest.approx(5_820_000.00, abs=0.01)
+    assert r.method_values["venture_capital"].weight_used == pytest.approx(0.225)
+    assert r.method_values["market"].weight_used == pytest.approx(0.25)
+    assert r.blended_pre_money_valuation == pytest.approx(2_567_131.07, abs=0.01)
+    assert r.post_money_valuation == pytest.approx(3_367_131.07, abs=0.01)

@@ -11,7 +11,7 @@ Sections (in order):
   3. Projected financials & valuation inputs (projection table and charts,
      benchmarks actually used with their sources, capex, use of funds,
      ownership)
-  4. Valuation summary (all four methods, blended value, pre/post-money)
+  4. Valuation summary (every method, blended value, pre/post-money)
   5. Checks on your inputs (warnings raised by the engine)
   6. Scenario & sensitivity
   7-10. One page per method, each starting with a plain-language
@@ -501,9 +501,11 @@ _METHOD_LABELS = {
     "venture_capital": ("Venture Capital", "Venture Capital"),
     "comparables": ("Comparables (revenue or EBITDA multiple)", "Vergleichsmethode (Umsatz- oder EBITDA-Multiplikator)"),
     "dcf": ("Discounted cash flow (DCF)", "Discounted Cashflow (DCF)"),
+    "market": ("Market (comparable rounds)", "Marktmethode (vergleichbare Runden)"),
 }
 _METHOD_CHART_LABELS = {"scorecard": ("Scorecard", "Scorecard"), "venture_capital": ("VC", "VC"),
-                        "comparables": ("Comparables", "Vergleich"), "dcf": ("DCF", "DCF")}
+                        "comparables": ("Comparables", "Vergleich"), "dcf": ("DCF", "DCF"),
+                        "market": ("Market", "Markt")}
 _SOURCE_NOTES = {
     "region": ("", ""),
     "industry_global": ("global figure*", "weltweiter Wert*"),
@@ -677,7 +679,8 @@ def _not_meaningful(reason: Optional[str]) -> list:
 
 
 _METHOD_SHORT = {"scorecard": ("Scorecard", "Scorecard"), "venture_capital": ("Venture Capital", "Venture Capital"),
-                 "comparables": ("Comparables", "Vergleichsmethode"), "dcf": ("DCF", "DCF")}
+                 "comparables": ("Comparables", "Vergleichsmethode"), "dcf": ("DCF", "DCF"),
+                 "market": ("Market", "Marktmethode")}
 
 
 def method_short(key: str) -> str:
@@ -1125,6 +1128,8 @@ def _valuation_summary_page(output: dict) -> list:
         elif key == "scorecard" and mv.get("status") == "not_used":
             story.append(P(T(f"Scorecard: not used at this stage. {scorecard_not_used()}",
                              f"Scorecard: in dieser Phase nicht verwendet. {scorecard_not_used()}"), STYLES["sub"]))
+        elif key == "market" and mv.get("status") == "ok":
+            story.append(P(market_explanation(g(output, "market", {}) or {}), STYLES["sub"]))
     story.append(Spacer(1, 8))
     story.append(bar_chart(cats, vals, color=NAVY_LINE, width=CONTENT_W, height=100))
     story.append(Spacer(1, 8))
@@ -1151,6 +1156,21 @@ def _valuation_summary_page(output: dict) -> list:
                          emphasize=True))
     story += _round_logic_section(output)
     return story
+
+
+def market_explanation(m: dict) -> str:
+    """One line on how the market method's value was reached."""
+    debt = m.get("debt") or 0
+    minus_debt = (T(f", minus debt of {money(debt)}", f", abzüglich Schulden von {money(debt)}") if debt else "")
+    return T(f"{method_label('market')}: a typical {m.get('round_name')} round in {m.get('region')} is priced at "
+             f"{money(m.get('benchmark_pre_money_valuation'))} pre-money ({m.get('benchmark_basis')}); your "
+             f"questionnaire answers score {pct(m.get('total_factor'))} of that company{minus_debt}: "
+             f"{money(m.get('pre_money_valuation'))}.",
+             f"{method_label('market')}: Eine typische Finanzierungsrunde dieser Phase ({m.get('round_name')}) in "
+             f"{m.get('region')} wird mit "
+             f"{money(m.get('benchmark_pre_money_valuation'))} Pre-Money bewertet ({m.get('benchmark_basis')}); nach "
+             f"Ihren Antworten im Fragebogen erreichen Sie {pct(m.get('total_factor'))} davon{minus_debt}: "
+             f"{money(m.get('pre_money_valuation'))}.")
 
 
 def _warnings_page(output: dict) -> list:
@@ -1219,15 +1239,16 @@ def _scenario_sensitivity_page(scenarios: dict) -> list:
             return money_compact(mv.get("pre_money_value"))
         return T("not used", "nicht verw.") if mv.get("status") == "not_used" else "n/m"
 
-    rows = [[method_chart_label(k)] + [val(l, k) for l in labels]
-            for k in ("scorecard", "venture_capital", "comparables", "dcf")]
+    keys = [k for k in ("scorecard", "venture_capital", "comparables", "dcf", "market")
+            if k in scenarios[labels[0]].get("method_values", {})]
+    rows = [[method_chart_label(k)] + [val(l, k) for l in labels] for k in keys]
     total_row = [T("Blended pre-money", "Gewichtete Pre-Money")] + [
         money_compact(scenarios[l].get("blended_pre_money_valuation")) for l in labels]
     col_w = [CONTENT_W * 0.28] + [CONTENT_W * 0.72 / n] * n
     story.append(data_table([T("Method", "Methode")] + [scenario_label(l) for l in labels], rows,
                             total_row=total_row, col_widths=col_w))
     any_nm = any(scenarios[l].get("method_values", {}).get(k, {}).get("status") == "not_meaningful"
-                 for l in labels for k in ("scorecard", "venture_capital", "comparables", "dcf"))
+                 for l in labels for k in keys)
     story.append(P(T("The weights stay as in the main result; a method that gives no positive value in a scenario "
                      "counts as €0.", "Die Gewichte bleiben wie im Hauptergebnis; eine Methode, die in einem Szenario "
                      "keinen positiven Wert ergibt, zählt mit 0 €.")
@@ -1695,11 +1716,18 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
           "<b>Discounted Cashflow</b>: zinst geplante freie Cashflows und einen Endwert mit den Kapitalkosten (WACC) "
           "ab, gewichtet das Ergebnis mit der Überlebenswahrscheinlichkeit, zieht Schulden ab und addiert liquide "
           "Mittel."),
-        T("The four results are blended with weights for the company's stage. A method that doesn't apply to the "
+        T("<b>Market</b> (comparable rounds; Germany, Austria and Switzerland, Startup and Expansion stages): the "
+          "typical pre-money of the company's round in DACH (PitchBook) × the questionnaire score, minus debt. It "
+          "prices the company like a typical round, so it is often well above the fundamental methods.",
+          "<b>Marktmethode</b> (vergleichbare Runden; Deutschland, Österreich und Schweiz, Start- und "
+          "Expansionsphase): die typische Pre-Money-Bewertung der Finanzierungsrunde des Unternehmens in DACH "
+          "(PitchBook) × die Punktzahl im Fragebogen, abzüglich Schulden. Sie bepreist das Unternehmen wie eine "
+          "typische Runde und liegt deshalb oft deutlich über den fundamentalen Methoden."),
+        T("The results are blended with weights for the company's stage. A method that doesn't apply to the "
           "company (for example Comparables without revenue) is left out and the other weights are scaled "
           "up; a method that applies but finds no value for the shares counts as €0, so a weaker plan never raises "
           "the result.",
-          "Die vier Ergebnisse werden mit Gewichten für die Phase des Unternehmens kombiniert. Eine Methode, die nicht "
+          "Die Ergebnisse werden mit Gewichten für die Phase des Unternehmens kombiniert. Eine Methode, die nicht "
           "zum Unternehmen passt (etwa die Vergleichsmethode ohne Umsatz), entfällt und die anderen Gewichte werden "
           "hochskaliert; eine Methode, die passt, aber keinen Wert für die Anteile findet, zählt mit 0 €, sodass ein "
           "schwächerer Plan das Ergebnis nie erhöht."),
@@ -1742,11 +1770,13 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
         ("scorecard_benchmark", T("Scorecard benchmark", "Scorecard-Vergleichswert")),
         ("scorecard", T("Scorecard method", "Scorecard-Methode")),
         ("method_weights", T("Method weights", "Gewichte der Methoden")),
+        ("market_round_benchmarks", T("Market method (comparable rounds)", "Marktmethode (vergleichbare Runden)")),
         ("round_benchmarks", T("Round logic", "Rundenlogik")),
     ]
     comparables = g(output or {}, "comparables", {}) or {}
     used_basis = comparables.get("basis_used") if comparables.get("pre_money_valuation") is not None else None
-    shown = {"ev_sales_multiple": used_basis == "revenue", "saas_arr_multiple": used_basis == "arr"}
+    shown = {"ev_sales_multiple": used_basis == "revenue", "saas_arr_multiple": used_basis == "arr",
+             "market_round_benchmarks": bool(g(output or {}, "market"))}
     for key, label in labels:
         if sources.get(key) and shown.get(key, True):  # a multiple's source only where it was used
             story.append(P(f"<b>{esc(label)}:</b> {esc(_relevant_sentences(sources[key], country, industry))}",

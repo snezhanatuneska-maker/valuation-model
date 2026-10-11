@@ -482,6 +482,13 @@ def get_default_region(country: str) -> dict:
         raise HTTPException(status_code=404, detail=f"Unknown country {country!r}")
 
 
+@reference_router.get("/market-rounds")
+def get_market_rounds() -> dict:
+    """Where the market method (comparable rounds) applies: {countries, weights: {stage: weight}}."""
+    data = ve.market_round_benchmarks()
+    return {"countries": data["countries"], "weights": data["weights"]}
+
+
 @reference_router.get("/scorecard-lookup")
 def get_scorecard_lookup() -> dict:
     """
