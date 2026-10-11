@@ -324,14 +324,14 @@ def get_country(country: str) -> dict:
     try:
         return country_data()[country]
     except KeyError as e:
-        raise KeyError(f"No country data for {country!r}") from e
+        raise KeyError(_t(f"Unknown country {country!r}", f"Unbekanntes Land {country!r}")) from e
 
 
 def get_stage_params(stage: str) -> dict:
     try:
         return stage_parameters()[stage]
     except KeyError as e:
-        raise KeyError(f"No stage parameters for {stage!r}") from e
+        raise KeyError(_t(f"Unknown stage {stage!r}", f"Unbekannte Phase {stage!r}")) from e
 
 
 def canonical_option(criterion: str, option_text: str) -> str:
@@ -343,7 +343,8 @@ def get_scorecard_score(criterion: str, option_text: str) -> float:
     table = scorecard_qualitative_lookup()[criterion]
     text = canonical_option(criterion, option_text)
     if text not in table:
-        raise KeyError(f"Unknown answer {option_text!r} for {criterion!r}")
+        raise KeyError(_t(f"Unknown answer {option_text!r} for {criterion!r}",
+                           f"Unbekannte Antwort {option_text!r} für {criterion!r}"))
     return table[text]
 
 
@@ -1880,7 +1881,8 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                                    "des Umsatzes."))
             break
 
-    if projections.starting_margin_source == "company":
+    # Banks and insurers: no method uses the EBITDA projection, so a margin gap means nothing.
+    if projections.starting_margin_source == "company" and cp.industry not in FINANCIAL_SECTOR_INDUSTRIES:
         gap = projections.starting_ebitda_margin - projections.target_ebitda_margin
         if abs(gap) > 0.10:
             own_target = projections.target_margin_source == "user_override"
@@ -1982,11 +1984,17 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                 "verwendet."), "info")
 
     if cp.industry in FINANCIAL_SECTOR_INDUSTRIES:
+        # Only the questionnaire-based methods remain: the Scorecard (Idea, Development) or, in DACH at the
+        # Startup and Expansion stages, the market method.
+        if "market" in method_values and method_values["market"].status == "ok":
+            used_en, used_de = "the market method (comparable rounds)", "die Marktmethode (vergleichbare Runden)"
+        else:
+            used_en, used_de = "the Scorecard method", "die Scorecard-Methode"
         warn("financial_sector", _t(
-            "Banks and insurers can't be valued on EBITDA, revenue multiples or free cash flow, so only the "
-            "Scorecard method is used.",
+            "Banks and insurers can't be valued on EBITDA, revenue multiples or free cash flow, so only "
+            f"{used_en} is used.",
             "Banken und Versicherer lassen sich nicht über EBITDA, Umsatz-Multiplikatoren oder freie Cashflows "
-            "bewerten; deshalb wird nur die Scorecard-Methode verwendet."))
+            f"bewerten; deshalb wird nur {used_de} verwendet."))
     if dcf.terminal_value_floor_applied:
         warn("tv_floor", _t(
             "The discount rate is close to the long-run growth rate, so the terminal value was calculated with a "
@@ -2270,9 +2278,10 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
     get_country(company.country)  # fail early on an unknown country
     stage = get_stage_params(company.company_stage)
     if company.industry not in industry_benchmarks():
-        raise KeyError(f"Unknown industry {company.industry!r}")
+        raise KeyError(_t(f"Unknown industry {company.industry!r}", f"Unbekannte Branche {company.industry!r}"))
     if company.business_territory_region not in business_regions():
-        raise KeyError(f"Unknown region {company.business_territory_region!r}")
+        raise KeyError(_t(f"Unknown region {company.business_territory_region!r}",
+                           f"Unbekannte Region {company.business_territory_region!r}"))
 
     bench = _BenchmarkRecorder(company.industry, company.business_territory_region)
     projections = build_projections(company, inputs.financial_assumptions, op, bench)

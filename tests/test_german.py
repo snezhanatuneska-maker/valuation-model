@@ -34,6 +34,17 @@ def test_language_only_changes_words_not_figures(client):
     assert ve.current_language() == "en"  # the request's language doesn't leak into the next one
 
 
+def test_german_unknown_input_message(client):
+    bad = copy.deepcopy(WERKPULS)
+    bad["company_profile"]["business_territory_region"] = "Mars"
+    r = client.post("/valuations/preview?lang=de", json=bad)
+    assert r.status_code == 400 and r.json()["detail"] == "Unbekannte Angabe: Unbekannte Region 'Mars'"
+    bad = copy.deepcopy(WERKPULS)
+    bad["company_profile"]["industry"] = "Quatsch"
+    assert client.post("/valuations/preview?lang=de", json=bad).json()["detail"] == \
+        "Unbekannte Angabe: Unbekannte Branche 'Quatsch'"
+
+
 def test_german_validation_messages(client):
     bad = copy.deepcopy(WERKPULS)
     bad["operating_performance"]["current_ebitda"] = 9_000_000

@@ -485,6 +485,20 @@ def test_banks_get_one_message_not_four():
     assert not [k for k in m if k.startswith("nm_") or k.startswith("fallback_")]
 
 
+def test_bank_message_names_the_method_actually_used():
+    """In DACH at the Startup and Expansion stages a bank is valued by the market method alone, not the Scorecard;
+    and no method uses its EBITDA projection, so there is no margin-gap warning."""
+    bank = dict(company_profile__industry="Banks (Regional)", company_profile__company_stage="Startup stage")
+    r = run(german(**bank))
+    assert [k for k, mv in r.method_values.items() if mv.status == "ok"] == ["market"]
+    m = {w.code: w.message for w in r.warnings}
+    assert "only the market method (comparable rounds) is used" in m["financial_sector"]
+    assert "margin_gap" not in m
+    assert "only the Scorecard method is used" in messages(german(**{**bank,
+                                                                     "company_profile__company_stage": "Idea stage"}))[
+        "financial_sector"]
+
+
 def test_no_method_message_lists_reasons_and_advice():
     case = german(company_profile__company_stage="Startup stage", operating_performance__current_revenue_last_12_months=0,
                   operating_performance__current_ebitda=-200_000, financial_assumptions__target_ebitda_margin_override=-0.5,
