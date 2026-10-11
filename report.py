@@ -700,9 +700,21 @@ def _at_a_glance(output: dict, scenarios: dict) -> list:
     the ranges say how uncertain."""
     used = [method_short(k) for k, mv in (g(output, "method_values", {}) or {}).items()
             if mv.get("status") == "ok" and mv.get("weight_used")]
-    rows = [(T("Pre-money valuation", "Pre-Money-Bewertung"), money(g(output, "blended_pre_money_valuation")),
-             T("blend of ", "gewichtet aus ") + _join(used) if used else ""),
-            (T("Post-money valuation", "Post-Money-Bewertung"), money(g(output, "post_money_valuation")),
+    blend_note = T("blend of ", "gewichtet aus ") + _join(used) if used else ""
+    vr = g(output, "value_range")
+    if vr:  # the range leads: one exact figure would suggest more certainty than a startup valuation has
+        change = ve._pct0(vr["revenue_change"])
+        rows = [(T("Pre-money valuation range", "Spanne der Pre-Money-Bewertung"),
+                 T(f"{money_compact(vr['low'])} to {money_compact(vr['high'])}",
+                   f"{money_compact(vr['low'])} bis {money_compact(vr['high'])}"),
+                 T(f"if revenue comes in {change} below or above plan",
+                   f"wenn der Umsatz {change} unter oder über dem Plan liegt")),
+                (T("Central value (your plan)", "Mittelwert (Ihr Plan)"),
+                 money(g(output, "blended_pre_money_valuation")), blend_note)]
+    else:
+        rows = [(T("Pre-money valuation", "Pre-Money-Bewertung"), money(g(output, "blended_pre_money_valuation")),
+                 blend_note)]
+    rows += [(T("Post-money valuation", "Post-Money-Bewertung"), money(g(output, "post_money_valuation")),
              T(f"after raising {money(g(output, 'capital_needed'))}",
                f"nach Aufnahme von {money(g(output, 'capital_needed'))}"))]
     rng = g(output, "method_range")
@@ -714,7 +726,7 @@ def _at_a_glance(output: dict, scenarios: dict) -> list:
                        f"{money(rng['high'])} ({method_short(rng['high_method'])})"),
                      T("lowest and highest method", "niedrigste und höchste Methode")))
     low, high = (scenarios or {}).get("80%"), (scenarios or {}).get("120%")
-    if low and high and abs(high["blended_pre_money_valuation"] - low["blended_pre_money_valuation"]) >= 1:
+    if not vr and low and high and abs(high["blended_pre_money_valuation"] - low["blended_pre_money_valuation"]) >= 1:
         rows.append((T("If planned revenue is 20% lower or higher", "Wenn der geplante Umsatz 20 % niedriger oder höher ist"),
                      T(f"{money(low['blended_pre_money_valuation'])} to {money(high['blended_pre_money_valuation'])}",
                        f"{money(low['blended_pre_money_valuation'])} bis {money(high['blended_pre_money_valuation'])}"),
@@ -754,9 +766,9 @@ def _at_a_glance(output: dict, scenarios: dict) -> list:
                        STYLES["sub"], raw=True))
     if rng:
         story.append(P(T("The methods look at the company from different angles and rarely agree; the range shows how "
-                         "far apart they are. The revenue line shows how much the result depends on the plan.",
+                         "far apart they are. The revenue range shows how much the result depends on the plan.",
                          "Die Methoden betrachten das Unternehmen aus verschiedenen Blickwinkeln und stimmen selten "
-                         "überein; die Spanne zeigt, wie weit sie auseinanderliegen. Die Umsatzzeile zeigt, wie stark "
+                         "überein; die Spanne zeigt, wie weit sie auseinanderliegen. Die Umsatzspanne zeigt, wie stark "
                          "das Ergebnis vom Plan abhängt."),
                        STYLES["sub"]))
     return story
@@ -1716,11 +1728,11 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
           "<b>Discounted Cashflow</b>: zinst geplante freie Cashflows und einen Endwert mit den Kapitalkosten (WACC) "
           "ab, gewichtet das Ergebnis mit der Überlebenswahrscheinlichkeit, zieht Schulden ab und addiert liquide "
           "Mittel."),
-        T("<b>Market</b> (comparable rounds; Germany, Austria and Switzerland, Startup and Expansion stages): the "
+        T("<b>Market</b> (comparable rounds; Germany, Austria and Switzerland, Startup to Growth stage): the "
           "typical pre-money of the company's round in DACH (PitchBook) × the questionnaire score, minus debt. It "
           "prices the company like a typical round, so it is often well above the fundamental methods.",
-          "<b>Marktmethode</b> (vergleichbare Runden; Deutschland, Österreich und Schweiz, Start- und "
-          "Expansionsphase): die typische Pre-Money-Bewertung der Finanzierungsrunde des Unternehmens in DACH "
+          "<b>Marktmethode</b> (vergleichbare Runden; Deutschland, Österreich und Schweiz, Start- bis "
+          "Wachstumsphase): die typische Pre-Money-Bewertung der Finanzierungsrunde des Unternehmens in DACH "
           "(PitchBook) × die Punktzahl im Fragebogen, abzüglich Schulden. Sie bepreist das Unternehmen wie eine "
           "typische Runde und liegt deshalb oft deutlich über den fundamentalen Methoden."),
         T("The results are blended with weights for the company's stage. A method that doesn't apply to the "

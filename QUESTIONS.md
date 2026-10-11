@@ -213,3 +213,30 @@ unchanged. The market method is left out of the "methods disagree" check, as it 
 design. New figures: German example €2,494,834 (was €1,342,446); Werkpuls pinned €2,567,131.07 (was €1,482,841.42).
 Caveat: the benchmark doesn't scale with the company's size, so the stage choice matters more in DACH (a small company
 at the Expansion stage gets the Series A benchmark).
+
+## 15. Fewer weak spots for a presentation (done 11 October 2026)
+
+A review before presenting the model to a German university startup community found that the same company (the German
+example) came out at €2.49M at the Startup stage, €5.52M at Expansion and €1.89M at Growth: the stage is the
+founder's own choice, and the market method switched between the seed benchmark, the Series A benchmark and nothing.
+Three changes, all approved by the owner the same day:
+
+- **Stage check (`stage_round_size`).** From the Expansion stage on, a raise below the stage's typical round size
+  (Dealroom bands in `round_benchmarks`) gets a warning naming the stage the raise fits and the blended value there,
+  e.g. "At the Startup stage the blended value would be €2,494,834 instead of €5,520,275". The value itself is not
+  changed; the founder decides. The Startup stage gets no such check, as small seed rounds are common in Germany.
+- **Market method at the Growth stage, 15%** (the weight approved in 14), with the Series A–B median (€23.0M), as
+  PitchBook publishes no separate Series B figure. The German example at Growth: €1.89M → €4.81M. Still below the
+  Expansion stage's €5.52M; a weight of 20% would remove that dip for this company, but 15% was the decision.
+  Series B rounds are usually priced higher, so this errs low.
+- **The headline is a range:** the value if revenue comes in 20% below or above the plan, with the blend as the
+  central value (screen and PDF cover; `value_range` in the API). German example: €2.34M – €2.65M, central
+  €2,494,834.
+
+Not changed: the figures of every company at the Idea, Development, Startup and Expansion stages, and every
+country outside DACH.
+
+Still open, for later: a market benchmark per European region (only the DACH figures from the PitchBook report are
+in the repository; the other regions' figures need to be taken from the report), and a test of the model against
+20–30 real DACH rounds with known prices.
+

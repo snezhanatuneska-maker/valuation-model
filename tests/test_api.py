@@ -395,7 +395,7 @@ def test_saved_year_by_year_plan_reopens_and_reruns(storing_client):
 def test_market_rounds_route_and_pdf_line(client):
     info = client.get("/reference-data/market-rounds").json()
     assert info == {"countries": ["Germany", "Austria", "Switzerland"],
-                    "weights": {"Startup stage": 0.25, "Expansion stage": 0.2}}
+                    "weights": {"Startup stage": 0.25, "Expansion stage": 0.2, "Growth stage": 0.15}}
     import io
 
     import pdfplumber

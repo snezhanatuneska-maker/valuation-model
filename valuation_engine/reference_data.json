@@ -15775,7 +15775,7 @@
     "ev_sales_multiple": "Derived from the same Damodaran January 2026 regional files, as EV/EBITDA (all firms) × EBITDA/Sales (all firms); both are aggregate ratios over the same companies, so the product is their total enterprise value ÷ total sales. Used by the Comparables method when revenue gives more than EBITDA (always for companies without positive EBITDA).",
     "saas_arr_multiple": "ARR multiple for subscription (SaaS) companies: SaaS Capital Index, median enterprise value ÷ annualised run-rate revenue of about 100 listed SaaS companies, 4.2× on 30 September 2026 (down from 5.6× in December 2025). Figure as reported by secondary sources; check the monthly index file at saas-capital.com when updating. Reduced by the stage's private-company discount, as for the other multiples.",
     "round_benchmarks": "Median share sold per round in US software companies on Carta, 2025 (seed 19.5%, Series A 18.0%, Series B 14.0%, Series C 10.0%; pre-seed SAFE rounds of $1–1.9M 15.6%, under $250k 5–6%, so 10% at the Idea stage). No German figures by stage are published. The low–high band is an app assumption. Round sizes: Dealroom round bands (pre-seed $0.1–1M, seed $1–4M, Series A $4–15M) and DealRoom Q2 2026 typical raises for Series B ($20–60M) and C ($30–100M, US), at the ECB rate of 1 July 2026. Median German VC round 2025: €4M (KfW VC Dashboard Q4 2025, Dealroom data).",
-    "market_round_benchmarks": "PitchBook, Q2 2026 European VC Valuations Report (published 20 August 2026, data as of 30 June 2026), 'Median pre-seed/seed pre-money valuation (€M) by region' (p. 12) and 'Median Series A-B pre-money valuation (€M) by region' (p. 13), region DACH (Germany, Austria, Switzerland). Seed: €6.4M, the DACH median for 2025 (full year; H1 2026 shows €9.3M on fewer than 20 rounds). Series A: €23.0M, the DACH long-term median of Series A-B rounds (2025 €40.4M and H1 2026 €112.4M include Series B rounds and rest on few deals). PitchBook reports pre-seed with seed and Series A with Series B; there is no separate Series B figure, so the Growth stage has no market method."
+    "market_round_benchmarks": "PitchBook, Q2 2026 European VC Valuations Report (published 20 August 2026, data as of 30 June 2026), 'Median pre-seed/seed pre-money valuation (€M) by region' (p. 12) and 'Median Series A-B pre-money valuation (€M) by region' (p. 13), region DACH (Germany, Austria, Switzerland). Seed: €6.4M, the DACH median for 2025 (full year; H1 2026 shows €9.3M on fewer than 20 rounds). Series A: €23.0M, the DACH long-term median of Series A-B rounds (2025 €40.4M and H1 2026 €112.4M include Series B rounds and rest on few deals). PitchBook reports pre-seed with seed and Series A with Series B; there is no separate Series B figure, so the Growth stage also uses the Series A-B median, at the lower weight of 15% (owner decision of 10 October 2026). Series B rounds are usually priced higher, so this understates rather than overstates."
   },
   "stage_descriptions": {
     "Idea stage": "An idea or concept; no product and no revenue yet.",
@@ -16005,7 +16005,7 @@
     "ev_sales_multiple": "Abgeleitet aus denselben regionalen Damodaran-Dateien vom Januar 2026 als EV/EBITDA (alle Unternehmen) × EBITDA/Umsatz (alle Unternehmen); beide sind aggregierte Kennzahlen über dieselben Unternehmen, das Produkt ist also deren gesamter Unternehmenswert ÷ gesamter Umsatz. Von der Vergleichsmethode verwendet, wenn der Umsatz mehr ergibt als das EBITDA (immer bei Unternehmen ohne positives EBITDA).",
     "saas_arr_multiple": "ARR-Multiplikator für Abo-Unternehmen (SaaS): SaaS Capital Index, Median aus Unternehmenswert ÷ annualisiertem wiederkehrendem Umsatz von etwa 100 börsennotierten SaaS-Unternehmen, 4,2× am 30. September 2026 (5,6× im Dezember 2025). Wert laut Sekundärquellen; bei einer Aktualisierung die monatliche Indexdatei auf saas-capital.com prüfen. Wie die anderen Multiplikatoren um den Abschlag für nicht börsennotierte Unternehmen der jeweiligen Phase gekürzt.",
     "round_benchmarks": "Median des je Runde verkauften Anteils bei US-Softwareunternehmen auf Carta, 2025 (Seed 19,5 %, Series A 18,0 %, Series B 14,0 %, Series C 10,0 %; Pre-Seed-SAFE-Runden von 1-1,9 Mio. US$ 15,6 %, unter 250.000 US$ 5-6 %, deshalb 10 % in der Ideenphase). Deutsche Werte je Phase werden nicht veröffentlicht. Die Spanne ist eine Annahme des Tools. Rundengrößen: Dealroom-Rundenklassen (Pre-Seed 0,1-1 Mio. US$, Seed 1-4 Mio. US$, Series A 4-15 Mio. US$) und typische Runden laut DealRoom Q2 2026 für Series B (20-60 Mio. US$) und C (30-100 Mio. US$, USA), zum EZB-Kurs vom 1. Juli 2026. Mittlere deutsche VC-Runde 2025: 4 Mio. € (KfW VC-Dashboard Q4 2025, Dealroom-Daten).",
-    "market_round_benchmarks": "PitchBook, Q2 2026 European VC Valuations Report (veröffentlicht am 20. August 2026, Datenstand 30. Juni 2026), 'Median pre-seed/seed pre-money valuation (€M) by region' (S. 12) und 'Median Series A-B pre-money valuation (€M) by region' (S. 13), Region DACH (Deutschland, Österreich, Schweiz). Seed: 6,4 Mio. €, der DACH-Median für 2025 (ganzes Jahr; H1 2026 zeigt 9,3 Mio. € bei weniger als 20 Runden). Series A: 23,0 Mio. €, der langfristige DACH-Median der Series-A-B-Runden (2025 40,4 Mio. € und H1 2026 112,4 Mio. € enthalten Series-B-Runden und beruhen auf wenigen Deals). PitchBook weist Pre-Seed zusammen mit Seed und Series A zusammen mit Series B aus; eine eigene Series-B-Zahl gibt es nicht, deshalb hat die Wachstumsphase keine Marktmethode."
+    "market_round_benchmarks": "PitchBook, Q2 2026 European VC Valuations Report (veröffentlicht am 20. August 2026, Datenstand 30. Juni 2026), 'Median pre-seed/seed pre-money valuation (€M) by region' (S. 12) und 'Median Series A-B pre-money valuation (€M) by region' (S. 13), Region DACH (Deutschland, Österreich, Schweiz). Seed: 6,4 Mio. €, der DACH-Median für 2025 (ganzes Jahr; H1 2026 zeigt 9,3 Mio. € bei weniger als 20 Runden). Series A: 23,0 Mio. €, der langfristige DACH-Median der Series-A-B-Runden (2025 40,4 Mio. € und H1 2026 112,4 Mio. € enthalten Series-B-Runden und beruhen auf wenigen Deals). PitchBook weist Pre-Seed zusammen mit Seed und Series A zusammen mit Series B aus; eine eigene Series-B-Zahl gibt es nicht, deshalb verwendet die Wachstumsphase ebenfalls den Series-A-B-Median, mit dem geringeren Gewicht von 15 % (Entscheidung der Eigentümerin vom 10. Oktober 2026). Series-B-Runden werden meist höher bewertet; der Wert ist also eher zu niedrig als zu hoch."
   },
   "scorecard_option_labels_de": {
     "strength_of_competitors_in_market": {
@@ -16094,7 +16094,8 @@
     ],
     "weights": {
       "Startup stage": 0.25,
-      "Expansion stage": 0.2
+      "Expansion stage": 0.2,
+      "Growth stage": 0.15
     },
     "stages": {
       "Startup stage": {
@@ -16108,6 +16109,12 @@
         "eur": 23000000.0,
         "basis": "PitchBook long-term median pre-money of Series A-B rounds in DACH",
         "basis_de": "Langfristiger PitchBook-Median der Pre-Money-Bewertung von Series-A-B-Runden in DACH"
+      },
+      "Growth stage": {
+        "round": "Series A-B",
+        "eur": 23000000.0,
+        "basis": "PitchBook long-term median pre-money of Series A-B rounds in DACH (no separate Series B figure is published)",
+        "basis_de": "Langfristiger PitchBook-Median der Pre-Money-Bewertung von Series-A-B-Runden in DACH (eine eigene Series-B-Zahl wird nicht veröffentlicht)"
       }
     }
   }

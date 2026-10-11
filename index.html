@@ -2402,6 +2402,20 @@ const METHOD_SHORT = { scorecard: ["Scorecard", "Scorecard"], venture_capital: [
                        comparables: ["Comparables", "Vergleichsmethode"], dcf: ["DCF", "DCF"],
                        market: ["Market", "Marktmethode"] };
 const methodShort = (key) => tr(...METHOD_SHORT[key]);
+// The headline is a range (revenue 20% below to 20% above plan) with the blend as the central value: a startup's
+// value is uncertain, and one exact figure suggests otherwise. Without a range (the value doesn't move with
+// revenue), the blend alone.
+function headlineValue(result, company) {
+  const r = result.value_range;
+  const label = `<p class="headline-label">${escapeHtml(company)}: ${tr("pre-money valuation", "Pre-Money-Bewertung")}</p>`;
+  if (!r) return `${label}<p class="headline-value">${money(result.blended_pre_money_valuation)}</p>`;
+  const change = pct0(r.revenue_change);
+  return `${label}
+      <p class="headline-value">${moneyShort(r.low)} – ${moneyShort(r.high)}</p>
+      <p class="headline-sub">${tr(`Central value (your plan): ${money(result.blended_pre_money_valuation)}. The range is the value if revenue comes in ${change} below or above plan.`,
+                                   `Mittelwert (Ihr Plan): ${money(result.blended_pre_money_valuation)}. Die Spanne ist der Wert, wenn der Umsatz ${change} unter oder über dem Plan liegt.`)}</p>`;
+}
+
 function rangeLines(result, scenarios) {
   const lines = [];
   const r = result.method_range;
@@ -2410,7 +2424,7 @@ function rangeLines(result, scenarios) {
                   `Spanne der Methoden: ${money(r.low)} (${methodShort(r.low_method)}) bis ${money(r.high)} (${methodShort(r.high_method)})`));
   }
   const lo = scenarios && scenarios["80%"], hi = scenarios && scenarios["120%"];
-  if (lo && hi && Math.abs(hi.blended_pre_money_valuation - lo.blended_pre_money_valuation) >= 1) {
+  if (!result.value_range && lo && hi && Math.abs(hi.blended_pre_money_valuation - lo.blended_pre_money_valuation) >= 1) {
     lines.push(tr(`If planned revenue is 20% lower or higher: ${money(lo.blended_pre_money_valuation)} to ${money(hi.blended_pre_money_valuation)}`,
                   `Wenn der geplante Umsatz 20 % niedriger oder höher ist: ${money(lo.blended_pre_money_valuation)} bis ${money(hi.blended_pre_money_valuation)}`));
   }
@@ -2443,8 +2457,7 @@ function renderResults(result, scenarios) {
 
   panel.innerHTML = `
     <div class="headline-result">
-      <p class="headline-label">${escapeHtml(company)}: ${tr("pre-money valuation", "Pre-Money-Bewertung")}</p>
-      <p class="headline-value">${money(result.blended_pre_money_valuation)}</p>
+      ${headlineValue(result, company)}
       <p class="headline-sub">${tr(`Post-money ${money(result.post_money_valuation)} after raising ${money(result.capital_needed)}`,
                                    `Post-Money ${money(result.post_money_valuation)} nach Aufnahme von ${money(result.capital_needed)}`)}</p>
       ${rangeLines(result, scenarios)}
