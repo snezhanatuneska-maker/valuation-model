@@ -236,7 +236,34 @@ Three changes, all approved by the owner the same day:
 Not changed: the figures of every company at the Idea, Development, Startup and Expansion stages, and every
 country outside DACH.
 
-Still open, for later: a market benchmark per European region (only the DACH figures from the PitchBook report are
-in the repository; the other regions' figures need to be taken from the report), and a test of the model against
-20–30 real DACH rounds with known prices.
+Still open at the time: a market benchmark per European region and a test against real rounds; see 16.
+
+## 16. Market method for every European region, and a backtest tool (done 11 October 2026)
+
+**Market method by region.** The PitchBook report the DACH figures come from (Q2 2026 European VC Valuations Report,
+pp. 12-13) has the same two charts for seven regions. Every region now uses its own figures by the DACH rule (seed:
+the 2025 median; Series A and Growth: the long-term Series A–B median):
+
+| Region | Countries in the app | Seed | Series A / Growth |
+|---|---|---|---|
+| DACH | Germany, Austria, Switzerland, Liechtenstein | €6.4M | €23.0M |
+| France & Benelux | France, Belgium, Netherlands, Luxembourg | €5.2M | €16.3M |
+| Nordics | Denmark, Finland, Iceland, Norway, Sweden | €4.7M | €17.8M |
+| Southern Europe | Spain, Portugal, Italy, Greece, Malta, Cyprus, Andorra | €3.6M | €13.4M |
+| UK & Ireland | United Kingdom, Ireland, Isle of Man, Jersey, Guernsey | €4.9M | €20.8M |
+| Central & Eastern Europe | EU member states in the region (Poland, Czech Republic, Slovakia, Hungary, Romania, Bulgaria, Croatia, Slovenia, Baltic states) | €5.5M | €25.9M |
+| Israel | Israel | €6.1M | €25.4M |
+
+The assignment of countries to regions is the app's; non-EU countries in Central & Eastern Europe, Türkiye and Russia
+get no market method. PitchBook notes fewer than 20 data points for several regions (Central & Eastern Europe, DACH,
+Israel, Southern Europe; for Series A–B also the Nordics). The German example's value moved from €2.49M in Germany
+and €1.25M in France to €2.49M and €2.14M; German figures are unchanged. Outside Europe and Israel nothing changed.
+
+**Backtest tool.** `audit/backtest.py` and `audit/backtest_template.csv`: one row per real round (with its source),
+the script reports how far the model is from the price paid. No real rounds are in the repository: their figures
+have to be collected (press releases, Handelsregister filings, Dealroom). That is the next step for a published
+accuracy figure.
+
+Still open, owner's choice: the Growth stage stays below the Expansion stage for the German example (€4.81M vs
+€5.52M; a 20% weight would remove that), and the repository has no LICENSE file yet.
 

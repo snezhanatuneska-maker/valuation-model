@@ -283,10 +283,12 @@ def recompute(case):
     out.update(dcf_pv_fcf=pv, dcf_pv_tv=pv_tv, dcf_ev=ev)
     out["dcf"] = max(eq, 0.0) if ind not in FINANCIALS else None
 
-    # --- Market (DACH, Startup/Expansion): typical round pre-money x questionnaire score - debt, at least 0 ---
+    # --- Market (PitchBook regions, Startup to Growth): typical round pre-money of the country's region x
+    # questionnaire score - debt, at least 0 ---
     mr = REF["market_round_benchmarks"]
-    row = mr["stages"].get(cp["company_stage"])
-    mw = mr["weights"].get(cp["company_stage"], 0.0) if row and cp["country"] in mr["countries"] else 0.0
+    region = next((r for r in mr["regions"].values() if cp["country"] in r["countries"]), None)
+    row = region["stages"].get(cp["company_stage"]) if region else None
+    mw = mr["weights"].get(cp["company_stage"], 0.0) if row else 0.0
     factor = sum(w * sum(s(q) for q in qs) / len(qs) for w, qs in groups.values())
     out["market"] = max(row["eur"] * factor - debt, 0.0) if mw else None
 

@@ -128,10 +128,10 @@ one paragraph marked `COMMUNITY LINE`.
 | Venture Capital | Exit value: the higher of exit-year EBITDA × EV/EBITDA and exit-year revenue × EV/Sales (the same rule as Comparables), minus debt, discounted at the investor's target return; minus the raise | Target return: 65% (Idea) falling to 20% (Maturity) |
 | Comparables | The higher of last-12-month EBITDA × EV/EBITDA and last-12-month revenue × EV/Sales (for SaaS: ARR × the public SaaS EV/ARR multiple, if ARR is entered), less a private-company discount, minus debt plus cash | Private-company discount: 40% → 20% |
 | DCF | 5 years of free cash flow + Gordon terminal value at WACC, × probability of survival, minus debt plus cash | Survival: 30% → 95% |
-| Market (comparable rounds) | Germany, Austria and Switzerland only: the typical pre-money of the company's round in DACH (PitchBook) × your questionnaire score, minus debt. Startup stage (seed, €6.4M) 25%, Expansion stage (Series A, €23.0M) 20%, Growth stage (Series A–B, €23.0M) 15%; the other weights are scaled down in proportion | — |
+| Market (comparable rounds) | European countries and Israel: the typical pre-money of the company's round in its PitchBook region (DACH, France & Benelux, Nordics, Southern Europe, UK & Ireland, Central & Eastern Europe, Israel) × your questionnaire score, minus debt. Startup stage (seed; DACH €6.4M) 25%, Expansion stage (Series A; DACH €23.0M) 20%, Growth stage (Series A–B; DACH €23.0M) 15%; the other weights are scaled down in proportion | — |
 
 - **The headline is a range:** the blended value if revenue comes in 20% below or above the plan (`value_range` in the API), with the blend as the central value. Screen and PDF cover show it first; when no method uses projected revenue, the single value is shown.
-- **Stage check:** the stage is the founder's choice and moves the value most (method weights, stage assumptions and, in DACH, the round the market method compares with). From the Expansion stage on, a raise below the stage's typical round size (`round_benchmarks`) gets a warning that names the stage the raise fits and the blended value at that stage (`stage_round_size`).
+- **Stage check:** the stage is the founder's choice and moves the value most (method weights, stage assumptions and, in Europe, the round the market method compares with). From the Expansion stage on, a raise below the stage's typical round size (`round_benchmarks`) gets a warning that names the stage the raise fits and the blended value at that stage (`stage_round_size`).
 - Revenue is planned as Year-1 revenue plus a growth rate for each later year, or (wizard: "An amount for each year"; API: `revenue_by_year`) as one amount per year. The second lets sales start later (biotech, deep tech): the years before the first sales are 0, and their EBITDA stays at today's (the current loss). Once sales start, every later year needs revenue.
 - Projected EBITDA margin starts from the company's own last-12-month margin (before revenue: today's EBITDA, usually the operating loss, divided by the first year's revenue) and moves in equal steps to the industry EBITDA margin (Damodaran EBITDA/Sales, which includes R&D) by Year 5, unless the user sets a target.
 - The terminal value (years after Year 5) is a business growing at the long-run 2% forever: Year 5's profit taxed in full (no lasting loss carryforward), capex at least D&A, and working capital growing at 2%.
@@ -149,7 +149,7 @@ The wizard opens with Germany and Europe selected. Any other country works exact
 
 - **Risk-free rate:** the 10-year Bund yield, not the US Treasury rate. Germany is rated Aaa, so its country risk premium is 0 and only the mature-market equity risk premium (4.2%) applies.
 - **Tax, year by year:** corporate tax (15% until 2027, then 14/13/12/11% and 10% from 2032, as enacted in July 2025) + 5.5% solidarity surcharge + trade tax (3.5% × Hebesatz). A projection year that spans two calendar years blends their rates by days. The value after Year 5 (terminal value) and the WACC use the long-run 2032 rate. The Hebesatz is the national average unless the user enters their municipality's under "Advanced". If a user enters a flat tax rate through the API, it still overrides the schedule.
-- **Market method (comparable rounds):** from the Startup to the Growth stage a fifth method prices the company like a typical round in DACH: PitchBook's median pre-money of seed rounds in 2025 (€6.4M) and its long-term median of Series A–B rounds (€23.0M, also used at the Growth stage, as no separate Series B figure is published), × the questionnaire score, minus debt. It counts for 25% (Startup), 20% (Expansion) and 15% (Growth); the questionnaire is therefore not optional there. Source and the reasons for these two figures: `market_round_benchmarks` in `reference_data.json` and QUESTIONS.md 14. It is usually well above the fundamental methods, so it isn't part of the "methods disagree" check.
+- **Market method (comparable rounds):** from the Startup to the Growth stage a fifth method prices the company like a typical round in its region (for Germany, Austria, Switzerland and Liechtenstein: DACH): PitchBook's median pre-money of seed rounds in 2025 (DACH €6.4M) and its long-term median of Series A–B rounds (DACH €23.0M, also used at the Growth stage, as no separate Series B figure is published), × the questionnaire score, minus debt. It counts for 25% (Startup), 20% (Expansion) and 15% (Growth); the questionnaire is therefore not optional there. The other European regions and Israel use their own PitchBook figures by the same rule. Source and the reasons for these figures: `market_round_benchmarks` in `reference_data.json` and QUESTIONS.md 14 and 16. It is usually well above the fundamental methods, so it isn't part of the "methods disagree" check.
 - **Scorecard benchmark:** Equidam's Scorecard average for Germany, €6,550,000 (Parameters Update P6.3, 30 July 2026): the average pre-money valuation of angel, pre-seed and seed rounds in Germany over the last 30 months. Equidam publishes one figure per country, so the Idea and Development stages use the same figure. Equidam updates it twice a year.
 
 All of these figures live in `valuation_engine/reference_data.json` under `country_specific` → `Germany`, each with its source and date. Update them once a year there; no code changes are needed.
@@ -187,6 +187,19 @@ pre-money of €900,000 to €1,700,000; at the blended value it would buy 19.1%
 
 These are pinned in `tests/test_engine.py` and recomputed independently by
 `audit/recompute.py`.
+
+## Testing the model against real rounds
+
+`audit/backtest.py` values real closed rounds and reports how far the model is from the price investors paid (median
+deviation, share within ±25% and ±50%, share of prices inside the model's range, by stage). Fill one row per round
+in a copy of `audit/backtest_template.csv`, with its source (press release, Handelsregister filing, Dealroom or
+PitchBook entry); the columns are explained at the top of `audit/backtest.py`. Then run
+
+```bash
+python audit/backtest.py rounds.csv --out backtest_report.md
+```
+
+No real rounds are in the repository yet. 20–30 DACH rounds would give a first, publishable accuracy figure.
 
 ## Running the tests
 

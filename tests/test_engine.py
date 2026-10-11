@@ -386,13 +386,13 @@ def test_unanswered_scorecard_questions_count_as_typical():
     team = r.scorecard.criteria["strength_of_the_team"]
     assert team.score == pytest.approx((1.2 + 1 + 1) / 3)
     assert full.unanswered == []
-    # Outside Germany, Austria and Switzerland, companies with revenue don't need to answer at all, and get no
-    # questionnaire warning.
-    case = german(company_profile__country="France")
+    # Where there is no market method (outside Europe and Israel), companies with revenue don't need to answer at
+    # all, and get no questionnaire warning.
+    case = german(company_profile__country="Canada")
     case["market_and_team_assessment"] = {}
     r = run(case)
     assert r.blended_pre_money_valuation == pytest.approx(
-        run(german(company_profile__country="France")).blended_pre_money_valuation)
+        run(german(company_profile__country="Canada")).blended_pre_money_valuation)
     assert "scorecard_unanswered" not in {w.code for w in r.warnings}
     # In Germany the market method uses the answers: unanswered ones count as typical, with a note.
     case = german()
@@ -503,7 +503,7 @@ def test_no_method_message_lists_reasons_and_advice():
     case = german(company_profile__company_stage="Startup stage", operating_performance__current_revenue_last_12_months=0,
                   operating_performance__current_ebitda=-200_000, financial_assumptions__target_ebitda_margin_override=-0.5,
                   funding__capital_needed=5_000_000,  # more than even the revenue-based exit supports
-                  company_profile__country="France")  # no market method outside DACH
+                  company_profile__country="Canada")  # no market method outside Europe and Israel
     with pytest.raises(ve.ValuationError) as e:
         run(case)
     text = str(e.value)
@@ -525,11 +525,16 @@ def test_industry_names_are_spelled_out_and_old_names_still_work():
     assert "Insurance (Property & Casualty)" in ve.FINANCIAL_SECTOR_INDUSTRIES
 
 
-# The market method (comparable rounds, QUESTIONS.md 14): DACH only, Startup to Growth stage.
+# The market method (comparable rounds, QUESTIONS.md 14 and 16): PitchBook's European regions and Israel, Startup to
+# Growth stage, each country with its region's figures.
 @pytest.mark.parametrize("country,stage,weight,benchmark", [
     ("Germany", "Startup stage", 0.25, 6_400_000), ("Austria", "Startup stage", 0.25, 6_400_000),
     ("Switzerland", "Expansion stage", 0.20, 23_000_000), ("Germany", "Expansion stage", 0.20, 23_000_000),
     ("Germany", "Growth stage", 0.15, 23_000_000),
+    ("France", "Startup stage", 0.25, 5_200_000), ("Netherlands", "Expansion stage", 0.20, 16_300_000),
+    ("United Kingdom", "Startup stage", 0.25, 4_900_000), ("Ireland", "Growth stage", 0.15, 20_800_000),
+    ("Sweden", "Expansion stage", 0.20, 17_800_000), ("Spain", "Startup stage", 0.25, 3_600_000),
+    ("Poland", "Expansion stage", 0.20, 25_900_000), ("Israel", "Startup stage", 0.25, 6_100_000),
 ])
 def test_market_method_where_round_data_exists(country, stage, weight, benchmark):
     r = run(german(company_profile__country=country, company_profile__company_stage=stage))
@@ -542,7 +547,8 @@ def test_market_method_where_round_data_exists(country, stage, weight, benchmark
 
 
 @pytest.mark.parametrize("changes", [
-    dict(company_profile__country="France"), dict(company_profile__company_stage="Maturity stage"),
+    dict(company_profile__country="Canada"), dict(company_profile__country="Russia"),
+    dict(company_profile__company_stage="Maturity stage"),
     dict(company_profile__company_stage="Idea stage"),
 ])
 def test_no_market_method_elsewhere_and_other_weights_unchanged(changes):

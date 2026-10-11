@@ -1728,11 +1728,11 @@ def _methodology_page(sources: dict, stage_params: Optional[dict], stage: Option
           "<b>Discounted Cashflow</b>: zinst geplante freie Cashflows und einen Endwert mit den Kapitalkosten (WACC) "
           "ab, gewichtet das Ergebnis mit der Überlebenswahrscheinlichkeit, zieht Schulden ab und addiert liquide "
           "Mittel."),
-        T("<b>Market</b> (comparable rounds; Germany, Austria and Switzerland, Startup to Growth stage): the "
-          "typical pre-money of the company's round in DACH (PitchBook) × the questionnaire score, minus debt. It "
+        T("<b>Market</b> (comparable rounds; most European countries and Israel, Startup to Growth stage): the "
+          "typical pre-money of the company's round in its region (PitchBook) × the questionnaire score, minus debt. It "
           "prices the company like a typical round, so it is often well above the fundamental methods.",
-          "<b>Marktmethode</b> (vergleichbare Runden; Deutschland, Österreich und Schweiz, Start- bis "
-          "Wachstumsphase): die typische Pre-Money-Bewertung der Finanzierungsrunde des Unternehmens in DACH "
+          "<b>Marktmethode</b> (vergleichbare Runden; die meisten europäischen Länder und Israel, Start- bis "
+          "Wachstumsphase): die typische Pre-Money-Bewertung der Finanzierungsrunde des Unternehmens in seiner Region "
           "(PitchBook) × die Punktzahl im Fragebogen, abzüglich Schulden. Sie bepreist das Unternehmen wie eine "
           "typische Runde und liegt deshalb oft deutlich über den fundamentalen Methoden."),
         T("The results are blended with weights for the company's stage. A method that doesn't apply to the "

@@ -1076,7 +1076,7 @@ def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) 
 # SECTION 6b — Market method (comparable rounds)
 #
 # Pre-money = typical pre-money of the company's financing round in its region
-# (PitchBook, DACH) x the questionnaire score (the Scorecard's total factor),
+# (PitchBook's European regions and Israel) x the questionnaire score (the Scorecard's total factor),
 # minus the company's debt (a typical round's company carries little), at least 0.
 # Only for the countries and stages in market_round_benchmarks; elsewhere the
 # method doesn't exist and the other weights are unchanged.
@@ -1097,15 +1097,28 @@ class MarketResult:
     unanswered: list[str] = field(default_factory=list)
 
 
+def market_round_region(country: str) -> Optional[str]:
+    """The PitchBook region whose round data covers `country`, or None (no market method there)."""
+    return next((name for name, r in market_round_benchmarks()["regions"].items() if country in r["countries"]), None)
+
+
+def market_round_countries() -> list[str]:
+    return [c for r in market_round_benchmarks()["regions"].values() for c in r["countries"]]
+
+
 def compute_market(company: CompanyProfile, scorecard: ScorecardResult, debt: float = 0.0) -> Optional[MarketResult]:
     data = market_round_benchmarks()
-    row = data["stages"].get(company.company_stage)
+    region = market_round_region(company.country)
     weight = data["weights"].get(company.company_stage, 0.0)
-    if row is None or weight <= 0 or company.country not in data["countries"]:
+    if region is None or weight <= 0:
+        return None
+    reg = data["regions"][region]
+    row = reg["stages"].get(company.company_stage)
+    if row is None:
         return None
     return MarketResult(
         round_name=row["round"],
-        region=_t(data["region"], data.get("region_de", data["region"])),
+        region=_t(region, reg.get("name_de", region)),
         benchmark_pre_money_valuation=row["eur"],
         benchmark_basis=_t(row["basis"], row.get("basis_de", row["basis"])),
         total_factor=scorecard.total_factor,
@@ -1414,7 +1427,7 @@ LATE_STAGES = ("Expansion stage", "Growth stage", "Maturity stage")
 
 
 def stage_round_note(inputs: ValuationInput, output: ValuationOutput) -> Optional["ValuationWarning"]:
-    """The stage sets the method weights, the stage assumptions and (in DACH) the round the market method compares
+    """The stage sets the method weights, the stage assumptions and (in Europe) the round the market method compares
     with, and the founder chooses it. From the Expansion stage on, a raise below the stage's typical round size
     points to an earlier stage: say so, with the value at the stage the raise fits."""
     cp = inputs.company_profile
@@ -2032,8 +2045,8 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                 "verwendet."), "info")
 
     if cp.industry in FINANCIAL_SECTOR_INDUSTRIES:
-        # Only the questionnaire-based methods remain: the Scorecard (Idea, Development) or, in DACH from the
-        # Startup to the Growth stage, the market method.
+        # Only the questionnaire-based methods remain: the Scorecard (Idea, Development) or, where round data
+        # exists, from the Startup to the Growth stage, the market method.
         if "market" in method_values and method_values["market"].status == "ok":
             used_en, used_de = "the market method (comparable rounds)", "die Marktmethode (vergleichbare Runden)"
         else:
@@ -2317,7 +2330,7 @@ class ValuationOutput:
     warnings: list[ValuationWarning]
     method_range: Optional[MethodRange] = None
     round_logic: Optional[RoundLogicResult] = None  # cross-check: how a typical round would price the company
-    market: Optional[MarketResult] = None  # the market method, where round data exists (DACH, Startup to Growth)
+    market: Optional[MarketResult] = None  # the market method, where round data exists (Europe, Israel; Startup to Growth)
     # The headline range: the blended value if revenue comes in 20% below or above the plan (None when the value
     # doesn't move with revenue).
     value_range: Optional["ValueRange"] = None

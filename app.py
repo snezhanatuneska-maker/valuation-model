@@ -485,8 +485,7 @@ def get_default_region(country: str) -> dict:
 @reference_router.get("/market-rounds")
 def get_market_rounds() -> dict:
     """Where the market method (comparable rounds) applies: {countries, weights: {stage: weight}}."""
-    data = ve.market_round_benchmarks()
-    return {"countries": data["countries"], "weights": data["weights"]}
+    return {"countries": ve.market_round_countries(), "weights": ve.market_round_benchmarks()["weights"]}
 
 
 @reference_router.get("/scorecard-lookup")

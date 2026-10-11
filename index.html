@@ -2342,8 +2342,8 @@ function readResultBox(result, scenarios) {
     <div class="read-result">
       <h3>${tr("How to read your result", "So lesen Sie Ihr Ergebnis")}</h3>
       <p>${tr("The four methods look at your company from different angles: how your team and market compare with a typical startup (Scorecard), what an investor could earn at exit (Venture Capital), what similar listed companies are worth (Comparables) and the cash your plan generates (DCF). That is why they rarely agree.",
-              "Die vier Methoden betrachten Ihr Unternehmen aus verschiedenen Blickwinkeln: wie Team und Markt im Vergleich zu einem typischen Startup dastehen (Scorecard), was ein Investor beim Exit verdienen könnte (Venture Capital), was ähnliche börsennotierte Unternehmen wert sind (Vergleichsmethode) und welches Geld Ihr Plan erwirtschaftet (DCF). Deshalb stimmen sie selten überein.")}${result.market ? " " + tr("In Germany, Austria and Switzerland a fifth, the market method, prices your company like a typical funding round at your stage; it is usually well above the others, which value what your plan supports.",
-              "In Deutschland, Österreich und der Schweiz bepreist eine fünfte, die Marktmethode, Ihr Unternehmen wie eine typische Finanzierungsrunde Ihrer Phase; sie liegt meist deutlich über den anderen, die bewerten, was Ihr Plan trägt.") : ""}
+              "Die vier Methoden betrachten Ihr Unternehmen aus verschiedenen Blickwinkeln: wie Team und Markt im Vergleich zu einem typischen Startup dastehen (Scorecard), was ein Investor beim Exit verdienen könnte (Venture Capital), was ähnliche börsennotierte Unternehmen wert sind (Vergleichsmethode) und welches Geld Ihr Plan erwirtschaftet (DCF). Deshalb stimmen sie selten überein.")}${result.market ? " " + tr("In most European countries and Israel a fifth, the market method, prices your company like a typical funding round at your stage in your region; it is usually well above the others, which value what your plan supports.",
+              "In den meisten europäischen Ländern und in Israel bepreist eine fünfte, die Marktmethode, Ihr Unternehmen wie eine typische Finanzierungsrunde Ihrer Phase in Ihrer Region; sie liegt meist deutlich über den anderen, die bewerten, was Ihr Plan trägt.") : ""}
       ${used.length > 1
         ? tr(`The blended value weights them by your company's stage (here: ${escapeHtml(weights)}); a method that doesn't fit your company is left out.`,
              `Der gewichtete Wert kombiniert sie nach der Phase Ihres Unternehmens (hier: ${escapeHtml(weights)}); eine Methode, die nicht zu Ihrem Unternehmen passt, entfällt.`)
@@ -2638,7 +2638,7 @@ function sampleIsClean(c, result) {
   const vcSensible = vc.weight === 0 || (vc.pre_money_value || 0) > 0.2 * result.blended_pre_money_valuation;
   const noWarnings = result.warnings.every((w) => w.severity !== "warning" || w.code === "nm_comparables");
   // Methods that disagree wildly (e.g. a DCF 8x the VC value) make a poor showcase.
-  // (Before revenue the Scorecard, and the market method in DACH, naturally sit well above the cash-flow
+  // (Before revenue the Scorecard, and the market method in Europe, naturally sit well above the cash-flow
   // methods, so they aren't compared.)
   const values = Object.entries(result.method_values)
     .filter(([key, mv]) => mv.status === "ok" && mv.weight > 0 && key !== "market"
