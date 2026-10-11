@@ -394,7 +394,7 @@ def test_saved_year_by_year_plan_reopens_and_reruns(storing_client):
 
 def test_market_rounds_route_and_pdf_line(client):
     info = client.get("/reference-data/market-rounds").json()
-    assert info["weights"] == {"Startup stage": 0.25, "Expansion stage": 0.2, "Growth stage": 0.15}
+    assert info["weights"] == {"Startup stage": 0.25, "Expansion stage": 0.2, "Growth stage": 0.2}
     assert {"Germany", "Austria", "Switzerland", "France", "United Kingdom", "Poland", "Israel"} <= set(info["countries"])
     assert not {"United States", "Tanzania", "Russia"} & set(info["countries"])
     import io

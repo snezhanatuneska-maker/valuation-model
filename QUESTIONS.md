@@ -264,6 +264,13 @@ the script reports how far the model is from the price paid. No real rounds are 
 have to be collected (press releases, Handelsregister filings, Dealroom). That is the next step for a published
 accuracy figure.
 
-Still open, owner's choice: the Growth stage stays below the Expansion stage for the German example (€4.81M vs
-€5.52M; a 20% weight would remove that), and the repository has no LICENSE file yet.
+Still open at the time, owner's choice: the Growth stage below the Expansion stage, and no LICENSE file; see 17.
+
+## 17. Growth-stage weight 20% and a license (decided 11 October 2026)
+
+- **Market method at the Growth stage: 20%** (was 15%), the same as at Expansion, so a company at the Growth stage
+  is no longer valued below the same company at Expansion. German example: Startup €2.49M, Expansion €5.52M, Growth
+  €5.79M (was €4.81M). The Maturity stage has no market method (no Series C figure), so the same company there is
+  €1.90M; the stage check (`stage_round_size`) warns when a Maturity-stage raise is below the stage's typical round.
+- **License: MIT** (`LICENSE`), with a note that third-party data stays under its owners' terms.
 

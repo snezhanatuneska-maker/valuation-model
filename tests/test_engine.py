@@ -530,9 +530,9 @@ def test_industry_names_are_spelled_out_and_old_names_still_work():
 @pytest.mark.parametrize("country,stage,weight,benchmark", [
     ("Germany", "Startup stage", 0.25, 6_400_000), ("Austria", "Startup stage", 0.25, 6_400_000),
     ("Switzerland", "Expansion stage", 0.20, 23_000_000), ("Germany", "Expansion stage", 0.20, 23_000_000),
-    ("Germany", "Growth stage", 0.15, 23_000_000),
+    ("Germany", "Growth stage", 0.20, 23_000_000),
     ("France", "Startup stage", 0.25, 5_200_000), ("Netherlands", "Expansion stage", 0.20, 16_300_000),
-    ("United Kingdom", "Startup stage", 0.25, 4_900_000), ("Ireland", "Growth stage", 0.15, 20_800_000),
+    ("United Kingdom", "Startup stage", 0.25, 4_900_000), ("Ireland", "Growth stage", 0.20, 20_800_000),
     ("Sweden", "Expansion stage", 0.20, 17_800_000), ("Spain", "Startup stage", 0.25, 3_600_000),
     ("Poland", "Expansion stage", 0.20, 25_900_000), ("Israel", "Startup stage", 0.25, 6_100_000),
 ])
