@@ -213,3 +213,64 @@ unchanged. The market method is left out of the "methods disagree" check, as it 
 design. New figures: German example €2,494,834 (was €1,342,446); Werkpuls pinned €2,567,131.07 (was €1,482,841.42).
 Caveat: the benchmark doesn't scale with the company's size, so the stage choice matters more in DACH (a small company
 at the Expansion stage gets the Series A benchmark).
+
+## 15. Fewer weak spots for a presentation (done 11 October 2026)
+
+A review before presenting the model to a German university startup community found that the same company (the German
+example) came out at €2.49M at the Startup stage, €5.52M at Expansion and €1.89M at Growth: the stage is the
+founder's own choice, and the market method switched between the seed benchmark, the Series A benchmark and nothing.
+Three changes, all approved by the owner the same day:
+
+- **Stage check (`stage_round_size`).** From the Expansion stage on, a raise below the stage's typical round size
+  (Dealroom bands in `round_benchmarks`) gets a warning naming the stage the raise fits and the blended value there,
+  e.g. "At the Startup stage the blended value would be €2,494,834 instead of €5,520,275". The value itself is not
+  changed; the founder decides. The Startup stage gets no such check, as small seed rounds are common in Germany.
+- **Market method at the Growth stage, 15%** (the weight approved in 14), with the Series A–B median (€23.0M), as
+  PitchBook publishes no separate Series B figure. The German example at Growth: €1.89M → €4.81M. Still below the
+  Expansion stage's €5.52M; a weight of 20% would remove that dip for this company, but 15% was the decision.
+  Series B rounds are usually priced higher, so this errs low.
+- **The headline is a range:** the value if revenue comes in 20% below or above the plan, with the blend as the
+  central value (screen and PDF cover; `value_range` in the API). German example: €2.34M – €2.65M, central
+  €2,494,834.
+
+Not changed: the figures of every company at the Idea, Development, Startup and Expansion stages, and every
+country outside DACH.
+
+Still open at the time: a market benchmark per European region and a test against real rounds; see 16.
+
+## 16. Market method for every European region, and a backtest tool (done 11 October 2026)
+
+**Market method by region.** The PitchBook report the DACH figures come from (Q2 2026 European VC Valuations Report,
+pp. 12-13) has the same two charts for seven regions. Every region now uses its own figures by the DACH rule (seed:
+the 2025 median; Series A and Growth: the long-term Series A–B median):
+
+| Region | Countries in the app | Seed | Series A / Growth |
+|---|---|---|---|
+| DACH | Germany, Austria, Switzerland, Liechtenstein | €6.4M | €23.0M |
+| France & Benelux | France, Belgium, Netherlands, Luxembourg | €5.2M | €16.3M |
+| Nordics | Denmark, Finland, Iceland, Norway, Sweden | €4.7M | €17.8M |
+| Southern Europe | Spain, Portugal, Italy, Greece, Malta, Cyprus, Andorra | €3.6M | €13.4M |
+| UK & Ireland | United Kingdom, Ireland, Isle of Man, Jersey, Guernsey | €4.9M | €20.8M |
+| Central & Eastern Europe | EU member states in the region (Poland, Czech Republic, Slovakia, Hungary, Romania, Bulgaria, Croatia, Slovenia, Baltic states) | €5.5M | €25.9M |
+| Israel | Israel | €6.1M | €25.4M |
+
+The assignment of countries to regions is the app's; non-EU countries in Central & Eastern Europe, Türkiye and Russia
+get no market method. PitchBook notes fewer than 20 data points for several regions (Central & Eastern Europe, DACH,
+Israel, Southern Europe; for Series A–B also the Nordics). The German example's value moved from €2.49M in Germany
+and €1.25M in France to €2.49M and €2.14M; German figures are unchanged. Outside Europe and Israel nothing changed.
+
+**Backtest tool.** `audit/backtest.py` and `audit/backtest_template.csv`: one row per real round (with its source),
+the script reports how far the model is from the price paid. No real rounds are in the repository: their figures
+have to be collected (press releases, Handelsregister filings, Dealroom). That is the next step for a published
+accuracy figure.
+
+Still open at the time, owner's choice: the Growth stage below the Expansion stage, and no LICENSE file; see 17.
+
+## 17. Growth-stage weight 20% and a license (decided 11 October 2026)
+
+- **Market method at the Growth stage: 20%** (was 15%), the same as at Expansion, so a company at the Growth stage
+  is no longer valued below the same company at Expansion. German example: Startup €2.49M, Expansion €5.52M, Growth
+  €5.79M (was €4.81M). The Maturity stage has no market method (no Series C figure), so the same company there is
+  €1.90M; the stage check (`stage_round_size`) warns when a Maturity-stage raise is below the stage's typical round.
+- **License: MIT** (`LICENSE`), with a note that third-party data stays under its owners' terms.
+

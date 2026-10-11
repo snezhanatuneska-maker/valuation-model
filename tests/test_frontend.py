@@ -174,6 +174,18 @@ def money(n):
     return ("-" if n < 0 else "") + "€" + f"{abs(n):,.0f}"
 
 
+def money_short(n, de=False):
+    """index.html's moneyShort: €2.64M / 2,64 Mio. € (amounts of a million or more)."""
+    m = f"{n / 1e6:.2f}"
+    return f"{m.replace('.', ',')}\u00a0Mio.\u00a0€" if de else f"€{m}M"
+
+
+def headline_range(result, de=False):
+    """The headline: the value if revenue comes in 20% below or above plan."""
+    r = result["value_range"]
+    return f"{money_short(r['low'], de)} – {money_short(r['high'], de)}"
+
+
 def truncated_inputs(page):
     """Number and date inputs whose value is wider than the visible box."""
     return page.evaluate("""() => {
@@ -207,7 +219,9 @@ def test_werkpuls_walkthrough(wizard):
 
     # The screen shows the API's numbers.
     shown = w.page.text_content(".headline-value").strip()
-    assert shown == money(result["blended_pre_money_valuation"])
+    assert shown == headline_range(result)
+    assert f"Central value (your plan): {money(result['blended_pre_money_valuation'])}." in w.page.text_content(
+        ".headline-result")
     assert money(result["post_money_valuation"]) in w.page.text_content(".ledger-postmoney-value")
     # The engine received exactly what was typed (umlauts included).
     payload = w.page.evaluate("lastResult.payload")
@@ -407,8 +421,11 @@ def test_result_shows_method_range_and_revenue_scenarios(wizard):
     short = {"venture_capital": "Venture Capital", "comparables": "Comparables", "dcf": "DCF", "market": "Market"}
     assert lines[0] == (f"Range across methods: {money(r['low'])} ({short[r['low_method']]}) to {money(r['high'])} "
                         f"({short[r['high_method']]})")
-    assert lines[1] == (f"If planned revenue is 20% lower or higher: {money(scen['80%']['blended_pre_money_valuation'])}"
-                        f" to {money(scen['120%']['blended_pre_money_valuation'])}")
+    # The revenue range is the headline now, not a second line.
+    assert not any(line.startswith("If planned revenue") for line in lines)
+    assert result["value_range"]["low"] == pytest.approx(scen["80%"]["blended_pre_money_valuation"])
+    assert result["value_range"]["high"] == pytest.approx(scen["120%"]["blended_pre_money_valuation"])
+    assert w.page.inner_text(".headline-value") == headline_range(result)
     checks = " ".join(w.page.text_content(".checks-list").split())
     assert all(" ".join(x["message"].split()) in checks for x in result["warnings"])
     below = result["blended_pre_money_valuation"] < result["round_logic"]["implied_pre_money_low"]
@@ -431,14 +448,17 @@ def test_german_version_and_language_switch(browser, servers):
         result = resp.value.json()
         w.page.wait_for_selector(".headline-value")
         value = round(result["blended_pre_money_valuation"])
-        assert w.page.inner_text(".headline-value") == f"{value:,}".replace(",", ".") + " €"
+        assert w.page.inner_text(".headline-value") == headline_range(result, de=True)
+        assert (f"Mittelwert (Ihr Plan): {value:,}".replace(",", ".") + "\u00a0€.") in w.page.inner_text(
+            ".headline-result")
         body = w.page.inner_text("body")
         assert "Rundenlogik" in body and "Vergleichsmethode" in body
         assert not re.search(r"\b(the|your|Range|Download|Calculate|revenue)\b", body)
         assert w.page.evaluate("localStorage.length + document.cookie.length") == 0
         w.page.click(".lang-switch [data-lang=en]")
         w.page.wait_for_function("document.documentElement.lang === 'en'")
-        w.page.wait_for_function(f"document.querySelector('.headline-value').innerText === {json.dumps(money(value))}")
+        w.page.wait_for_function(
+            f"document.querySelector('.headline-value').innerText === {json.dumps(headline_range(result))}")
         assert w.errors == []
     finally:
         w.close()

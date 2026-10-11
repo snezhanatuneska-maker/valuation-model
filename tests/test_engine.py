@@ -386,13 +386,13 @@ def test_unanswered_scorecard_questions_count_as_typical():
     team = r.scorecard.criteria["strength_of_the_team"]
     assert team.score == pytest.approx((1.2 + 1 + 1) / 3)
     assert full.unanswered == []
-    # Outside Germany, Austria and Switzerland, companies with revenue don't need to answer at all, and get no
-    # questionnaire warning.
-    case = german(company_profile__country="France")
+    # Where there is no market method (outside Europe and Israel), companies with revenue don't need to answer at
+    # all, and get no questionnaire warning.
+    case = german(company_profile__country="Canada")
     case["market_and_team_assessment"] = {}
     r = run(case)
     assert r.blended_pre_money_valuation == pytest.approx(
-        run(german(company_profile__country="France")).blended_pre_money_valuation)
+        run(german(company_profile__country="Canada")).blended_pre_money_valuation)
     assert "scorecard_unanswered" not in {w.code for w in r.warnings}
     # In Germany the market method uses the answers: unanswered ones count as typical, with a note.
     case = german()
@@ -503,7 +503,7 @@ def test_no_method_message_lists_reasons_and_advice():
     case = german(company_profile__company_stage="Startup stage", operating_performance__current_revenue_last_12_months=0,
                   operating_performance__current_ebitda=-200_000, financial_assumptions__target_ebitda_margin_override=-0.5,
                   funding__capital_needed=5_000_000,  # more than even the revenue-based exit supports
-                  company_profile__country="France")  # no market method outside DACH
+                  company_profile__country="Canada")  # no market method outside Europe and Israel
     with pytest.raises(ve.ValuationError) as e:
         run(case)
     text = str(e.value)
@@ -525,10 +525,16 @@ def test_industry_names_are_spelled_out_and_old_names_still_work():
     assert "Insurance (Property & Casualty)" in ve.FINANCIAL_SECTOR_INDUSTRIES
 
 
-# The market method (comparable rounds, QUESTIONS.md 14): DACH only, Startup and Expansion stages.
+# The market method (comparable rounds, QUESTIONS.md 14 and 16): PitchBook's European regions and Israel, Startup to
+# Growth stage, each country with its region's figures.
 @pytest.mark.parametrize("country,stage,weight,benchmark", [
     ("Germany", "Startup stage", 0.25, 6_400_000), ("Austria", "Startup stage", 0.25, 6_400_000),
     ("Switzerland", "Expansion stage", 0.20, 23_000_000), ("Germany", "Expansion stage", 0.20, 23_000_000),
+    ("Germany", "Growth stage", 0.20, 23_000_000),
+    ("France", "Startup stage", 0.25, 5_200_000), ("Netherlands", "Expansion stage", 0.20, 16_300_000),
+    ("United Kingdom", "Startup stage", 0.25, 4_900_000), ("Ireland", "Growth stage", 0.20, 20_800_000),
+    ("Sweden", "Expansion stage", 0.20, 17_800_000), ("Spain", "Startup stage", 0.25, 3_600_000),
+    ("Poland", "Expansion stage", 0.20, 25_900_000), ("Israel", "Startup stage", 0.25, 6_100_000),
 ])
 def test_market_method_where_round_data_exists(country, stage, weight, benchmark):
     r = run(german(company_profile__country=country, company_profile__company_stage=stage))
@@ -541,7 +547,8 @@ def test_market_method_where_round_data_exists(country, stage, weight, benchmark
 
 
 @pytest.mark.parametrize("changes", [
-    dict(company_profile__country="France"), dict(company_profile__company_stage="Growth stage"),
+    dict(company_profile__country="Canada"), dict(company_profile__country="Russia"),
+    dict(company_profile__company_stage="Maturity stage"),
     dict(company_profile__company_stage="Idea stage"),
 ])
 def test_no_market_method_elsewhere_and_other_weights_unchanged(changes):
@@ -565,3 +572,46 @@ def test_market_method_does_not_trigger_the_methods_disagree_note():
     r = run(GERMAN_CASE)
     assert r.method_range.high_method == "market" and r.method_range.high > 3 * r.method_range.low
     assert "methods_disagree" not in {w.code for w in r.warnings}
+
+
+# The stage is the founder's choice and moves the value most (method weights, stage assumptions, the market method's
+# round). From the Expansion stage on, a raise below the stage's typical round size gets a warning with the value at
+# the stage the raise fits.
+def test_stage_too_late_for_the_raise_is_flagged_with_the_value_at_the_fitting_stage():
+    startup = run(german())
+    r = run(german(company_profile__company_stage="Expansion stage"))  # raising €300,000, Series A is €3.5M+
+    w = next(w for w in r.warnings if w.code == "stage_round_size")
+    assert w.severity == "warning"
+    assert "€300,000" in w.message and "Series A at €23,000,000" in w.message
+    assert f"At the Startup stage the blended value would be {ve._eur(startup.blended_pre_money_valuation)}" in w.message
+    # Growth stage with a Series A-sized raise points to the Expansion stage.
+    r = run(german(company_profile__company_stage="Growth stage", funding__capital_needed=5_000_000,
+                   funding__use_of_funds={"Product and R&D": 5_000_000}))
+    w = next(w for w in r.warnings if w.code == "stage_round_size")
+    assert "At the Expansion stage" in w.message
+
+
+@pytest.mark.parametrize("changes", [
+    dict(),  # Startup stage: small raises are common there, no warning
+    dict(company_profile__company_stage="Expansion stage", funding__capital_needed=5_000_000,
+         funding__use_of_funds={"Product and R&D": 5_000_000}),
+])
+def test_stage_that_fits_the_raise_has_no_stage_warning(changes):
+    assert "stage_round_size" not in {w.code for w in run(german(**changes)).warnings}
+
+
+def test_value_range_is_the_blend_at_20_percent_less_and_more_revenue():
+    inputs = ve.ValuationInput(**GERMAN_CASE)
+    r = ve.run_valuation(inputs)
+    s = ve.run_valuation_scenarios(inputs)
+    assert r.value_range.revenue_change == pytest.approx(0.2)
+    assert r.value_range.low == pytest.approx(s["80%"].blended_pre_money_valuation)
+    assert r.value_range.high == pytest.approx(s["120%"].blended_pre_money_valuation)
+    assert r.value_range.low < r.blended_pre_money_valuation < r.value_range.high
+
+
+def test_no_value_range_when_the_value_does_not_move_with_revenue():
+    # Idea stage, Scorecard only for a bank: no method uses projected revenue.
+    r = run(german(company_profile__company_stage="Idea stage", company_profile__industry="Banks (Regional)",
+                   operating_performance__current_revenue_last_12_months=0, operating_performance__current_ebitda=0))
+    assert r.value_range is None

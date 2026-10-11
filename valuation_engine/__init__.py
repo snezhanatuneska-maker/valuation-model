@@ -1076,7 +1076,7 @@ def compute_scorecard(company: CompanyProfile, market: MarketAndTeamAssessment) 
 # SECTION 6b — Market method (comparable rounds)
 #
 # Pre-money = typical pre-money of the company's financing round in its region
-# (PitchBook, DACH) x the questionnaire score (the Scorecard's total factor),
+# (PitchBook's European regions and Israel) x the questionnaire score (the Scorecard's total factor),
 # minus the company's debt (a typical round's company carries little), at least 0.
 # Only for the countries and stages in market_round_benchmarks; elsewhere the
 # method doesn't exist and the other weights are unchanged.
@@ -1097,15 +1097,28 @@ class MarketResult:
     unanswered: list[str] = field(default_factory=list)
 
 
+def market_round_region(country: str) -> Optional[str]:
+    """The PitchBook region whose round data covers `country`, or None (no market method there)."""
+    return next((name for name, r in market_round_benchmarks()["regions"].items() if country in r["countries"]), None)
+
+
+def market_round_countries() -> list[str]:
+    return [c for r in market_round_benchmarks()["regions"].values() for c in r["countries"]]
+
+
 def compute_market(company: CompanyProfile, scorecard: ScorecardResult, debt: float = 0.0) -> Optional[MarketResult]:
     data = market_round_benchmarks()
-    row = data["stages"].get(company.company_stage)
+    region = market_round_region(company.country)
     weight = data["weights"].get(company.company_stage, 0.0)
-    if row is None or weight <= 0 or company.country not in data["countries"]:
+    if region is None or weight <= 0:
+        return None
+    reg = data["regions"][region]
+    row = reg["stages"].get(company.company_stage)
+    if row is None:
         return None
     return MarketResult(
         round_name=row["round"],
-        region=_t(data["region"], data.get("region_de", data["region"])),
+        region=_t(region, reg.get("name_de", region)),
         benchmark_pre_money_valuation=row["eur"],
         benchmark_basis=_t(row["basis"], row.get("basis_de", row["basis"])),
         total_factor=scorecard.total_factor,
@@ -1408,6 +1421,54 @@ def round_pricing_note(rl: Optional[RoundLogicResult], blended: Optional[float])
         "Investoren von vergleichbaren Runden ausgehen, und nutzen Sie diese Bewertung, um zu zeigen, was Ihr "
         "Plan trägt. Die Lücke wird kleiner mit einem Plan, der bis zum Exit-Jahr mehr Umsatz erreicht, oder mit "
         "einer kleineren Runde, die einen üblicheren Anteil des Unternehmens verkauft."))
+
+
+LATE_STAGES = ("Expansion stage", "Growth stage", "Maturity stage")
+
+
+def stage_round_note(inputs: ValuationInput, output: ValuationOutput) -> Optional["ValuationWarning"]:
+    """The stage sets the method weights, the stage assumptions and (in Europe) the round the market method compares
+    with, and the founder chooses it. From the Expansion stage on, a raise below the stage's typical round size
+    points to an earlier stage: say so, with the value at the stage the raise fits."""
+    cp = inputs.company_profile
+    if cp.company_stage not in LATE_STAGES:
+        return None
+    rows = round_benchmarks()["stages"]
+    raise_amount = inputs.funding.capital_needed
+    row = rows[cp.company_stage]
+    if raise_amount >= row["round_eur_low"]:
+        return None
+    order = list(stage_parameters())
+    earlier = order[order.index("Startup stage"):order.index(cp.company_stage)]
+    fit = next((s for s in reversed(earlier) if raise_amount >= rows[s]["round_eur_low"]), "Startup stage")
+    round_name = _t(row["round"], ROUND_NAMES_DE.get(row["round"], row["round"]))
+    band = f"{_eur(row['round_eur_low'])}–{_eur(row['round_eur_high'])}"
+    market_en = market_de = ""
+    if output.market:
+        market_en = (f", and which round the market method compares your company with (here {output.market.round_name} "
+                     f"at {_eur(output.market.benchmark_pre_money_valuation)})")
+        market_de = (f" und mit welcher Runde die Marktmethode Ihr Unternehmen vergleicht (hier "
+                     f"{output.market.round_name} mit {_eur(output.market.benchmark_pre_money_valuation)})")
+    alt_en = alt_de = ""
+    try:
+        alt_inputs = inputs.model_copy(deep=True)
+        alt_inputs.company_profile.company_stage = fit
+        alt = _run_valuation_core(alt_inputs).blended_pre_money_valuation
+        alt_en = (f" At the {stage_label(fit)} the blended value would be {_eur(alt)} instead of "
+                  f"{_eur(output.blended_pre_money_valuation)}.")
+        alt_de = (f" In der {stage_label(fit)} läge der gewichtete Wert bei {_eur(alt)} statt "
+                  f"{_eur(output.blended_pre_money_valuation)}.")
+    except ValuationError:
+        pass
+    return ValuationWarning("stage_round_size", "warning", _t(
+        f"You chose the {stage_label(cp.company_stage)}, where a typical round ({round_name}) raises {band}, but you "
+        f"are raising {_eur(raise_amount)}, which is typical of an earlier stage. The stage decides the method "
+        f"weights and the stage assumptions{market_en}.{alt_en} Choose the stage that matches your company and your "
+        "round.",
+        f"Sie haben die {stage_label(cp.company_stage)} gewählt, in der eine typische Runde ({round_name}) {band} "
+        f"einwirbt, Sie werben aber {_eur(raise_amount)} ein, was zu einer früheren Phase passt. Die Phase bestimmt "
+        f"die Gewichte der Methoden und die Annahmen je Phase{market_de}.{alt_de} Wählen Sie die Phase, die zu Ihrem "
+        "Unternehmen und Ihrer Runde passt."))
 
 
 def compute_round_logic(stage: str, capital_needed: float, blended: Optional[float]) -> Optional[RoundLogicResult]:
@@ -1984,8 +2045,8 @@ def collect_warnings(inputs: ValuationInput, projections: FinancialProjections, 
                 "verwendet."), "info")
 
     if cp.industry in FINANCIAL_SECTOR_INDUSTRIES:
-        # Only the questionnaire-based methods remain: the Scorecard (Idea, Development) or, in DACH at the
-        # Startup and Expansion stages, the market method.
+        # Only the questionnaire-based methods remain: the Scorecard (Idea, Development) or, where round data
+        # exists, from the Startup to the Growth stage, the market method.
         if "market" in method_values and method_values["market"].status == "ok":
             used_en, used_de = "the market method (comparable rounds)", "die Marktmethode (vergleichbare Runden)"
         else:
@@ -2269,10 +2330,24 @@ class ValuationOutput:
     warnings: list[ValuationWarning]
     method_range: Optional[MethodRange] = None
     round_logic: Optional[RoundLogicResult] = None  # cross-check: how a typical round would price the company
-    market: Optional[MarketResult] = None  # the market method, where round data exists (DACH, Startup/Expansion)
+    market: Optional[MarketResult] = None  # the market method, where round data exists (Europe, Israel; Startup to Growth)
+    # The headline range: the blended value if revenue comes in 20% below or above the plan (None when the value
+    # doesn't move with revenue).
+    value_range: Optional["ValueRange"] = None
 
 
 def run_valuation(inputs: ValuationInput) -> ValuationOutput:
+    """The full valuation: the blend, every check (including whether the stage fits the size of the round) and
+    the headline range."""
+    output = _run_valuation_core(inputs)
+    note = stage_round_note(inputs, output)
+    if note:
+        output.warnings.append(note)
+    output.value_range = revenue_value_range(inputs, output)
+    return output
+
+
+def _run_valuation_core(inputs: ValuationInput) -> ValuationOutput:
     company = inputs.company_profile
     op = inputs.operating_performance
     get_country(company.country)  # fail early on an unknown country
@@ -2431,28 +2506,50 @@ def run_valuation_scenarios(
     A scenario in which no method is meaningful is left out.
     """
     multipliers = multipliers if multipliers is not None else SCENARIO_REVENUE_MULTIPLIERS
-    base_revenue = inputs.financial_assumptions.revenue_year1
-    base_plan = inputs.financial_assumptions.revenue_by_year
     try:
-        base = run_valuation(inputs)
+        base = _run_valuation_core(inputs)
     except ValuationError:
         return {}
 
-    results: dict[str, ValuationOutput] = {}
-    for m in multipliers:
-        scaled_inputs = inputs.model_copy(deep=True)
-        scaled_inputs.financial_assumptions.revenue_year1 = base_revenue * m
-        if base_plan is not None:  # a year-by-year plan moves as a whole
-            scaled_inputs.financial_assumptions.revenue_by_year = [r * m for r in base_plan]
-        try:
-            scenario = run_valuation(scaled_inputs)
-        except ValuationError:
-            # No method gives a value at this revenue level: keep the scenario, with every method at 0.
-            scenario = copy.deepcopy(base)
-            for key, mv in scenario.method_values.items():
-                scenario.method_values[key] = MethodValue(None, mv.weight, 0.0, None, "not_meaningful", None)
-        results[scenario_label(m)] = _with_base_weights(scenario, base)
-    return results
+    return {scenario_label(m): _revenue_scenario(inputs, base, m) for m in multipliers}
+
+
+def _revenue_scenario(inputs: ValuationInput, base: ValuationOutput, multiplier: float) -> ValuationOutput:
+    """The valuation with every year's revenue scaled by `multiplier`, blended with the main result's weights."""
+    scaled_inputs = inputs.model_copy(deep=True)
+    scaled_inputs.financial_assumptions.revenue_year1 = inputs.financial_assumptions.revenue_year1 * multiplier
+    base_plan = inputs.financial_assumptions.revenue_by_year
+    if base_plan is not None:  # a year-by-year plan moves as a whole
+        scaled_inputs.financial_assumptions.revenue_by_year = [r * multiplier for r in base_plan]
+    try:
+        scenario = _run_valuation_core(scaled_inputs)
+    except ValuationError:
+        # No method gives a value at this revenue level: keep the scenario, with every method at 0.
+        scenario = copy.deepcopy(base)
+        for key, mv in scenario.method_values.items():
+            scenario.method_values[key] = MethodValue(None, mv.weight, 0.0, None, "not_meaningful", None)
+    return _with_base_weights(scenario, base)
+
+
+@dataclass
+class ValueRange:
+    """The blended value if revenue comes in `revenue_change` below (low) or above (high) the plan."""
+    low: float
+    high: float
+    revenue_change: float
+
+
+VALUE_RANGE_REVENUE_CHANGE = 0.2
+
+
+def revenue_value_range(inputs: ValuationInput, base: ValuationOutput) -> Optional[ValueRange]:
+    """None when the value doesn't move with revenue (only Scorecard, Comparables or the market method count)."""
+    change = VALUE_RANGE_REVENUE_CHANGE
+    low = _revenue_scenario(inputs, base, 1 - change).blended_pre_money_valuation
+    high = _revenue_scenario(inputs, base, 1 + change).blended_pre_money_valuation
+    if abs(high - low) < 1:
+        return None
+    return ValueRange(low=min(low, high), high=max(low, high), revenue_change=change)
 
 
 def _with_base_weights(scenario: ValuationOutput, base: ValuationOutput) -> ValuationOutput:

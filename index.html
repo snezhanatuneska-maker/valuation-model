@@ -2342,8 +2342,8 @@ function readResultBox(result, scenarios) {
     <div class="read-result">
       <h3>${tr("How to read your result", "So lesen Sie Ihr Ergebnis")}</h3>
       <p>${tr("The four methods look at your company from different angles: how your team and market compare with a typical startup (Scorecard), what an investor could earn at exit (Venture Capital), what similar listed companies are worth (Comparables) and the cash your plan generates (DCF). That is why they rarely agree.",
-              "Die vier Methoden betrachten Ihr Unternehmen aus verschiedenen Blickwinkeln: wie Team und Markt im Vergleich zu einem typischen Startup dastehen (Scorecard), was ein Investor beim Exit verdienen könnte (Venture Capital), was ähnliche börsennotierte Unternehmen wert sind (Vergleichsmethode) und welches Geld Ihr Plan erwirtschaftet (DCF). Deshalb stimmen sie selten überein.")}${result.market ? " " + tr("In Germany, Austria and Switzerland a fifth, the market method, prices your company like a typical funding round at your stage; it is usually well above the others, which value what your plan supports.",
-              "In Deutschland, Österreich und der Schweiz bepreist eine fünfte, die Marktmethode, Ihr Unternehmen wie eine typische Finanzierungsrunde Ihrer Phase; sie liegt meist deutlich über den anderen, die bewerten, was Ihr Plan trägt.") : ""}
+              "Die vier Methoden betrachten Ihr Unternehmen aus verschiedenen Blickwinkeln: wie Team und Markt im Vergleich zu einem typischen Startup dastehen (Scorecard), was ein Investor beim Exit verdienen könnte (Venture Capital), was ähnliche börsennotierte Unternehmen wert sind (Vergleichsmethode) und welches Geld Ihr Plan erwirtschaftet (DCF). Deshalb stimmen sie selten überein.")}${result.market ? " " + tr("In most European countries and Israel a fifth, the market method, prices your company like a typical funding round at your stage in your region; it is usually well above the others, which value what your plan supports.",
+              "In den meisten europäischen Ländern und in Israel bepreist eine fünfte, die Marktmethode, Ihr Unternehmen wie eine typische Finanzierungsrunde Ihrer Phase in Ihrer Region; sie liegt meist deutlich über den anderen, die bewerten, was Ihr Plan trägt.") : ""}
       ${used.length > 1
         ? tr(`The blended value weights them by your company's stage (here: ${escapeHtml(weights)}); a method that doesn't fit your company is left out.`,
              `Der gewichtete Wert kombiniert sie nach der Phase Ihres Unternehmens (hier: ${escapeHtml(weights)}); eine Methode, die nicht zu Ihrem Unternehmen passt, entfällt.`)
@@ -2402,6 +2402,20 @@ const METHOD_SHORT = { scorecard: ["Scorecard", "Scorecard"], venture_capital: [
                        comparables: ["Comparables", "Vergleichsmethode"], dcf: ["DCF", "DCF"],
                        market: ["Market", "Marktmethode"] };
 const methodShort = (key) => tr(...METHOD_SHORT[key]);
+// The headline is a range (revenue 20% below to 20% above plan) with the blend as the central value: a startup's
+// value is uncertain, and one exact figure suggests otherwise. Without a range (the value doesn't move with
+// revenue), the blend alone.
+function headlineValue(result, company) {
+  const r = result.value_range;
+  const label = `<p class="headline-label">${escapeHtml(company)}: ${tr("pre-money valuation", "Pre-Money-Bewertung")}</p>`;
+  if (!r) return `${label}<p class="headline-value">${money(result.blended_pre_money_valuation)}</p>`;
+  const change = pct0(r.revenue_change);
+  return `${label}
+      <p class="headline-value">${moneyShort(r.low)} – ${moneyShort(r.high)}</p>
+      <p class="headline-sub">${tr(`Central value (your plan): ${money(result.blended_pre_money_valuation)}. The range is the value if revenue comes in ${change} below or above plan.`,
+                                   `Mittelwert (Ihr Plan): ${money(result.blended_pre_money_valuation)}. Die Spanne ist der Wert, wenn der Umsatz ${change} unter oder über dem Plan liegt.`)}</p>`;
+}
+
 function rangeLines(result, scenarios) {
   const lines = [];
   const r = result.method_range;
@@ -2410,7 +2424,7 @@ function rangeLines(result, scenarios) {
                   `Spanne der Methoden: ${money(r.low)} (${methodShort(r.low_method)}) bis ${money(r.high)} (${methodShort(r.high_method)})`));
   }
   const lo = scenarios && scenarios["80%"], hi = scenarios && scenarios["120%"];
-  if (lo && hi && Math.abs(hi.blended_pre_money_valuation - lo.blended_pre_money_valuation) >= 1) {
+  if (!result.value_range && lo && hi && Math.abs(hi.blended_pre_money_valuation - lo.blended_pre_money_valuation) >= 1) {
     lines.push(tr(`If planned revenue is 20% lower or higher: ${money(lo.blended_pre_money_valuation)} to ${money(hi.blended_pre_money_valuation)}`,
                   `Wenn der geplante Umsatz 20 % niedriger oder höher ist: ${money(lo.blended_pre_money_valuation)} bis ${money(hi.blended_pre_money_valuation)}`));
   }
@@ -2443,8 +2457,7 @@ function renderResults(result, scenarios) {
 
   panel.innerHTML = `
     <div class="headline-result">
-      <p class="headline-label">${escapeHtml(company)}: ${tr("pre-money valuation", "Pre-Money-Bewertung")}</p>
-      <p class="headline-value">${money(result.blended_pre_money_valuation)}</p>
+      ${headlineValue(result, company)}
       <p class="headline-sub">${tr(`Post-money ${money(result.post_money_valuation)} after raising ${money(result.capital_needed)}`,
                                    `Post-Money ${money(result.post_money_valuation)} nach Aufnahme von ${money(result.capital_needed)}`)}</p>
       ${rangeLines(result, scenarios)}
@@ -2625,7 +2638,7 @@ function sampleIsClean(c, result) {
   const vcSensible = vc.weight === 0 || (vc.pre_money_value || 0) > 0.2 * result.blended_pre_money_valuation;
   const noWarnings = result.warnings.every((w) => w.severity !== "warning" || w.code === "nm_comparables");
   // Methods that disagree wildly (e.g. a DCF 8x the VC value) make a poor showcase.
-  // (Before revenue the Scorecard, and the market method in DACH, naturally sit well above the cash-flow
+  // (Before revenue the Scorecard, and the market method in Europe, naturally sit well above the cash-flow
   // methods, so they aren't compared.)
   const values = Object.entries(result.method_values)
     .filter(([key, mv]) => mv.status === "ok" && mv.weight > 0 && key !== "market"
