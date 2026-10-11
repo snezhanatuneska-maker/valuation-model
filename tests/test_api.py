@@ -402,5 +402,5 @@ def test_market_rounds_route_and_pdf_line(client):
     import pdfplumber
     pdf = client.post("/valuations/preview/report?lang=de", json=GERMAN_CASE)
     text = " ".join("\n".join(p.extract_text() or "" for p in pdfplumber.open(io.BytesIO(pdf.content)).pages).split())
-    assert "Marktmethode (vergleichbare Runden): Eine typische Finanzierungsrunde dieser Phase (Seed) in DACH" in text
+    assert "Marktmethode (vergleichbare Runden): Eine typische Finanzierungsrunde (Seed) in DACH" in text
     assert "PitchBook, Q2 2026 European VC Valuations Report" in text

@@ -2128,7 +2128,7 @@ function methodExplanation(key, o) {
     const m = o.market;
     const minusDebt = m.debt ? tr(`, minus debt of ${money(m.debt)}`, `, abzüglich Schulden von ${money(m.debt)}`) : "";
     return tr(`A typical ${m.round_name} round in ${m.region} is priced at ${money(m.benchmark_pre_money_valuation)} pre-money (${m.benchmark_basis}); your questionnaire answers score ${pct(m.total_factor)} of that company${minusDebt}.`,
-              `Eine typische Finanzierungsrunde dieser Phase (${m.round_name}) in ${m.region} wird mit ${money(m.benchmark_pre_money_valuation)} Pre-Money bewertet (${m.benchmark_basis}); nach Ihren Antworten erreichen Sie ${pct(m.total_factor)} davon${minusDebt}.`);
+              `Eine typische Finanzierungsrunde (${m.round_name}) in ${m.region} wird mit ${money(m.benchmark_pre_money_valuation)} Pre-Money bewertet (${m.benchmark_basis}); nach Ihren Antworten erreichen Sie ${pct(m.total_factor)} davon${minusDebt}.`) + (m.note ? " " + m.note : "");
   }
   if (key === "dcf") {
     const d = o.dcf;
@@ -2402,18 +2402,25 @@ const METHOD_SHORT = { scorecard: ["Scorecard", "Scorecard"], venture_capital: [
                        comparables: ["Comparables", "Vergleichsmethode"], dcf: ["DCF", "DCF"],
                        market: ["Market", "Marktmethode"] };
 const methodShort = (key) => tr(...METHOD_SHORT[key]);
-// The headline is a range (revenue 20% below to 20% above plan) with the blend as the central value: a startup's
-// value is uncertain, and one exact figure suggests otherwise. Without a range (the value doesn't move with
-// revenue), the blend alone.
+// The headline is a range (a 20% revenue miss or beat, and how far the methods disagree) with the blend as the
+// central value: a startup's value is uncertain, and one exact figure suggests otherwise. Without a range, the
+// blend alone.
 function headlineValue(result, company) {
   const r = result.value_range;
   const label = `<p class="headline-label">${escapeHtml(company)}: ${tr("pre-money valuation", "Pre-Money-Bewertung")}</p>`;
   if (!r) return `${label}<p class="headline-value">${money(result.blended_pre_money_valuation)}</p>`;
   const change = pct0(r.revenue_change);
+  const covers = r.method_spread >= 1
+    ? (r.revenue_low != null
+        ? tr(`The range covers revenue ${change} below or above plan and how far the methods disagree.`,
+             `Die Spanne berücksichtigt einen Umsatz ${change} unter oder über dem Plan und wie weit die Methoden auseinanderliegen.`)
+        : tr("The range covers how far the methods disagree.", "Die Spanne berücksichtigt, wie weit die Methoden auseinanderliegen."))
+    : tr(`The range is the value if revenue comes in ${change} below or above plan.`,
+         `Die Spanne ist der Wert, wenn der Umsatz ${change} unter oder über dem Plan liegt.`);
   return `${label}
       <p class="headline-value">${moneyShort(r.low)} – ${moneyShort(r.high)}</p>
-      <p class="headline-sub">${tr(`Central value (your plan): ${money(result.blended_pre_money_valuation)}. The range is the value if revenue comes in ${change} below or above plan.`,
-                                   `Mittelwert (Ihr Plan): ${money(result.blended_pre_money_valuation)}. Die Spanne ist der Wert, wenn der Umsatz ${change} unter oder über dem Plan liegt.`)}</p>`;
+      <p class="headline-sub">${tr(`Central value (your plan): ${money(result.blended_pre_money_valuation)}.`,
+                                   `Mittelwert (Ihr Plan): ${money(result.blended_pre_money_valuation)}.`)} ${covers}</p>`;
 }
 
 function rangeLines(result, scenarios) {
@@ -2423,16 +2430,26 @@ function rangeLines(result, scenarios) {
     lines.push(tr(`Range across methods: ${money(r.low)} (${methodShort(r.low_method)}) to ${money(r.high)} (${methodShort(r.high_method)})`,
                   `Spanne der Methoden: ${money(r.low)} (${methodShort(r.low_method)}) bis ${money(r.high)} (${methodShort(r.high_method)})`));
   }
+  const vr = result.value_range;
   const lo = scenarios && scenarios["80%"], hi = scenarios && scenarios["120%"];
-  if (!result.value_range && lo && hi && Math.abs(hi.blended_pre_money_valuation - lo.blended_pre_money_valuation) >= 1) {
+  if (vr && vr.revenue_low != null && vr.method_spread >= 1) {
+    lines.push(tr(`If planned revenue is 20% lower or higher: ${money(vr.revenue_low)} to ${money(vr.revenue_high)}`,
+                  `Wenn der geplante Umsatz 20 % niedriger oder höher ist: ${money(vr.revenue_low)} bis ${money(vr.revenue_high)}`));
+  } else if (!vr && lo && hi && Math.abs(hi.blended_pre_money_valuation - lo.blended_pre_money_valuation) >= 1) {
     lines.push(tr(`If planned revenue is 20% lower or higher: ${money(lo.blended_pre_money_valuation)} to ${money(hi.blended_pre_money_valuation)}`,
-                  `Wenn der geplante Umsatz 20 % niedriger oder höher ist: ${money(lo.blended_pre_money_valuation)} bis ${money(hi.blended_pre_money_valuation)}`));
+                  `Wenn der geplante Umsatz 20 % niedriger oder höher ist: ${money(lo.blended_pre_money_valuation)} bis ${money(hi.blended_pre_money_valuation)}`));
+  }
+  if (result.equal_weight_value != null) {
+    lines.push(tr(`With equal weights for every method (the stage weights are an assumption): ${money(result.equal_weight_value)}`,
+                  `Mit gleichen Gewichten für alle Methoden (die Gewichte je Phase sind eine Annahme): ${money(result.equal_weight_value)}`));
   }
   const rl = result.round_logic;
   if (rl) {
     lines.push(tr(`Round logic (typical ${rl.round_name} stake): ${moneyShort(rl.implied_pre_money_low)} to ${moneyShort(rl.implied_pre_money_high)}`,
                   `Rundenlogik (typischer ${rl.round_name}-Anteil): ${moneyShort(rl.implied_pre_money_low)} bis ${moneyShort(rl.implied_pre_money_high)}`));
   }
+  lines.push(tr("Not yet tested against the prices of closed funding rounds: an indicative range for preparing investor talks, not a price.",
+                "Noch nicht an den Preisen abgeschlossener Finanzierungsrunden geprüft: eine Orientierungsspanne zur Vorbereitung von Investorengesprächen, kein Preis."));
   return lines.map((l) => `<p class="headline-sub headline-range">${escapeHtml(l)}</p>`).join("");
 }
 

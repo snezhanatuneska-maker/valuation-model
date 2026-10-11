@@ -421,10 +421,16 @@ def test_result_shows_method_range_and_revenue_scenarios(wizard):
     short = {"venture_capital": "Venture Capital", "comparables": "Comparables", "dcf": "DCF", "market": "Market"}
     assert lines[0] == (f"Range across methods: {money(r['low'])} ({short[r['low_method']]}) to {money(r['high'])} "
                         f"({short[r['high_method']]})")
-    # The revenue range is the headline now, not a second line.
-    assert not any(line.startswith("If planned revenue") for line in lines)
-    assert result["value_range"]["low"] == pytest.approx(scen["80%"]["blended_pre_money_valuation"])
-    assert result["value_range"]["high"] == pytest.approx(scen["120%"]["blended_pre_money_valuation"])
+    # The headline range covers the revenue scenarios and how far the methods disagree; the revenue scenarios, the
+    # equal-weight value and the validation status are shown underneath.
+    vr = result["value_range"]
+    assert vr["revenue_low"] == pytest.approx(scen["80%"]["blended_pre_money_valuation"])
+    assert vr["revenue_high"] == pytest.approx(scen["120%"]["blended_pre_money_valuation"])
+    assert vr["low"] <= vr["revenue_low"] and vr["high"] >= vr["revenue_high"]
+    assert lines[1] == (f"If planned revenue is 20% lower or higher: {money(vr['revenue_low'])} to "
+                        f"{money(vr['revenue_high'])}")
+    assert lines[2].startswith("With equal weights for every method") and money(result["equal_weight_value"]) in lines[2]
+    assert lines[-1].startswith("Not yet tested against the prices of closed funding rounds")
     assert w.page.inner_text(".headline-value") == headline_range(result)
     checks = " ".join(w.page.text_content(".checks-list").split())
     assert all(" ".join(x["message"].split()) in checks for x in result["warnings"])

@@ -287,8 +287,17 @@ def recompute(case):
     # questionnaire score - debt, at least 0 ---
     mr = REF["market_round_benchmarks"]
     region = next((r for r in mr["regions"].values() if cp["country"] in r["countries"]), None)
-    row = region["stages"].get(cp["company_stage"]) if region else None
-    mw = mr["weights"].get(cp["company_stage"], 0.0) if row else 0.0
+    # The benchmark comes from the stage whose typical round size the raise reaches (from the Expansion stage on;
+    # Startup at the earliest); the weight stays the chosen stage's.
+    rounds = REF["round_benchmarks"]["stages"]
+    order = list(REF["stage_parameters"])
+    bstage = cp["company_stage"]
+    if bstage in ("Expansion stage", "Growth stage", "Maturity stage"):
+        while bstage != "Startup stage" and case["funding"]["capital_needed"] < rounds[bstage]["round_eur_low"]:
+            bstage = order[order.index(bstage) - 1]
+    mw = mr["weights"].get(cp["company_stage"], 0.0) if region else 0.0
+    row = region["stages"].get(bstage) if mw else None
+    mw = mw if row else 0.0
     factor = sum(w * sum(s(q) for q in qs) / len(qs) for w, qs in groups.values())
     out["market"] = max(row["eur"] * factor - debt, 0.0) if mw else None
 
@@ -404,14 +413,21 @@ EDGE_CASES = {
     "Raise larger than VC post-money (5M)": variant(funding__capital_needed=5_000_000),
     "Exit in 5 years": variant(company_profile__planned_time_to_exit_years=5),
     "Revenue collapses (-90% in Y2)": variant(financial_assumptions__revenue_growth_rates=[-0.9, 0.1, 0.1, 0.1]),
-    "Germany, Expansion stage (market method: Series A)": variant(
+    "Germany, Expansion stage, seed-sized raise (market method: seed)": variant(
         company_profile__country="Germany", company_profile__business_territory_region=EU,
         company_profile__company_stage="Expansion stage", company_profile__dcf_tax_rate_override=None),
+    "Germany, Expansion stage, Series A raise (market method: Series A)": variant(
+        company_profile__country="Germany", company_profile__business_territory_region=EU,
+        company_profile__company_stage="Expansion stage", company_profile__dcf_tax_rate_override=None,
+        funding__capital_needed=4_000_000, funding__use_of_funds={"Product and R&D": 4_000_000}),
     "Austria, Startup stage (market method: seed)": variant(
         company_profile__country="Austria", company_profile__business_territory_region=EU),
-    "Germany, Growth stage (no market method)": variant(
+    "Germany, Growth stage, seed-sized raise (market method: seed)": variant(
         company_profile__country="Germany", company_profile__business_territory_region=EU,
         company_profile__company_stage="Growth stage"),
+    "Germany, Maturity stage (no market method)": variant(
+        company_profile__country="Germany", company_profile__business_territory_region=EU,
+        company_profile__company_stage="Maturity stage"),
     "Germany, debt above the market value (8M)": variant(
         company_profile__country="Germany", company_profile__business_territory_region=EU,
         financial_assumptions__existing_debt_balance=8_000_000),
