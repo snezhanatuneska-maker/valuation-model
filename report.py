@@ -704,11 +704,21 @@ def _at_a_glance(output: dict, scenarios: dict) -> list:
     vr = g(output, "value_range")
     if vr:  # the range leads: one exact figure would suggest more certainty than a startup valuation has
         change = ve._pct0(vr["revenue_change"])
+        spread = (vr.get("method_spread") or 0) >= 1
+        revenue = vr.get("revenue_low") is not None
+        if spread and revenue:
+            covers = T(f"covers revenue {change} below or above plan ({money_compact(vr['revenue_low'])} to "
+                       f"{money_compact(vr['revenue_high'])}) and how far the methods disagree",
+                       f"Umsatz {change} unter/über Plan ({money_compact(vr['revenue_low'])} bis "
+                       f"{money_compact(vr['revenue_high'])}) und Abstand der Methoden")
+        elif spread:
+            covers = T("covers how far the methods disagree", "Abstand der Methoden")
+        else:
+            covers = T(f"if revenue comes in {change} below or above plan",
+                       f"wenn der Umsatz {change} unter oder über dem Plan liegt")
         rows = [(T("Pre-money valuation range", "Spanne der Pre-Money-Bewertung"),
                  T(f"{money_compact(vr['low'])} to {money_compact(vr['high'])}",
-                   f"{money_compact(vr['low'])} bis {money_compact(vr['high'])}"),
-                 T(f"if revenue comes in {change} below or above plan",
-                   f"wenn der Umsatz {change} unter oder über dem Plan liegt")),
+                   f"{money_compact(vr['low'])} bis {money_compact(vr['high'])}"), covers),
                 (T("Central value (your plan)", "Mittelwert (Ihr Plan)"),
                  money(g(output, "blended_pre_money_valuation")), blend_note)]
     else:
@@ -718,13 +728,17 @@ def _at_a_glance(output: dict, scenarios: dict) -> list:
              T(f"after raising {money(g(output, 'capital_needed'))}",
                f"nach Aufnahme von {money(g(output, 'capital_needed'))}"))]
     rng = g(output, "method_range")
+    eq = g(output, "equal_weight_value")
     if rng:
         rows.append((T("Range across methods", "Spanne der Methoden"),
                      T(f"{money(rng['low'])} ({method_short(rng['low_method'])}) to "
                        f"{money(rng['high'])} ({method_short(rng['high_method'])})",
                        f"{money(rng['low'])} ({method_short(rng['low_method'])}) bis "
                        f"{money(rng['high'])} ({method_short(rng['high_method'])})"),
-                     T("lowest and highest method", "niedrigste und höchste Methode")))
+                     T("lowest and highest method", "niedrigste und höchste Methode")
+                     + (T(f"; with equal weights (the stage weights are an assumption) {money(eq)}",
+                          f"; gleich gewichtet {money(eq)}")
+                        if eq is not None else "")))
     low, high = (scenarios or {}).get("80%"), (scenarios or {}).get("120%")
     if not vr and low and high and abs(high["blended_pre_money_valuation"] - low["blended_pre_money_valuation"]) >= 1:
         rows.append((T("If planned revenue is 20% lower or higher", "Wenn der geplante Umsatz 20 % niedriger oder höher ist"),
@@ -764,13 +778,13 @@ def _at_a_glance(output: dict, scenarios: dict) -> list:
         story.append(P(lead + (" " + esc(next(w["message"] for w in checks if w.get("code") == "implausible_value"))
                                if any(w.get("code") == "implausible_value" for w in checks) else ""),
                        STYLES["sub"], raw=True))
+    untested = T("Not yet tested against the prices of closed funding rounds: an indicative range, not a price.",
+                 "Noch nicht an Preisen abgeschlossener Runden geprüft: eine Orientierung, kein Preis.")
     if rng:
-        story.append(P(T("The methods look at the company from different angles and rarely agree; the range shows how "
-                         "far apart they are. The revenue range shows how much the result depends on the plan.",
-                         "Die Methoden betrachten das Unternehmen aus verschiedenen Blickwinkeln und stimmen selten "
-                         "überein; die Spanne zeigt, wie weit sie auseinanderliegen. Die Umsatzspanne zeigt, wie stark "
-                         "das Ergebnis vom Plan abhängt."),
-                       STYLES["sub"]))
+        untested = T("The methods look at the company from different angles and rarely agree. ",
+                     "Die Methoden betrachten das Unternehmen aus verschiedenen Blickwinkeln und stimmen selten "
+                     "überein. ") + untested
+    story.append(P(untested, STYLES["sub"]))
     return story
 
 
@@ -1178,11 +1192,11 @@ def market_explanation(m: dict) -> str:
              f"{money(m.get('benchmark_pre_money_valuation'))} pre-money ({m.get('benchmark_basis')}); your "
              f"questionnaire answers score {pct(m.get('total_factor'))} of that company{minus_debt}: "
              f"{money(m.get('pre_money_valuation'))}.",
-             f"{method_label('market')}: Eine typische Finanzierungsrunde dieser Phase ({m.get('round_name')}) in "
+             f"{method_label('market')}: Eine typische Finanzierungsrunde ({m.get('round_name')}) in "
              f"{m.get('region')} wird mit "
              f"{money(m.get('benchmark_pre_money_valuation'))} Pre-Money bewertet ({m.get('benchmark_basis')}); nach "
              f"Ihren Antworten im Fragebogen erreichen Sie {pct(m.get('total_factor'))} davon{minus_debt}: "
-             f"{money(m.get('pre_money_valuation'))}.")
+             f"{money(m.get('pre_money_valuation'))}.") + (f" {m['note']}" if m.get("note") else "")
 
 
 def _warnings_page(output: dict) -> list:

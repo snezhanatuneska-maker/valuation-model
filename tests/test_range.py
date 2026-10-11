@@ -64,10 +64,13 @@ def test_cover_page_shows_value_range_and_revenue_scenarios():
     pdf = client.post("/valuations/preview/report", json=WERKPULS)
     cover = " ".join(pdfplumber.open(io.BytesIO(pdf.content)).pages[0].extract_text().split())
     rng, vr = out["method_range"], out["value_range"]
-    # The range leads (revenue 20% below to 20% above plan), the blend is the central value.
-    assert vr["low"] == pytest.approx(scen["80%"]["blended_pre_money_valuation"])
-    assert vr["high"] == pytest.approx(scen["120%"]["blended_pre_money_valuation"])
-    assert "Pre-money valuation range" in cover and "if revenue comes in 20% below or above plan" in cover
+    # The range leads (a 20% revenue miss or beat and how far the methods disagree), the blend is the central value.
+    assert vr["revenue_low"] == pytest.approx(scen["80%"]["blended_pre_money_valuation"])
+    assert vr["revenue_high"] == pytest.approx(scen["120%"]["blended_pre_money_valuation"])
+    assert vr["low"] <= vr["revenue_low"] and vr["high"] >= vr["revenue_high"]
+    assert "Pre-money valuation range" in cover and "covers revenue 20% below or above plan" in cover
+    assert "how far the methods disagree" in cover and "with equal weights" in cover
+    assert "Not yet tested against the prices of closed funding rounds" in cover and "with equal weights" in cover
     assert f"{report.money_compact(vr['low'])} to {report.money_compact(vr['high'])}" in cover
     assert "Central value (your plan)" in cover and report.money(out["blended_pre_money_valuation"]) in cover
     assert f"{report.money(rng['low'])} (Venture Capital) to {report.money(rng['high'])} (Market)" in cover

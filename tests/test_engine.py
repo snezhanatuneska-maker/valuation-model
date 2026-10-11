@@ -301,17 +301,17 @@ def test_hebesatz_ignored_outside_germany():
     assert run(case).blended_pre_money_valuation == run(REFERENCE_CASE).blended_pre_money_valuation
 
 
-def test_german_scorecard_table_with_to_be_sourced_flag():
-    r = run(german(company_profile__company_stage="Idea stage"))
-    row = ve.country_specific("Germany")["stage_benchmarks"]["stages"]["Idea stage"]
-    assert r.scorecard.benchmark_source == "country_table"
-    assert r.scorecard.benchmark_pre_money_valuation == row["eur"]
-    assert r.scorecard.benchmark_to_be_sourced == row["to_be_sourced"]
-    if row["to_be_sourced"]:
-        assert any(w.code == "benchmark_to_be_sourced" for w in r.warnings)
-    # Other European countries keep the regional table
-    fr = run(german(company_profile__company_stage="Idea stage", company_profile__country="France"))
-    assert fr.scorecard.benchmark_source == "table"
+def test_german_scorecard_uses_the_same_kind_of_benchmark_as_every_other_country():
+    """Germany has no Scorecard figure of its own: like every other country it uses Equidam's pre-seed median for its
+    region (a model valuation of pre-seed companies), not an average of closed seed rounds (QUESTIONS.md 18)."""
+    for stage in ("Idea stage", "Development stage"):
+        de = run(german(company_profile__company_stage=stage))
+        at = run(german(company_profile__company_stage=stage, company_profile__country="Austria"))
+        assert de.scorecard.benchmark_source == at.scorecard.benchmark_source == "table"
+        assert de.scorecard.benchmark_pre_money_valuation == at.scorecard.benchmark_pre_money_valuation == (
+            ve.scorecard_benchmarks()["Europe (EU, UK, Switzerland & Scandinavia)"]["eur"])
+        assert de.scorecard.pre_money_valuation == pytest.approx(at.scorecard.pre_money_valuation)
+    assert "stage_benchmarks" not in ve.country_specific("Germany")
 
 
 def test_every_german_figure_has_a_source_and_date():
@@ -320,7 +320,6 @@ def test_every_german_figure_has_a_source_and_date():
     for key in ("corporate_tax_source", "solidarity_surcharge_source", "trade_tax_base_rate_source",
                 "average_hebesatz_source", "average_hebesatz_as_of"):
         assert GERMAN_TAX[key], key
-    assert de["stage_benchmarks"]["source"] and de["stage_benchmarks"]["as_of"]
 
 
 def test_old_industry_and_answer_spellings_still_work():
@@ -447,16 +446,6 @@ def test_no_duplicate_comparables_note_without_revenue():
     assert "no_revenue_history" in found and "nm_comparables" not in found
 
 
-def test_german_scorecard_uses_equidam_country_average():
-    """Equidam Parameters Update P6.3 (July 2026): Scorecard average for Germany EUR 6,550,000."""
-    for stage in ("Idea stage", "Development stage"):
-        r = run(german(company_profile__company_stage=stage))
-        assert r.scorecard.benchmark_pre_money_valuation == 6_550_000
-        assert r.scorecard.benchmark_source == "country_table" and "Equidam" in r.scorecard.benchmark_basis
-        assert not r.scorecard.benchmark_to_be_sourced
-        assert "benchmark_to_be_sourced" not in {w.code for w in r.warnings}
-
-
 def messages(case):
     return {w.code: w.message for w in run(case).warnings}
 
@@ -537,7 +526,9 @@ def test_industry_names_are_spelled_out_and_old_names_still_work():
     ("Poland", "Expansion stage", 0.20, 25_900_000), ("Israel", "Startup stage", 0.25, 6_100_000),
 ])
 def test_market_method_where_round_data_exists(country, stage, weight, benchmark):
-    r = run(german(company_profile__country=country, company_profile__company_stage=stage))
+    raise_ = ve.round_benchmarks()["stages"][stage]["round_eur_low"] if stage != "Startup stage" else 300_000
+    r = run(german(company_profile__country=country, company_profile__company_stage=stage,
+                   funding__capital_needed=raise_, funding__use_of_funds={"Product and R&D": raise_}))
     mv = r.method_values["market"]
     assert mv.status == "ok" and mv.weight == pytest.approx(weight)
     assert r.market.benchmark_pre_money_valuation == benchmark
@@ -582,7 +573,7 @@ def test_stage_too_late_for_the_raise_is_flagged_with_the_value_at_the_fitting_s
     r = run(german(company_profile__company_stage="Expansion stage"))  # raising €300,000, Series A is €3.5M+
     w = next(w for w in r.warnings if w.code == "stage_round_size")
     assert w.severity == "warning"
-    assert "€300,000" in w.message and "Series A at €23,000,000" in w.message
+    assert "€300,000" in w.message and "Seed rounds (at €6,400,000)" in w.message
     assert f"At the Startup stage the blended value would be {ve._eur(startup.blended_pre_money_valuation)}" in w.message
     # Growth stage with a Series A-sized raise points to the Expansion stage.
     r = run(german(company_profile__company_stage="Growth stage", funding__capital_needed=5_000_000,
@@ -600,14 +591,57 @@ def test_stage_that_fits_the_raise_has_no_stage_warning(changes):
     assert "stage_round_size" not in {w.code for w in run(german(**changes)).warnings}
 
 
-def test_value_range_is_the_blend_at_20_percent_less_and_more_revenue():
+def test_market_method_compares_with_the_round_the_raise_fits():
+    """A seed-sized raise is compared with seed rounds whatever stage is chosen, so the label alone can't switch the
+    benchmark from €6.4M to €23.0M; the weight stays the chosen stage's."""
+    for stage in ("Expansion stage", "Growth stage"):
+        r = run(german(company_profile__company_stage=stage))  # raising €300,000
+        assert r.market.benchmark_stage == "Startup stage" and r.market.benchmark_pre_money_valuation == 6_400_000
+        assert r.method_values["market"].weight == pytest.approx(0.20)
+        assert "compared with Seed rounds" in r.market.note
+    r = run(german(company_profile__company_stage="Growth stage", funding__capital_needed=5_000_000,
+                   funding__use_of_funds={"Product and R&D": 5_000_000}))
+    assert r.market.benchmark_stage == "Expansion stage" and r.market.benchmark_pre_money_valuation == 23_000_000
+    r = run(german(company_profile__company_stage="Expansion stage", funding__capital_needed=5_000_000,
+                   funding__use_of_funds={"Product and R&D": 5_000_000}))
+    assert r.market.benchmark_stage == "Expansion stage" and "compared with" not in r.market.note
+
+
+def test_stage_choice_moves_the_german_example_much_less():
+    values = [run(german(company_profile__company_stage=s)).blended_pre_money_valuation
+              for s in ("Startup stage", "Expansion stage", "Growth stage", "Maturity stage")]
+    assert max(values) < 1.5 * min(values)
+
+
+@pytest.mark.parametrize("country,few", [("Germany", True), ("Poland", True), ("France", False),
+                                         ("United Kingdom", False)])
+def test_thin_round_data_is_flagged_with_the_market_value(country, few):
+    r = run(german(company_profile__country=country))
+    assert r.market.few_rounds is few
+    assert ("fewer than 20 rounds" in r.market.note) is few
+
+
+def test_value_range_covers_the_revenue_scenarios_and_the_method_spread():
     inputs = ve.ValuationInput(**GERMAN_CASE)
     r = ve.run_valuation(inputs)
     s = ve.run_valuation_scenarios(inputs)
-    assert r.value_range.revenue_change == pytest.approx(0.2)
-    assert r.value_range.low == pytest.approx(s["80%"].blended_pre_money_valuation)
-    assert r.value_range.high == pytest.approx(s["120%"].blended_pre_money_valuation)
-    assert r.value_range.low < r.blended_pre_money_valuation < r.value_range.high
+    vr = r.value_range
+    assert vr.revenue_change == pytest.approx(0.2)
+    assert vr.revenue_low == pytest.approx(s["80%"].blended_pre_money_valuation)
+    assert vr.revenue_high == pytest.approx(s["120%"].blended_pre_money_valuation)
+    counted = [mv for mv in r.method_values.values() if mv.status == "ok" and mv.weight_used > 0]
+    sd = sum(mv.weight_used * (mv.pre_money_value - r.blended_pre_money_valuation) ** 2 for mv in counted) ** 0.5
+    assert vr.method_spread == pytest.approx(sd)
+    assert vr.low == pytest.approx(min(vr.revenue_low, max(r.blended_pre_money_valuation - sd, r.method_range.low)))
+    assert vr.high == pytest.approx(max(vr.revenue_high, min(r.blended_pre_money_valuation + sd, r.method_range.high)))
+    assert r.method_range.low <= vr.low < vr.revenue_low < r.blended_pre_money_valuation
+    assert r.blended_pre_money_valuation < vr.revenue_high < vr.high <= r.method_range.high
+
+
+def test_equal_weight_value_is_the_plain_average_of_the_counted_methods():
+    r = run(GERMAN_CASE)
+    used = [mv.pre_money_value for mv in r.method_values.values() if mv.status == "ok" and mv.weight_used > 0]
+    assert r.equal_weight_value == pytest.approx(sum(used) / len(used))
 
 
 def test_no_value_range_when_the_value_does_not_move_with_revenue():

@@ -274,3 +274,39 @@ Still open at the time, owner's choice: the Growth stage below the Expansion sta
   €1.90M; the stage check (`stage_round_size`) warns when a Maturity-stage raise is below the stage's typical round.
 - **License: MIT** (`LICENSE`), with a note that third-party data stays under its owners' terms.
 
+
+## 18. What an informed audience will push back on (done 11 October 2026)
+
+A second review before the presentation to a German university startup community listed six points a finance-minded
+audience would raise. The owner asked to fix them as far as possible. What changed:
+
+1. **No test against real rounds.** Not fixable without data: a backtest needs each company's figures (revenue,
+   EBITDA, plan, raise) next to the price paid, and those can't be made up. The screen and the PDF cover now say
+   next to the result that the model is not yet tested against the prices of closed rounds and is an indicative
+   range, not a price. `audit/backtest.py` is ready for 20–30 sourced DACH rounds.
+2. **The stage label moved the value too much.** The market method now compares the company with the round its raise
+   fits (`stage_for_raise`): from the Expansion stage on, a raise below the stage's typical round size uses the
+   earlier stage's round (a €300k raise is compared with seed rounds). The weight stays the chosen stage's, and the
+   stage warning stays. German example: Startup €2.49M, Expansion €2.43M (was €5.52M), Growth €2.70M (was €5.79M),
+   Maturity €1.90M. A company that really raises a Series A still gets the Series A benchmark.
+3. **The weights have no published source.** They still don't (an assumption, now labelled as such in the sources),
+   but the results show the blend with equal weights next to it (`equal_weight_value`; German example €2.50M vs
+   €2.49M), and the headline range includes how far the methods disagree.
+4. **Germany got a more generous Scorecard benchmark.** Reverses the 10 October decision (14, "Scorecard benchmark,
+   Germany vs. other countries"): Germany now uses the same figure as every other European country, Equidam's H1 2026
+   median for pre-seed companies in Europe (€2,899,000), instead of Equidam's average of closed German angel,
+   pre-seed and seed rounds (€6,550,000). An average of closed seed rounds is the wrong comparison for an Idea- or
+   Development-stage company and is pulled up by large rounds. The German Scorecard value falls by about 56%; the
+   German example's blend at the Idea stage from €3.07M to €1.71M, at the Development stage from €2.68M to €1.66M.
+   The Startup stage and later don't use the Scorecard (the market method covers what German rounds pay).
+5. **The headline range looked too precise.** It now covers both a 20% revenue miss or beat and how far the methods
+   disagree (the blend ± the weighted standard deviation of the methods, kept within the lowest and highest method;
+   the wider of the two). German example: €1.13M–€4.50M (was €2.34M–€2.65M), central value €2,494,834; Tanzania test
+   case €0.88M–€1.67M. The revenue scenarios are still shown underneath.
+6. **The market data is thin in places.** PitchBook notes fewer than 20 data points for some figures in DACH, Central
+   & Eastern Europe, Israel and Southern Europe (Series A–B also the Nordics); those values now carry a note
+   (`few_rounds` in `market_round_benchmarks`). That the benchmark didn't scale with the company is addressed by 2.
+
+Unchanged: every figure outside Europe and Israel, every figure at the Idea, Development and Startup stages outside
+Germany, every company whose raise fits its stage, the Tanzania test case and the German example at the Startup stage
+(€2,494,834). The headline range is wider for every company with more than one method.

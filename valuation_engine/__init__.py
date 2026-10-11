@@ -1095,6 +1095,11 @@ class MarketResult:
     debt: float = 0.0
     debt_exceeds_value: bool = False
     unanswered: list[str] = field(default_factory=list)
+    # The stage whose round the benchmark comes from: the chosen stage, or an earlier one when the raise is below the
+    # chosen stage's typical round size (a seed-sized raise is compared with seed rounds, whatever the stage label).
+    benchmark_stage: str = ""
+    few_rounds: bool = False  # PitchBook notes that some of the region's figures rest on fewer than 20 rounds
+    note: str = ""  # why the benchmark comes from an earlier stage, and how thin the data is (shown with the value)
 
 
 def market_round_region(country: str) -> Optional[str]:
@@ -1106,16 +1111,33 @@ def market_round_countries() -> list[str]:
     return [c for r in market_round_benchmarks()["regions"].values() for c in r["countries"]]
 
 
-def compute_market(company: CompanyProfile, scorecard: ScorecardResult, debt: float = 0.0) -> Optional[MarketResult]:
+def compute_market(company: CompanyProfile, scorecard: ScorecardResult, debt: float = 0.0,
+                   capital_needed: Optional[float] = None) -> Optional[MarketResult]:
     data = market_round_benchmarks()
     region = market_round_region(company.country)
     weight = data["weights"].get(company.company_stage, 0.0)
     if region is None or weight <= 0:
         return None
     reg = data["regions"][region]
-    row = reg["stages"].get(company.company_stage)
+    benchmark_stage = (company.company_stage if capital_needed is None
+                       else stage_for_raise(company.company_stage, capital_needed))
+    row = reg["stages"].get(benchmark_stage)
     if row is None:
         return None
+    notes = []
+    if benchmark_stage != company.company_stage:
+        notes.append(_t(
+            f"Your raise ({_eur(capital_needed)}) is smaller than a typical round at the "
+            f"{stage_label(company.company_stage)}, so the company is compared with {row['round']} rounds instead.",
+            f"Ihr Betrag ({_eur(capital_needed)}) ist kleiner als eine typische Runde der "
+            f"{stage_label(company.company_stage)}; das Unternehmen wird deshalb mit {row['round']}-Runden "
+            "verglichen."))
+    if row.get("few_rounds"):
+        notes.append(_t(
+            "PitchBook notes that some of this region's figures rest on fewer than 20 rounds, so treat this value as "
+            "a rough guide.",
+            "PitchBook weist darauf hin, dass einige Zahlen dieser Region auf weniger als 20 Runden beruhen; "
+            "betrachten Sie diesen Wert deshalb als grobe Orientierung."))
     return MarketResult(
         round_name=row["round"],
         region=_t(region, reg.get("name_de", region)),
@@ -1127,6 +1149,9 @@ def compute_market(company: CompanyProfile, scorecard: ScorecardResult, debt: fl
         debt=debt,
         debt_exceeds_value=debt > row["eur"] * scorecard.total_factor,
         unanswered=list(scorecard.unanswered),
+        benchmark_stage=benchmark_stage,
+        few_rounds=bool(row.get("few_rounds")),
+        note=" ".join(notes),
     )
 
 
@@ -1426,6 +1451,19 @@ def round_pricing_note(rl: Optional[RoundLogicResult], blended: Optional[float])
 LATE_STAGES = ("Expansion stage", "Growth stage", "Maturity stage")
 
 
+def stage_for_raise(stage: str, raise_amount: float) -> str:
+    """From the Expansion stage on, the latest stage (Startup at the earliest) whose typical round size the raise
+    reaches; earlier stages, and a raise that fits the chosen stage, keep the chosen stage."""
+    if stage not in LATE_STAGES:
+        return stage
+    rows = round_benchmarks()["stages"]
+    if raise_amount >= rows[stage]["round_eur_low"]:
+        return stage
+    order = list(stage_parameters())
+    earlier = order[order.index("Startup stage"):order.index(stage)]
+    return next((s for s in reversed(earlier) if raise_amount >= rows[s]["round_eur_low"]), "Startup stage")
+
+
 def stage_round_note(inputs: ValuationInput, output: ValuationOutput) -> Optional["ValuationWarning"]:
     """The stage sets the method weights, the stage assumptions and (in Europe) the round the market method compares
     with, and the founder chooses it. From the Expansion stage on, a raise below the stage's typical round size
@@ -1438,17 +1476,17 @@ def stage_round_note(inputs: ValuationInput, output: ValuationOutput) -> Optiona
     row = rows[cp.company_stage]
     if raise_amount >= row["round_eur_low"]:
         return None
-    order = list(stage_parameters())
-    earlier = order[order.index("Startup stage"):order.index(cp.company_stage)]
-    fit = next((s for s in reversed(earlier) if raise_amount >= rows[s]["round_eur_low"]), "Startup stage")
+    fit = stage_for_raise(cp.company_stage, raise_amount)
     round_name = _t(row["round"], ROUND_NAMES_DE.get(row["round"], row["round"]))
     band = f"{_eur(row['round_eur_low'])}–{_eur(row['round_eur_high'])}"
     market_en = market_de = ""
     if output.market:
-        market_en = (f", and which round the market method compares your company with (here {output.market.round_name} "
-                     f"at {_eur(output.market.benchmark_pre_money_valuation)})")
-        market_de = (f" und mit welcher Runde die Marktmethode Ihr Unternehmen vergleicht (hier "
-                     f"{output.market.round_name} mit {_eur(output.market.benchmark_pre_money_valuation)})")
+        market_en = (f". Because of the size of your raise, the market method already compares your company with "
+                     f"{output.market.round_name} rounds (at {_eur(output.market.benchmark_pre_money_valuation)}), but "
+                     "the other methods still use the chosen stage")
+        market_de = (f". Wegen der Höhe Ihres Betrags vergleicht die Marktmethode Ihr Unternehmen bereits mit "
+                     f"{output.market.round_name}-Runden (mit {_eur(output.market.benchmark_pre_money_valuation)}), "
+                     "die anderen Methoden verwenden aber die gewählte Phase")
     alt_en = alt_de = ""
     try:
         alt_inputs = inputs.model_copy(deep=True)
@@ -2331,9 +2369,11 @@ class ValuationOutput:
     method_range: Optional[MethodRange] = None
     round_logic: Optional[RoundLogicResult] = None  # cross-check: how a typical round would price the company
     market: Optional[MarketResult] = None  # the market method, where round data exists (Europe, Israel; Startup to Growth)
-    # The headline range: the blended value if revenue comes in 20% below or above the plan (None when the value
-    # doesn't move with revenue).
+    # The headline range: a 20% revenue miss or beat and how far the methods disagree (see ValueRange; None when
+    # neither moves the value).
     value_range: Optional["ValueRange"] = None
+    # The blend with equal weights for every counted method: the stage weights are an assumption.
+    equal_weight_value: Optional[float] = None
 
 
 def run_valuation(inputs: ValuationInput) -> ValuationOutput:
@@ -2344,6 +2384,7 @@ def run_valuation(inputs: ValuationInput) -> ValuationOutput:
     if note:
         output.warnings.append(note)
     output.value_range = revenue_value_range(inputs, output)
+    output.equal_weight_value = equal_weight_value(output.method_values)
     return output
 
 
@@ -2367,7 +2408,7 @@ def _run_valuation_core(inputs: ValuationInput) -> ValuationOutput:
     vc_result = compute_venture_capital(company, projections, inputs.funding, inputs.vc_assumptions, bench, debt)
     comparables_result = compute_comparables(company, op, debt, bench)
     dcf_result = compute_dcf(company, projections, wacc_result, op, debt)
-    market_result = compute_market(company, scorecard_result, debt)
+    market_result = compute_market(company, scorecard_result, debt, inputs.funding.capital_needed)
 
     raw = {
         "scorecard": (scorecard_result.pre_money_valuation, None),
@@ -2533,23 +2574,54 @@ def _revenue_scenario(inputs: ValuationInput, base: ValuationOutput, multiplier:
 
 @dataclass
 class ValueRange:
-    """The blended value if revenue comes in `revenue_change` below (low) or above (high) the plan."""
+    """The headline range around the blended value. It covers both what a revenue miss or beat does and how far the
+    methods disagree: the wider of
+    - the blended value if revenue comes in `revenue_change` below or above the plan (`revenue_low`, `revenue_high`),
+    - the blend plus or minus the weighted standard deviation of the methods' values (`method_spread`), kept within
+      the lowest and highest method."""
     low: float
     high: float
     revenue_change: float
+    revenue_low: Optional[float] = None
+    revenue_high: Optional[float] = None
+    method_spread: float = 0.0
 
 
 VALUE_RANGE_REVENUE_CHANGE = 0.2
 
 
+def method_spread(output: ValuationOutput) -> float:
+    """The weighted standard deviation of the counted methods' values around the blend (0 with one method)."""
+    counted = [mv for mv in output.method_values.values() if mv.status == "ok" and mv.weight_used > 0]
+    blend = output.blended_pre_money_valuation
+    return sum(mv.weight_used * (mv.pre_money_value - blend) ** 2 for mv in counted) ** 0.5
+
+
+def equal_weight_value(method_values: dict) -> Optional[float]:
+    """The blend if every counted method had the same weight: a check on how much the (assumed) stage weights
+    matter. None when fewer than two methods count."""
+    used = [mv.pre_money_value for mv in method_values.values() if mv.status == "ok" and mv.weight_used > 0]
+    return sum(used) / len(used) if len(used) >= 2 else None
+
+
 def revenue_value_range(inputs: ValuationInput, base: ValuationOutput) -> Optional[ValueRange]:
-    """None when the value doesn't move with revenue (only Scorecard, Comparables or the market method count)."""
+    """None when the value moves neither with revenue nor across methods (a single method that ignores revenue)."""
     change = VALUE_RANGE_REVENUE_CHANGE
-    low = _revenue_scenario(inputs, base, 1 - change).blended_pre_money_valuation
-    high = _revenue_scenario(inputs, base, 1 + change).blended_pre_money_valuation
-    if abs(high - low) < 1:
+    blend = base.blended_pre_money_valuation
+    r_low = _revenue_scenario(inputs, base, 1 - change).blended_pre_money_valuation
+    r_high = _revenue_scenario(inputs, base, 1 + change).blended_pre_money_valuation
+    r_low, r_high = min(r_low, r_high), max(r_low, r_high)
+    revenue_moves = r_high - r_low >= 1
+    spread = method_spread(base)
+    low, high = (r_low, r_high) if revenue_moves else (blend, blend)
+    if base.method_range and spread >= 1:
+        low = min(low, max(blend - spread, base.method_range.low))
+        high = max(high, min(blend + spread, base.method_range.high))
+    if high - low < 1:
         return None
-    return ValueRange(low=min(low, high), high=max(low, high), revenue_change=change)
+    return ValueRange(low=low, high=high, revenue_change=change,
+                      revenue_low=r_low if revenue_moves else None, revenue_high=r_high if revenue_moves else None,
+                      method_spread=spread)
 
 
 def _with_base_weights(scenario: ValuationOutput, base: ValuationOutput) -> ValuationOutput:
